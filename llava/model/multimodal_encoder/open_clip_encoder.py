@@ -26,19 +26,11 @@ class OpenCLIPVisionTower(nn.Module):
             self.load_model()
 
     def load_model(self):
-        vision_tower, _, image_processor = open_clip.create_model_and_transforms(
-            model_name=self.model_name, pretrained=self.pretrained
-        )
-        resize_transform = [
-            t
-            for t in image_processor.transforms
-            if isinstance(t, torchvision.transforms.Resize)
-        ][0]
-        normalize_transform = [
-            t
-            for t in image_processor.transforms
-            if isinstance(t, torchvision.transforms.Normalize)
-        ][0]
+        print(f"Loading OpenCLIP model: {self.model_name}")
+        print(f"Pretrained: {self.pretrained}")
+        vision_tower, _, image_processor = open_clip.create_model_and_transforms(model_name=self.model_name, pretrained=self.pretrained)
+        resize_transform = [t for t in image_processor.transforms if isinstance(t, torchvision.transforms.Resize)][0]
+        normalize_transform = [t for t in image_processor.transforms if isinstance(t, torchvision.transforms.Normalize)][0]
         self.resize_transform_size = resize_transform.size
         self.image_processor = CLIPImageProcessor.from_pretrained(
             "openai/clip-vit-large-patch14",
@@ -72,17 +64,13 @@ class OpenCLIPVisionTower(nn.Module):
 
     def forward_visual(self, x, output_hidden_states=False):
         if hasattr(self.vision_tower, "trunk"):
-            return self.vision_tower.trunk._intermediate_layers(
-                x, abs(self.select_layer)
-            )
+            return self.vision_tower.trunk._intermediate_layers(x, abs(self.select_layer))
         else:
 
             def forward_openclip(self, x: torch.Tensor):
                 features = []
                 x = self.conv1(x)  # shape = [*, width, grid, grid]
-                x = x.reshape(
-                    x.shape[0], x.shape[1], -1
-                )  # shape = [*, width, grid ** 2]
+                x = x.reshape(x.shape[0], x.shape[1], -1)  # shape = [*, width, grid ** 2]
                 x = x.permute(0, 2, 1)  # shape = [*, grid ** 2, width]
 
                 # class embeddings and positional embeddings
@@ -109,15 +97,11 @@ class OpenCLIPVisionTower(nn.Module):
         if type(images) is list:
             image_features = []
             for image in images:
-                image_forward_out = self.forward_visual(
-                    image.to(self.dtype).unsqueeze(0), output_hidden_states=True
-                )
+                image_forward_out = self.forward_visual(image.to(self.dtype).unsqueeze(0), output_hidden_states=True)
                 image_feature = self.feature_select(image_forward_out).to(image.dtype)
                 image_features.append(image_feature)
         else:
-            image_forward_outs = self.forward_visual(
-                images.to(self.dtype), output_hidden_states=True
-            )
+            image_forward_outs = self.forward_visual(images.to(self.dtype), output_hidden_states=True)
             image_features = self.feature_select(image_forward_outs).to(images.dtype)
 
         return image_features

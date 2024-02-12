@@ -12,20 +12,20 @@ class CLIPVisionTower(nn.Module):
 
         self.vision_tower_name = vision_tower
         self.select_layer = args.mm_vision_select_layer
-        self.select_feature = getattr(args, 'mm_vision_select_feature', 'patch')
+        self.select_feature = getattr(args, "mm_vision_select_feature", "patch")
 
         if not delay_load:
             self.load_model()
-        elif getattr(args, 'unfreeze_mm_vision_tower', False):
+        elif getattr(args, "unfreeze_mm_vision_tower", False):
             # TODO: better detector is needed.
-            print(f'The checkpoint seems to contain `vision_tower` weights: `unfreeze_mm_vision_tower`: True.')
+            print(f"The checkpoint seems to contain `vision_tower` weights: `unfreeze_mm_vision_tower`: True.")
             self.load_model()
         else:
             self.cfg_only = CLIPVisionConfig.from_pretrained(self.vision_tower_name)
 
     def load_model(self, device_map=None):
         if self.is_loaded:
-            print('{} is already loaded, `load_model` called again, skipping.'.format(self.vision_tower_name))
+            print("{} is already loaded, `load_model` called again, skipping.".format(self.vision_tower_name))
             return
 
         self.image_processor = CLIPImageProcessor.from_pretrained(self.vision_tower_name)
@@ -37,29 +37,23 @@ class CLIPVisionTower(nn.Module):
     def feature_select(self, image_forward_outs):
         select_feature_type = self.select_feature
 
-        if self.select_feature in ['slicefour_patch', 'slicefour_cls_patch']:
+        if self.select_feature in ["slicefour_patch", "slicefour_cls_patch"]:
             select_every_k_layer = len(image_forward_outs.hidden_states) // 4
-            image_features = torch.cat([
-                image_forward_outs.hidden_states[i]
-                for i in range(select_every_k_layer + self.select_layer, len(image_forward_outs.hidden_states), select_every_k_layer)
-            ], dim=-1)
-            select_feature_type = select_feature_type.replace('slicefour_', '')
+            image_features = torch.cat([image_forward_outs.hidden_states[i] for i in range(select_every_k_layer + self.select_layer, len(image_forward_outs.hidden_states), select_every_k_layer)], dim=-1)
+            select_feature_type = select_feature_type.replace("slicefour_", "")
         elif self.select_feature in ["slice_m25811_f6_patch", "slice_m25811_f6_cls_patch"]:
             select_layers = [-2, -5, -8, -11, 6]
-            image_features = torch.cat([
-                image_forward_outs.hidden_states[i]
-                for i in select_layers
-            ], dim=-1)
-            select_feature_type = select_feature_type.replace('slice_m25811_f6_', '')
+            image_features = torch.cat([image_forward_outs.hidden_states[i] for i in select_layers], dim=-1)
+            select_feature_type = select_feature_type.replace("slice_m25811_f6_", "")
         else:
             image_features = image_forward_outs.hidden_states[self.select_layer]
 
-        if select_feature_type == 'patch':
+        if select_feature_type == "patch":
             image_features = image_features[:, 1:]
-        elif select_feature_type == 'cls_patch':
+        elif select_feature_type == "cls_patch":
             image_features = image_features
         else:
-            raise ValueError(f'Unexpected select feature: {select_feature_type}')
+            raise ValueError(f"Unexpected select feature: {select_feature_type}")
         return image_features
 
     def forward(self, images):
@@ -97,9 +91,9 @@ class CLIPVisionTower(nn.Module):
     @property
     def hidden_size(self):
         _hidden_size = self.config.hidden_size
-        if 'slicefour' in self.select_feature:
+        if "slicefour" in self.select_feature:
             _hidden_size *= 4
-        if 'slice_m25811_f6' in self.select_feature:
+        if "slice_m25811_f6" in self.select_feature:
             _hidden_size *= 5
         return _hidden_size
 
@@ -110,6 +104,6 @@ class CLIPVisionTower(nn.Module):
     @property
     def num_patches(self):
         _num_patches = (self.config.image_size // self.config.patch_size) ** 2
-        if 'cls_patch' in self.select_feature:
+        if "cls_patch" in self.select_feature:
             _num_patches += 1
         return _num_patches

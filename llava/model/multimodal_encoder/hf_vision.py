@@ -10,9 +10,9 @@ class HFVisionTower(nn.Module):
 
         self.is_loaded = False
 
-        self.vision_tower_name = vision_tower.replace('hf:', '', 1)
+        self.vision_tower_name = vision_tower.replace("hf:", "", 1)
         self.select_layer = args.mm_vision_select_layer
-        self.select_feature = getattr(args, 'mm_vision_select_feature', 'patch')
+        self.select_feature = getattr(args, "mm_vision_select_feature", "patch")
 
         if not delay_load:
             self.load_model()
@@ -29,22 +29,19 @@ class HFVisionTower(nn.Module):
     def feature_select(self, image_forward_outs):
         select_feature_type = self.select_feature
 
-        if self.select_feature in ['slicefour_patch', 'slicefour_cls_patch']:
+        if self.select_feature in ["slicefour_patch", "slicefour_cls_patch"]:
             select_every_k_layer = len(image_forward_outs.hidden_states) // 4
-            image_features = torch.cat([
-                image_forward_outs.hidden_states[i]
-                for i in range(select_every_k_layer + self.select_layer, len(image_forward_outs.hidden_states), select_every_k_layer)
-            ], dim=-1)
-            select_feature_type = select_feature_type.replace('slicefour_', '')
+            image_features = torch.cat([image_forward_outs.hidden_states[i] for i in range(select_every_k_layer + self.select_layer, len(image_forward_outs.hidden_states), select_every_k_layer)], dim=-1)
+            select_feature_type = select_feature_type.replace("slicefour_", "")
         else:
             image_features = image_forward_outs.hidden_states[self.select_layer]
 
-        if select_feature_type == 'patch':
+        if select_feature_type == "patch":
             image_features = image_features[:, 1:]
-        elif select_feature_type == 'cls_patch':
+        elif select_feature_type == "cls_patch":
             image_features = image_features
         else:
-            raise ValueError(f'Unexpected select feature: {select_feature_type}')
+            raise ValueError(f"Unexpected select feature: {select_feature_type}")
         return image_features
 
     def forward(self, images):
@@ -82,13 +79,13 @@ class HFVisionTower(nn.Module):
     @property
     def hidden_size(self):
         _hidden_size = self.config.hidden_size
-        if 'slicefour' in self.select_feature:
+        if "slicefour" in self.select_feature:
             _hidden_size *= 4
         return _hidden_size
 
     @property
     def num_patches(self):
         _num_patches = (self.config.image_size // self.config.patch_size) ** 2
-        if 'cls_patch' in self.select_feature:
+        if "cls_patch" in self.select_feature:
             _num_patches += 1
         return _num_patches

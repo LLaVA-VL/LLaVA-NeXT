@@ -19,16 +19,16 @@ class IdentityMap(torch.nn.Module):
 
 
 def build_vision_resampler(model_args, delay_load=False, **kwargs):
-    resampler_type = getattr(model_args, 'mm_resampler_type', None)
-    if resampler_type == 'masked_drop':
+    resampler_type = getattr(model_args, "mm_resampler_type", None)
+    if resampler_type == "masked_drop":
         return MaskedDrop(model_args)
-    elif resampler_type == 'spatial_pool':
+    elif resampler_type == "spatial_pool":
         return SpatialPool(model_args, **kwargs)
-    elif resampler_type == 'perceiver':
+    elif resampler_type == "perceiver":
         return PerceiverResampler(model_args, **kwargs)
-    elif resampler_type == 'qformer':
+    elif resampler_type == "qformer":
         return Qformer(model_args, **kwargs)
     elif resampler_type is None:
         return IdentityMap()
 
-    raise ValueError(f'Unknown resampler type: {resampler_type}')
+    raise ValueError(f"Unknown resampler type: {resampler_type}")

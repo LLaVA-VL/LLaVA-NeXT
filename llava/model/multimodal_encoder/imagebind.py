@@ -12,7 +12,7 @@ except ImportError:
 
 
 class ImageBindWrapper(nn.Module):
-    def __init__(self, vision_tower, select_layer, select_feature='patch', delay_load=False):
+    def __init__(self, vision_tower, select_layer, select_feature="patch", delay_load=False):
         super().__init__()
 
         self.is_loaded = False
@@ -32,7 +32,7 @@ class ImageBindWrapper(nn.Module):
         self.vision_tower.eval()
         self.is_loaded = True
 
-    def train(self, mode = True):
+    def train(self, mode=True):
         self.training = mode
 
         if self.is_loaded:
@@ -41,8 +41,8 @@ class ImageBindWrapper(nn.Module):
     @torch.no_grad()
     def forward(self, x):
         if type(x) == dict:
-            if x['audios'] is not None:
-                inputs = {ModalityType.AUDIO: load_and_transform_audio_data(x['audios'], device=self.device).half()}
+            if x["audios"] is not None:
+                inputs = {ModalityType.AUDIO: load_and_transform_audio_data(x["audios"], device=self.device).half()}
                 embeddings = self.vision_tower(inputs)
                 audio_embedding = embeddings[ModalityType.AUDIO]
                 return audio_embedding.unsqueeze(1)
@@ -54,7 +54,7 @@ class ImageBindWrapper(nn.Module):
                 return vision_embedding.unsqueeze(1)
             if vision_embedding.shape[1] == 257:
                 return vision_embedding[:, 1:]
-            raise ValueError(f'Unexpected shape: {vision_embedding.shape}')
+            raise ValueError(f"Unexpected shape: {vision_embedding.shape}")
 
     @property
     def dummy_feature(self):

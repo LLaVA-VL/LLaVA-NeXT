@@ -91,13 +91,12 @@ def process_highres_image_crop_split(image, data_args, processor=None):
         processor = data_args.image_processor
     image_crop = resize_and_center_crop(image, crop_resolution)
     image_patches = extract_patches(image_crop, patch_size=split_resolution, overlap_ratio=0)
-    image_patches = [processor.preprocess(image_patch, return_tensors='pt')['pixel_values'][0]
-                     for image_patch in image_patches]
+    image_patches = [processor.preprocess(image_patch, return_tensors="pt")["pixel_values"][0] for image_patch in image_patches]
     return torch.stack(image_patches, dim=0)
 
 
 def process_highres_image(image, processor, grid_pinpoints):
-    grid_params = [int(x) for x in grid_pinpoints.split(',')]
+    grid_params = [int(x) for x in grid_pinpoints.split(",")]
     width_height = max(image.size)
     fit_grid_params = [x for x in grid_params if x >= width_height]
     if len(fit_grid_params) == 0:
@@ -106,15 +105,14 @@ def process_highres_image(image, processor, grid_pinpoints):
         select_size = min(fit_grid_params)
     # FIXME: always select the 448
     select_size = max(grid_params)
-    image_padded = expand2square(image, tuple(int(x*255) for x in processor.image_mean))
+    image_padded = expand2square(image, tuple(int(x * 255) for x in processor.image_mean))
 
     # FIXME: this seems to be a bug that it always resizes instead of padding
-    image_original_resize = image.resize((processor.size['shortest_edge'], processor.size['shortest_edge']))
+    image_original_resize = image.resize((processor.size["shortest_edge"], processor.size["shortest_edge"]))
     image_padded = image_padded.resize((select_size, select_size))
-    image_patches = extract_patches(image_padded, patch_size=processor.size['shortest_edge'], overlap_ratio=0)
+    image_patches = extract_patches(image_padded, patch_size=processor.size["shortest_edge"], overlap_ratio=0)
     image_patches = [image_original_resize] + image_patches
-    image_patches = [processor.preprocess(image_patch, return_tensors='pt')['pixel_values'][0]
-                     for image_patch in image_patches]
+    image_patches = [processor.preprocess(image_patch, return_tensors="pt")["pixel_values"][0] for image_patch in image_patches]
     return torch.stack(image_patches, dim=0)
 
 
@@ -132,7 +130,7 @@ def select_best_resolution(original_size, possible_resolutions):
     original_width, original_height = original_size
     best_fit = None
     max_effective_resolution = 0
-    min_wasted_resolution = float('inf')
+    min_wasted_resolution = float("inf")
 
     for width, height in possible_resolutions:
         # Calculate the downscaled size to keep the aspect ratio
@@ -182,7 +180,7 @@ def resize_and_pad_image(image, target_resolution):
     resized_image = image.resize((new_width, new_height))
 
     # Create a new image with the target size and paste the resized image onto it
-    new_image = Image.new('RGB', (target_width, target_height), (0, 0, 0))
+    new_image = Image.new("RGB", (target_width, target_height), (0, 0, 0))
     paste_x = (target_width - new_width) // 2
     paste_y = (target_height - new_height) // 2
     new_image.paste(resized_image, (paste_x, paste_y))
@@ -251,18 +249,17 @@ def process_anyres_image(image, processor, grid_pinpoints):
     best_resolution = select_best_resolution(image.size, possible_resolutions)
     image_padded = resize_and_pad_image(image, best_resolution)
 
-    patches = divide_to_patches(image_padded, processor.crop_size['height'])
+    patches = divide_to_patches(image_padded, processor.crop_size["height"])
 
     # FIXME: this seems to be a bug that it resizes instead of pad.
     # but to keep it consistent with previous, i will keep it as it is
     # TODO: uncomment below to ablate with the padding
-    image_original_resize = image.resize((processor.size['shortest_edge'], processor.size['shortest_edge']))
+    image_original_resize = image.resize((processor.size["shortest_edge"], processor.size["shortest_edge"]))
     # image_padded_square = expand2square(image, tuple(int(x*255) for x in processor.image_mean))
     # image_original_resize = image_padded_square.resize((processor.size['shortest_edge'], processor.size['shortest_edge']))
 
     image_patches = [image_original_resize] + patches
-    image_patches = [processor.preprocess(image_patch, return_tensors='pt')['pixel_values'][0]
-                     for image_patch in image_patches]
+    image_patches = [processor.preprocess(image_patch, return_tensors="pt")["pixel_values"][0] for image_patch in image_patches]
     return torch.stack(image_patches, dim=0)
 
 
@@ -295,27 +292,27 @@ def process_images(images, image_processor, model_cfg):
         for image in images:
             image = process_anyres_image(image, image_processor, model_cfg.image_grid_pinpoints)
             new_images.append(image)
-    elif image_aspect_ratio == 'crop_split':
+    elif image_aspect_ratio == "crop_split":
         for image in images:
             image = process_highres_image_crop_split(image, model_cfg, image_processor)
             new_images.append(image)
-    elif image_aspect_ratio == 'pad':
+    elif image_aspect_ratio == "pad":
         for image in images:
-            image = expand2square(image, tuple(int(x*255) for x in image_processor.image_mean))
-            image = image_processor.preprocess(image, return_tensors='pt')['pixel_values'][0]
+            image = expand2square(image, tuple(int(x * 255) for x in image_processor.image_mean))
+            image = image_processor.preprocess(image, return_tensors="pt")["pixel_values"][0]
             new_images.append(image)
     else:
-        return image_processor(images, return_tensors='pt')['pixel_values']
+        return image_processor(images, return_tensors="pt")["pixel_values"]
     if all(x.shape == new_images[0].shape for x in new_images):
         new_images = torch.stack(new_images, dim=0)
     return new_images
 
 
 def tokenizer_image_token(prompt, tokenizer, image_token_index=IMAGE_TOKEN_INDEX, return_tensors=None):
-    prompt_chunks = [tokenizer(chunk).input_ids for chunk in prompt.split('<image>')]
+    prompt_chunks = [tokenizer(chunk).input_ids for chunk in prompt.split("<image>")]
 
     def insert_separator(X, sep):
-        return [ele for sublist in zip(X, [sep]*len(X)) for ele in sublist][:-1]
+        return [ele for sublist in zip(X, [sep] * len(X)) for ele in sublist][:-1]
 
     input_ids = []
     offset = 0
@@ -327,21 +324,19 @@ def tokenizer_image_token(prompt, tokenizer, image_token_index=IMAGE_TOKEN_INDEX
         input_ids.extend(x[offset:])
 
     if return_tensors is not None:
-        if return_tensors == 'pt':
+        if return_tensors == "pt":
             return torch.tensor(input_ids, dtype=torch.long)
-        raise ValueError(f'Unsupported tensor type: {return_tensors}')
+        raise ValueError(f"Unsupported tensor type: {return_tensors}")
     return input_ids
 
 
 def get_model_name_from_path(model_path):
     model_path = model_path.strip("/")
     model_paths = model_path.split("/")
-    if model_paths[-1].startswith('checkpoint-'):
+    if model_paths[-1].startswith("checkpoint-"):
         return model_paths[-2] + "_" + model_paths[-1]
     else:
         return model_paths[-1]
-
-
 
 
 class KeywordsStoppingCriteria(StoppingCriteria):
@@ -361,7 +356,7 @@ class KeywordsStoppingCriteria(StoppingCriteria):
         offset = min(output_ids.shape[1] - self.start_len, 3)
         self.keyword_ids = [keyword_id.to(output_ids.device) for keyword_id in self.keyword_ids]
         for keyword_id in self.keyword_ids:
-            if output_ids[0, -keyword_id.shape[0]:] == keyword_id:
+            if output_ids[0, -keyword_id.shape[0] :] == keyword_id:
                 return True
         outputs = self.tokenizer.batch_decode(output_ids[:, -offset:], skip_special_tokens=True)[0]
         for keyword in self.keywords:

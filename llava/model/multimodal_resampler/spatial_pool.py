@@ -9,16 +9,16 @@ class SpatialPool(nn.Module):
 
         self.mode = model_args.mm_spatial_pool_mode
         self.stride = model_args.mm_spatial_pool_stride
-        self.out_channels = getattr(model_args, 'mm_spatial_pool_out_channels', vision_tower.hidden_size)
+        self.out_channels = getattr(model_args, "mm_spatial_pool_out_channels", vision_tower.hidden_size)
 
-        if self.mode == 'average':
+        if self.mode == "average":
             self.pool = nn.AvgPool2d(kernel_size=self.stride, stride=self.stride)
-        elif self.mode == 'max':
+        elif self.mode == "max":
             self.pool = nn.MaxPool2d(kernel_size=self.stride, stride=self.stride)
-        elif self.mode == 'conv':
+        elif self.mode == "conv":
             self.pool = nn.Conv2d(in_channels=vision_tower.hidden_size, out_channels=self.out_channels, kernel_size=self.stride, stride=self.stride)
         else:
-            raise ValueError(f'Unknown pooling mode: {self.pool}.')
+            raise ValueError(f"Unknown pooling mode: {self.pool}.")
 
     def forward(self, image_features, images, *args, **kwargs):
         ori_W = int(math.sqrt(image_features.shape[1] * images.shape[3] // images.shape[2]))
@@ -34,10 +34,10 @@ class SpatialPool(nn.Module):
     @property
     def config(self):
         return {
-            'mm_resampler_type': 'spatial_pool',
-            'mm_spatial_pool_stride': self.stride,
-            'mm_spatial_pool_mode': self.mode,
-            'mm_spatial_pool_out_channels': self.out_channels,
+            "mm_resampler_type": "spatial_pool",
+            "mm_spatial_pool_stride": self.stride,
+            "mm_spatial_pool_mode": self.mode,
+            "mm_spatial_pool_out_channels": self.out_channels,
         }
 
     @property

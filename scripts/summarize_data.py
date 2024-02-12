@@ -3,10 +3,10 @@ import os
 from tqdm import tqdm
 
 with open("/mnt/bn/vl-research/workspace/boli01/zzzprojects/LLaVA/playground/data/llava_v1_5_mix665k.json") as f:
-    llava_v1_5_mix665k = json.load(f) #665298
+    llava_v1_5_mix665k = json.load(f)  # 665298
 
 with open("/mnt/bn/vl-research/workspace/boli01/zzzprojects/LLaVA/playground/data/llava_instruct_150k.json") as f:
-    llava_instruct_150k = json.load(f) #157712
+    llava_instruct_150k = json.load(f)  # 157712
 
 # Create sets of "id" fields
 mix665k_ids = set()
@@ -29,10 +29,10 @@ for item in llava_v1_5_mix665k:
         all_conv = ""
         for cur_conversation in item["conversations"]:
             all_conv += cur_conversation["value"]
-        share_gpt_ids.add(f'{item["id"]}_{all_conv}') #40688
+        share_gpt_ids.add(f'{item["id"]}_{all_conv}')  # 40688
 
 # Get "id" fields that are in mix665k but not in instruct_150k and share_gpt
-new_ids = mix665k_ids - instruct_150k_ids - share_gpt_ids #466898
+new_ids = mix665k_ids - instruct_150k_ids - share_gpt_ids  # 466898
 
 # Get "id" fields that are in mix665k but not in share_gpt
 # new_ids = mix665k_ids - share_gpt_ids #624610
@@ -48,12 +48,14 @@ for item in llava_v1_5_mix665k:
     if f'{item["id"]}_{all_conv}' in new_ids:
         new_data.append(item)
 
-import pdb; pdb.set_trace()
+import pdb
+
+pdb.set_trace()
 
 with open("/mnt/bn/vl-research/workspace/boli01/zzzprojects/LLaVA/playground/data/mixtral_instruct_135K_of_158K_V1.5.json") as f:
-    new_mixtral_instruct = json.load(f) 
+    new_mixtral_instruct = json.load(f)
 
-#mixtral_instruct_50K_of_80K_V1.json@
+# mixtral_instruct_50K_of_80K_V1.json@
 
 # print(len(new_data))
 # for _ in new_mixtral_instruct:
@@ -75,5 +77,5 @@ print(len(new_data))
 #             import pdb; pdb.set_trace()
 
 # Write new_data to a new JSON file
-with open('/mnt/bn/vl-research/workspace/boli01/zzzprojects/LLaVA/playground/data/llava_v1_5_mix665k_minus_llava_instruct_150k_minus_sharegpt_plus_mixtral_instruct_135K_of_158K_V1.5.json', 'w') as f:
-    json.dump(new_data,f)
+with open("/mnt/bn/vl-research/workspace/boli01/zzzprojects/LLaVA/playground/data/llava_v1_5_mix665k_minus_llava_instruct_150k_minus_sharegpt_plus_mixtral_instruct_135K_of_158K_V1.5.json", "w") as f:
+    json.dump(new_data, f)

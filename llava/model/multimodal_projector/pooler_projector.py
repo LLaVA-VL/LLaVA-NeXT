@@ -12,10 +12,7 @@ class PoolerProjector(nn.Module):
         self._config = config
         self.hw = vision_cfg.image_size // vision_cfg.patch_size
 
-        self.conv_pool = nn.Conv2d(
-            config.mm_hidden_size, config.hidden_size,
-            kernel_size=2, stride=2
-        )
+        self.conv_pool = nn.Conv2d(config.mm_hidden_size, config.hidden_size, kernel_size=2, stride=2)
 
         self.proj = nn.Sequential(
             nn.GELU(),
@@ -33,4 +30,4 @@ class PoolerProjector(nn.Module):
 
     @property
     def config(self):
-        return {"mm_projector_type": 'pooler'}
+        return {"mm_projector_type": "pooler"}

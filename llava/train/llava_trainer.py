@@ -19,10 +19,11 @@ from typing import List, Optional
 def maybe_zero_3(param, ignore_status=False, name=None):
     from deepspeed import zero
     from deepspeed.runtime.zero.partition_parameters import ZeroParamStatus
+
     if hasattr(param, "ds_id"):
         if param.ds_status == ZeroParamStatus.NOT_AVAILABLE:
             if not ignore_status:
-                print(name, 'no ignore status')
+                print(name, "no ignore status")
         with zero.GatheredParameters([param]):
             param = param.data.detach().cpu().clone()
     else:
@@ -58,7 +59,7 @@ def split_to_even_chunks(indices, lengths, num_chunks):
     return chunks
 
 
-def get_variable_length_grouped_indices(lengths, batch_size, world_size, megabatch_mult = 8, generator=None):
+def get_variable_length_grouped_indices(lengths, batch_size, world_size, megabatch_mult=8, generator=None):
     # We need to use torch for the random part as a distributed sampler will set the random seed for torch.
     indices = torch.randperm(len(lengths), generator=generator)
     sorted_indices = sorted(range(len(lengths)), key=lambda i: lengths[i], reverse=True)
@@ -236,7 +237,7 @@ class LLaVATrainer(Trainer):
                 # self.args.train_batch_size * self.args.gradient_accumulation_steps, # TODO: seems that we should not have gradient_accumulation_steps
                 self.args.train_batch_size,
                 # world_size=self.args.world_size,
-                world_size=self.args.world_size * self.args.gradient_accumulation_steps, # TODO: seems that this may work?
+                world_size=self.args.world_size * self.args.gradient_accumulation_steps,  # TODO: seems that this may work?
                 lengths=lengths,
             )
         elif self.args.group_by_modality_length:
@@ -245,7 +246,7 @@ class LLaVATrainer(Trainer):
                 # self.args.train_batch_size * self.args.gradient_accumulation_steps, # TODO: seems that we should not have gradient_accumulation_steps
                 self.args.train_batch_size,
                 # world_size=self.args.world_size,
-                world_size=self.args.world_size * self.args.gradient_accumulation_steps, # TODO: seems that this may work?
+                world_size=self.args.world_size * self.args.gradient_accumulation_steps,  # TODO: seems that this may work?
                 lengths=lengths,
                 group_by_modality=True,
             )
@@ -255,7 +256,7 @@ class LLaVATrainer(Trainer):
                 # self.args.train_batch_size * self.args.gradient_accumulation_steps, # TODO: seems that we should not have gradient_accumulation_steps
                 self.args.train_batch_size,
                 # world_size=self.args.world_size,
-                world_size=self.args.world_size * self.args.gradient_accumulation_steps, # TODO: seems that this may work?
+                world_size=self.args.world_size * self.args.gradient_accumulation_steps,  # TODO: seems that this may work?
                 lengths=lengths,
                 group_by_modality_auto=True,
             )
@@ -265,9 +266,9 @@ class LLaVATrainer(Trainer):
                 self.args.train_batch_size * self.args.gradient_accumulation_steps,
                 # self.args.train_batch_size, # TODO: seems that we should have gradient_accumulation_steps
                 # world_size=self.args.world_size,
-                world_size=self.args.world_size * self.args.gradient_accumulation_steps, # TODO: seems that this may work?
+                world_size=self.args.world_size * self.args.gradient_accumulation_steps,  # TODO: seems that this may work?
                 lengths=lengths,
-                variable_length=True
+                variable_length=True,
             )
         else:
             return super()._get_train_sampler()
@@ -289,55 +290,45 @@ class LLaVATrainer(Trainer):
             decay_parameters = [name for name in decay_parameters if "bias" not in name]
             lr_mapper = {}
             if self.args.mm_projector_lr is not None:
-                lr_mapper['mm_projector'] = self.args.mm_projector_lr
+                lr_mapper["mm_projector"] = self.args.mm_projector_lr
             if self.args.mm_vision_tower_lr is not None:
-                lr_mapper['vision_tower'] = self.args.mm_vision_tower_lr
+                lr_mapper["vision_tower"] = self.args.mm_vision_tower_lr
             if len(lr_mapper) > 0:
                 special_lr_parameters = [name for name, _ in opt_model.named_parameters() if any(module_keyword in name for module_keyword in lr_mapper)]
                 optimizer_grouped_parameters = [
                     {
-                        "params": [
-                            p for n, p in opt_model.named_parameters() if (n in decay_parameters and n not in special_lr_parameters and p.requires_grad)
-                        ],
+                        "params": [p for n, p in opt_model.named_parameters() if (n in decay_parameters and n not in special_lr_parameters and p.requires_grad)],
                         "weight_decay": self.args.weight_decay,
                     },
                     {
-                        "params": [
-                            p for n, p in opt_model.named_parameters() if (n not in decay_parameters and n not in special_lr_parameters and p.requires_grad)
-                        ],
+                        "params": [p for n, p in opt_model.named_parameters() if (n not in decay_parameters and n not in special_lr_parameters and p.requires_grad)],
                         "weight_decay": 0.0,
                     },
                 ]
                 for module_keyword, lr in lr_mapper.items():
                     module_parameters = [name for name, _ in opt_model.named_parameters() if module_keyword in name]
-                    optimizer_grouped_parameters.extend([
-                        {
-                            "params": [
-                                p for n, p in opt_model.named_parameters() if (n in decay_parameters and n in module_parameters and p.requires_grad)
-                            ],
-                            "weight_decay": self.args.weight_decay,
-                            "lr": lr,
-                        },
-                        {
-                            "params": [
-                                p for n, p in opt_model.named_parameters() if (n not in decay_parameters and n in module_parameters and p.requires_grad)
-                            ],
-                            "weight_decay": 0.0,
-                            "lr": lr,
-                        },
-                    ])
+                    optimizer_grouped_parameters.extend(
+                        [
+                            {
+                                "params": [p for n, p in opt_model.named_parameters() if (n in decay_parameters and n in module_parameters and p.requires_grad)],
+                                "weight_decay": self.args.weight_decay,
+                                "lr": lr,
+                            },
+                            {
+                                "params": [p for n, p in opt_model.named_parameters() if (n not in decay_parameters and n in module_parameters and p.requires_grad)],
+                                "weight_decay": 0.0,
+                                "lr": lr,
+                            },
+                        ]
+                    )
             else:
                 optimizer_grouped_parameters = [
                     {
-                        "params": [
-                            p for n, p in opt_model.named_parameters() if (n in decay_parameters and p.requires_grad)
-                        ],
+                        "params": [p for n, p in opt_model.named_parameters() if (n in decay_parameters and p.requires_grad)],
                         "weight_decay": self.args.weight_decay,
                     },
                     {
-                        "params": [
-                            p for n, p in opt_model.named_parameters() if (n not in decay_parameters and p.requires_grad)
-                        ],
+                        "params": [p for n, p in opt_model.named_parameters() if (n not in decay_parameters and p.requires_grad)],
                         "weight_decay": 0.0,
                     },
                 ]
@@ -362,28 +353,29 @@ class LLaVATrainer(Trainer):
         return self.optimizer
 
     def _save_checkpoint(self, model, trial, metrics=None):
-        if getattr(self.args, 'tune_mm_mlp_adapter', False):
+        if getattr(self.args, "tune_mm_mlp_adapter", False):
             from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
+
             checkpoint_folder = f"{PREFIX_CHECKPOINT_DIR}-{self.state.global_step}"
 
             run_dir = self._get_output_dir(trial=trial)
             output_dir = os.path.join(run_dir, checkpoint_folder)
 
             # Only save Adapter
-            keys_to_match = ['mm_projector', 'vision_resampler']
+            keys_to_match = ["mm_projector", "vision_resampler"]
             if getattr(self.args, "use_im_start_end", False):
-                keys_to_match.extend(['embed_tokens', 'embed_in'])
+                keys_to_match.extend(["embed_tokens", "embed_in"])
 
             weight_to_save = get_mm_adapter_state_maybe_zero_3(self.model.named_parameters(), keys_to_match)
 
             if self.args.local_rank == 0 or self.args.local_rank == -1:
                 self.model.config.save_pretrained(output_dir)
-                torch.save(weight_to_save, os.path.join(output_dir, f'mm_projector.bin'))
+                torch.save(weight_to_save, os.path.join(output_dir, f"mm_projector.bin"))
         else:
             super(LLaVATrainer, self)._save_checkpoint(model, trial, metrics)
 
     def _save(self, output_dir: Optional[str] = None, state_dict=None):
-        if getattr(self.args, 'tune_mm_mlp_adapter', False):
+        if getattr(self.args, "tune_mm_mlp_adapter", False):
             pass
         else:
             super(LLaVATrainer, self)._save(output_dir, state_dict)

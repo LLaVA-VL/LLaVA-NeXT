@@ -1,6 +1,7 @@
 """
 A model worker executes the model.
 """
+
 import argparse
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
@@ -17,8 +18,7 @@ import uvicorn
 from functools import partial
 
 from llava.constants import WORKER_HEART_BEAT_INTERVAL
-from llava.utils import (build_logger, server_error_msg,
-    pretty_print_semaphore)
+from llava.utils import build_logger, server_error_msg, pretty_print_semaphore
 from llava.model.builder import load_pretrained_model
 from llava.mm_utils import process_images, load_image_from_base64, tokenizer_image_token, expand2square
 from llava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
@@ -57,8 +57,7 @@ def pipeline(s, prompt, max_tokens):
 
 
 class ModelWorker:
-    def __init__(self, controller_addr, worker_addr, sgl_endpoint,
-                 worker_id, no_register, model_name):
+    def __init__(self, controller_addr, worker_addr, sgl_endpoint, worker_id, no_register, model_name):
         self.controller_addr = controller_addr
         self.worker_addr = worker_addr
         self.worker_id = worker_id
@@ -72,7 +71,7 @@ class ModelWorker:
             model_path = model_path[:-1]
         if model_name is None:
             model_paths = model_path.split("/")
-            if model_paths[-1].startswith('checkpoint-'):
+            if model_paths[-1].startswith("checkpoint-"):
                 self.model_name = model_paths[-2] + "_" + model_paths[-1]
             else:
                 self.model_name = model_paths[-1]
@@ -83,34 +82,25 @@ class ModelWorker:
 
         if not no_register:
             self.register_to_controller()
-            self.heart_beat_thread = threading.Thread(
-                target=heart_beat_worker, args=(self,))
+            self.heart_beat_thread = threading.Thread(target=heart_beat_worker, args=(self,))
             self.heart_beat_thread.start()
 
     def register_to_controller(self):
         logger.info("Register to controller")
 
         url = self.controller_addr + "/register_worker"
-        data = {
-            "worker_name": self.worker_addr,
-            "check_heart_beat": True,
-            "worker_status": self.get_status()
-        }
+        data = {"worker_name": self.worker_addr, "check_heart_beat": True, "worker_status": self.get_status()}
         r = requests.post(url, json=data)
         assert r.status_code == 200
 
     def send_heart_beat(self):
-        logger.info(f"Send heart beat. Models: {[self.model_name]}. "
-                    f"Semaphore: {pretty_print_semaphore(model_semaphore)}. "
-                    f"global_counter: {global_counter}")
+        logger.info(f"Send heart beat. Models: {[self.model_name]}. " f"Semaphore: {pretty_print_semaphore(model_semaphore)}. " f"global_counter: {global_counter}")
 
         url = self.controller_addr + "/receive_heart_beat"
 
         while True:
             try:
-                ret = requests.post(url, json={
-                    "worker_name": self.worker_addr,
-                    "queue_length": self.get_queue_length()}, timeout=5)
+                ret = requests.post(url, json={"worker_name": self.worker_addr, "queue_length": self.get_queue_length()}, timeout=5)
                 exist = ret.json()["exist"]
                 break
             except requests.exceptions.RequestException as e:
@@ -124,8 +114,7 @@ class ModelWorker:
         if model_semaphore is None:
             return 0
         else:
-            return args.limit_model_concurrency - model_semaphore._value + (len(
-                model_semaphore._waiters) if model_semaphore._waiters is not None else 0)
+            return args.limit_model_concurrency - model_semaphore._value + (len(model_semaphore._waiters) if model_semaphore._waiters is not None else 0)
 
     def get_status(self):
         return {
@@ -144,14 +133,14 @@ class ModelWorker:
 
                 images = [load_image_from_base64(image) for image in images]
                 # FIXME: hacky padding
-                images = [expand2square(image, tuple(int(x*255) for x in [0.48145466, 0.4578275, 0.40821073])) for image in images]
+                images = [expand2square(image, tuple(int(x * 255) for x in [0.48145466, 0.4578275, 0.40821073])) for image in images]
 
                 # FIXME: for image-start/end token
                 # replace_token = DEFAULT_IMAGE_TOKEN
                 # if getattr(self.model.config, 'mm_use_im_start_end', False):
                 #     replace_token = DEFAULT_IM_START_TOKEN + replace_token + DEFAULT_IM_END_TOKEN
                 # prompt = prompt.replace(DEFAULT_IMAGE_TOKEN, replace_token)
-                prompt = prompt.replace(' ' + DEFAULT_IMAGE_TOKEN + '\n', DEFAULT_IMAGE_TOKEN)
+                prompt = prompt.replace(" " + DEFAULT_IMAGE_TOKEN + "\n", DEFAULT_IMAGE_TOKEN)
                 prompt_split = prompt.split(DEFAULT_IMAGE_TOKEN)
                 prompt = []
                 for i in range(len(prompt_split)):
@@ -234,10 +223,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--host", type=str, default="localhost")
     parser.add_argument("--port", type=int, default=21002)
-    parser.add_argument("--worker-address", type=str,
-        default="http://localhost:21002")
-    parser.add_argument("--controller-address", type=str,
-        default="http://localhost:21001")
+    parser.add_argument("--worker-address", type=str, default="http://localhost:21002")
+    parser.add_argument("--controller-address", type=str, default="http://localhost:21001")
     parser.add_argument("--model-name", type=str)
     parser.add_argument("--sgl-endpoint", type=str)
     parser.add_argument("--limit-model-concurrency", type=int, default=5)
@@ -246,10 +233,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
     logger.info(f"args: {args}")
 
-    worker = ModelWorker(args.controller_address,
-                         args.worker_address,
-                         args.sgl_endpoint,
-                         worker_id,
-                         args.no_register,
-                         args.model_name)
+    worker = ModelWorker(args.controller_address, args.worker_address, args.sgl_endpoint, worker_id, args.no_register, args.model_name)
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
