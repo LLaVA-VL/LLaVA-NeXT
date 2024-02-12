@@ -1,0 +1,38 @@
+# Python
+__pycache__
+*.pyc
+*.egg-info
+dist
+
+# Log
+*.log
+*.log.*
+*.json
+*.jsonl
+
+# Data
+!**/alpaca-data-conversation.json
+
+# Editor
+.idea
+*.swp
+
+# Other
+.DS_Store
+wandb
+output
+
+checkpoints
+playground/data
+ckpts*
+
+.ipynb_checkpoints
+chunyl_scripts
+*.ipynb
+
+# DevContainer
+!.devcontainer/*
+
+# Demo
+serve_images/
+notebooks/
