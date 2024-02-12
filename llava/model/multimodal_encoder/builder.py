@@ -17,7 +17,7 @@ def build_vision_tower(vision_tower_cfg, **kwargs):
         return EvaViTWrapper(vision_tower, args=vision_tower_cfg, **kwargs)
     elif vision_tower.startswith("hf:"):
         return HFVisionTower(vision_tower, args=vision_tower_cfg, **kwargs)
-    elif vision_tower.startswith("hf-hub"):
+    elif vision_tower.startswith("open_clip_hub"):
         return OpenCLIPVisionTower(vision_tower, args=vision_tower_cfg, **kwargs)
 
     raise ValueError(f'Unknown vision tower: {vision_tower}')
