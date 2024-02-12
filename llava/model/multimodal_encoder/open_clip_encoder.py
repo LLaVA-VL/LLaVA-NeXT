@@ -9,6 +9,7 @@ try:
     import open_clip
     from open_clip.transformer import _expand_token
 except ImportError:
+    print("OpenCLIP not installed")
     open_clip = None
 
 
@@ -28,6 +29,7 @@ class OpenCLIPVisionTower(nn.Module):
     def load_model(self):
         print(f"Loading OpenCLIP model: {self.model_name}")
         print(f"Pretrained: {self.pretrained}")
+        import pdb;pdb.set_trace()
         vision_tower, _, image_processor = open_clip.create_model_and_transforms(model_name=self.model_name, pretrained=self.pretrained)
         resize_transform = [t for t in image_processor.transforms if isinstance(t, torchvision.transforms.Resize)][0]
         normalize_transform = [t for t in image_processor.transforms if isinstance(t, torchvision.transforms.Normalize)][0]
