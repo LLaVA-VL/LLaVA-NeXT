@@ -46,7 +46,7 @@ export NCCL_SOCKET_IFNAME=eth0
 # export NCCL_DEBUG=INFO
 
 PORT=26000
-GPUS="0"
+GPUS="0,1,2,3,4,5,6,7"
 
 MODEL_VERSION="vicuna-7b-v1-5"
 VISION_MODEL_VERSION="open_clip_hub:ViT-H-14-378-quickgelu"

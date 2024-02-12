@@ -13,6 +13,12 @@ moderation_msg = "YOUR INPUT VIOLATES OUR CONTENT MODERATION GUIDELINES. PLEASE 
 
 handler = None
 
+import torch.distributed as dist
+
+def rank0_print(*args):
+    if dist.is_initialized():
+        if dist.get_rank() == 0:
+            print(f"Rank {dist.get_rank()}: ", *args)
 
 def build_logger(logger_name, logger_filename):
     global handler

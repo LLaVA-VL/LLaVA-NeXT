@@ -3,7 +3,7 @@ import torch.nn as nn
 import torchvision
 
 from transformers import CLIPImageProcessor
-
+from llava.utils import rank0_print
 
 try:
     import open_clip
@@ -27,9 +27,8 @@ class OpenCLIPVisionTower(nn.Module):
             self.load_model()
 
     def load_model(self):
-        print(f"Loading OpenCLIP model: {self.model_name}")
-        print(f"Pretrained: {self.pretrained}")
-        import pdb;pdb.set_trace()
+        rank0_print(f"Loading OpenCLIP model: {self.model_name}")
+        rank0_print(f"Pretrained: {self.pretrained}")
         vision_tower, _, image_processor = open_clip.create_model_and_transforms(model_name=self.model_name, pretrained=self.pretrained)
         resize_transform = [t for t in image_processor.transforms if isinstance(t, torchvision.transforms.Resize)][0]
         normalize_transform = [t for t in image_processor.transforms if isinstance(t, torchvision.transforms.Normalize)][0]
