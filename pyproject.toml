@@ -42,6 +42,7 @@ dependencies = [
     "gradio_client==0.2.9",
     "open_clip_torch",
     "timm",
+    "xformers"
 ]
 
 [project.urls]

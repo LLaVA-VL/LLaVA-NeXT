@@ -13,7 +13,7 @@ def build_vision_tower(vision_tower_cfg, **kwargs):
         return CLIPVisionTower(vision_tower, args=vision_tower_cfg, **kwargs)
     elif vision_tower in ["imagebind_huge"]:
         return ImageBindWrapper(vision_tower, args=vision_tower_cfg, **kwargs)
-    elif vision_tower in ["eva_vit_g"] or vision_tower.startswith("eva_"):
+    elif vision_tower in ["eva_vit_g", "Internal-EVA02-CLIP-10B-14", "Internal-EVA02-CLIP-10B-14-448"]:
         return EvaViTWrapper(vision_tower, args=vision_tower_cfg, **kwargs)
     elif vision_tower.startswith("hf:"):
         return HFVisionTower(vision_tower, args=vision_tower_cfg, **kwargs)
