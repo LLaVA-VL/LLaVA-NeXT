@@ -15,7 +15,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
 from timm.models.layers import drop_path, to_2tuple, trunc_normal_
-
+from .eva_clip import create_model_and_transforms, get_tokenizer
+import torch
 
 def _cfg(url="", **kwargs):
     return {"url": url, "num_classes": 1000, "input_size": (3, 224, 224), "pool_size": None, "crop_pct": 0.9, "interpolation": "bicubic", "mean": (0.5, 0.5, 0.5), "std": (0.5, 0.5, 0.5), **kwargs}
@@ -426,7 +427,7 @@ def convert_weights_to_fp16(model: nn.Module):
     model.apply(_convert_weights_to_fp16)
 
 
-def create_eva_vit_g(img_size=224, drop_path_rate=0.4, use_checkpoint=False):
+def create_eva_vit_g_psz14(img_size=224, drop_path_rate=0.4, use_checkpoint=False):
     model = VisionTransformer(
         img_size=img_size,
         patch_size=14,
@@ -440,7 +441,30 @@ def create_eva_vit_g(img_size=224, drop_path_rate=0.4, use_checkpoint=False):
         norm_layer=partial(nn.LayerNorm, eps=1e-6),
         use_checkpoint=use_checkpoint,
     )
-    state_dict = torch.load("checkpoints/qformer/eva_vit_g.pth", map_location="cpu")
+    state_dict = torch.load("./checkpoints/eval02-clip/EVA02_CLIP_E_psz14_plus_s9B.pt", map_location="cpu")
+    interpolate_pos_embed(model, state_dict)
+
+    incompatible_keys = model.load_state_dict(state_dict, strict=False)
+    print(incompatible_keys)
+
+    return model
+
+
+def create_eva_vit_g_psz14(img_size=224, drop_path_rate=0.4, use_checkpoint=False):
+    model = VisionTransformer(
+        img_size=img_size,
+        patch_size=14,
+        use_mean_pooling=False,
+        embed_dim=1408,
+        depth=39,
+        num_heads=1408 // 88,
+        mlp_ratio=4.3637,
+        qkv_bias=True,
+        drop_path_rate=drop_path_rate,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6),
+        use_checkpoint=use_checkpoint,
+    )
+    state_dict = torch.load("./checkpoints/eval02-clip/EVA02_CLIP_E_psz14_plus_s9B.pt", map_location="cpu")
     interpolate_pos_embed(model, state_dict)
 
     incompatible_keys = model.load_state_dict(state_dict, strict=False)
@@ -456,6 +480,7 @@ class EvaViTWrapper(nn.Module):
         self.is_loaded = False
 
         self.vision_tower_name = vision_tower
+        self.pretrained = args.vision_tower_pretrained
         self.args = args
 
         self.select_layer = args.mm_vision_select_layer
@@ -467,10 +492,18 @@ class EvaViTWrapper(nn.Module):
             self.load_model()
 
     def load_model(self):
-        self.image_processor = CLIPImageProcessor.from_pretrained("openai/clip-vit-large-patch14")
-        self.image_processor.image_mean = [0.5, 0.5, 0.5]
-        self.image_processor.image_std = [0.5, 0.5, 0.5]
-        self.vision_tower = create_eva_vit_g()
+        model, _, image_processor = create_model_and_transforms(self.vision_tower_name, self.pretrained, force_custom_clip=True)
+        self.vision_tower = model
+        resize_transform = [t for t in image_processor.transforms if isinstance(t, torchvision.transforms.Resize)][0]
+        normalize_transform = [t for t in image_processor.transforms if isinstance(t, torchvision.transforms.Normalize)][0]
+        self.resize_transform_size = resize_transform.size
+        self.image_processor = CLIPImageProcessor.from_pretrained(
+            "openai/clip-vit-large-patch14",
+            crop_size=resize_transform.size,
+            size={"shortest_edge": resize_transform.size},
+            image_mean=list(normalize_transform.mean),
+            image_std=list(normalize_transform.std),
+        )
         for p in self.vision_tower.parameters():
             p.requires_grad = False
         self.vision_tower.eval()

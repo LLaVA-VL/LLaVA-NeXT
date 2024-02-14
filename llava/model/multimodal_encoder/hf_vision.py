@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 
-from transformers import AutoModel, AutoImageProcessor, AutoConfig
+from transformers import AutoModel, AutoImageProcessor, AutoConfig, CLIPImageProcessor
+from llava.utils import rank0_print
 
 
 class HFVisionTower(nn.Module):
@@ -20,8 +21,23 @@ class HFVisionTower(nn.Module):
             self.cfg_only = AutoConfig.from_pretrained(self.vision_tower_name)
 
     def load_model(self):
-        self.image_processor = AutoImageProcessor.from_pretrained(self.vision_tower_name)
-        self.vision_tower = AutoModel.from_pretrained(self.vision_tower_name)
+        try:
+            self.image_processor = AutoImageProcessor.from_pretrained(self.vision_tower_name)
+        except Exception as e:
+            if "448" in self.vision_tower_name:
+                image_size = 448
+                # use image processor with conig
+                self.image_processor = CLIPImageProcessor(size={"shortest_edge":image_size}, do_center_crop=True, crop_size=image_size)
+            else:
+                self.image_processor = CLIPImageProcessor.from_pretrained("openai/clip-vit-large-patch14")
+        rank0_print(f"Loaded image processor: {self.image_processor}")
+        self.vision_tower = AutoModel.from_pretrained(self.vision_tower_name, torch_dtype=torch.float16).to("cuda")
+        self.device = self.vision_tower.device
+        self.dtype = self.vision_tower.dtype
+        self.config = self.vision_tower.config
+        
+        if hasattr(self.vision_tower, "vision_model"):
+            self.vision_tower = self.vision_tower.vision_model
         self.vision_tower.requires_grad_(False)
 
         self.is_loaded = True
@@ -62,23 +78,11 @@ class HFVisionTower(nn.Module):
         return torch.zeros(1, self.hidden_size, device=self.device, dtype=self.dtype)
 
     @property
-    def dtype(self):
-        return self.vision_tower.dtype
-
-    @property
-    def device(self):
-        return self.vision_tower.device
-
-    @property
-    def config(self):
-        if self.is_loaded:
-            return self.vision_tower.config
-        else:
-            return self.cfg_only
-
-    @property
     def hidden_size(self):
-        _hidden_size = self.config.hidden_size
+        try:
+            _hidden_size = self.config.hidden_size
+        except:
+            _hidden_size = self.config.vision_config.hidden_size
         if "slicefour" in self.select_feature:
             _hidden_size *= 4
         return _hidden_size

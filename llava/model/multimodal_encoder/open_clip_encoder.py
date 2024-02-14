@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torchvision
-
+import torch.utils.checkpoint as checkpoint
 from transformers import CLIPImageProcessor
 from llava.utils import rank0_print
 
@@ -63,11 +63,11 @@ class OpenCLIPVisionTower(nn.Module):
             raise ValueError(f"Unexpected select feature: {self.select_feature}")
         return image_features
 
+
     def forward_visual(self, x, output_hidden_states=False):
-        if hasattr(self.vision_tower, "trunk"):
+        if hasattr(self.vision_tower, "trunk") and hasattr(self.vision_tower.trunk, "_intermediate_layers"):
             return self.vision_tower.trunk._intermediate_layers(x, abs(self.select_layer))
         else:
-
             def forward_openclip(self, x: torch.Tensor):
                 features = []
                 x = self.conv1(x)  # shape = [*, width, grid, grid]

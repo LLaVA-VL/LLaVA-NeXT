@@ -1,19 +1,18 @@
 #!/bin/bash
 
 # set up wandb
-export WANDB_API_KEY=e464cc107357c7b38e87f239bc3eb2ce5fb73c7c
-export WANDB_PROJECT=llava
-
+export WANDB_API_KEY=a651c244635bc6f913ab654af3f0eebaecdc9381
+export WANDB_ENTITY=llava-vl
+export WANDB_PROJECT=llava-next
+export PYTHONWARNINGS="ignore"
 # set up llava dev env
 cd /mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next
 
-if ! pip show llava | grep "Version" | grep "1.7.0.dev0"; then
-    python3 -m pip install --upgrade pip  # enable PEP 660 support
-    python3 -m pip install -e .
+python3 -m pip install --upgrade pip  # enable PEP 660 support
+python3 -m pip install -e .
 
-    python3 -m pip install ninja
-    python3 -m pip install flash-attn --no-build-isolation
-fi
+python3 -m pip install ninja
+python3 -m pip install flash-attn --no-build-isolation
 
 nvidia-smi
 
@@ -49,7 +48,7 @@ PORT=26000
 GPUS="0,1,2,3,4,5,6,7"
 
 MODEL_VERSION="vicuna-7b-v1-5"
-VISION_MODEL_VERSION="open_clip_hub:ViT-H-14-quickgelu"
+VISION_MODEL_VERSION="ViT-H-14-quickgelu"
 VISION_PRETRAINED="dfn5b"
 
 PROMPT_VERSION=plain
@@ -57,12 +56,12 @@ DATA_VERSION="blip558k"
 
 deepspeed --include=localhost:$GPUS --master_port $PORT \
     llava/train/train_mem.py \
-    --deepspeed chunyl_scripts/vc/train/ds_zero3.json \
+    --deepspeed chunyl_scripts/vc/train/ds_zero2.json \
     --model_name_or_path ./checkpoints/${MODEL_VERSION} \
     --version ${PROMPT_VERSION} \
     --data_path /mnt/bn/vl-research/data/llava/blip_6m/blip_558k_plain.json \
     --image_folder /mnt/bn/vl-research/data/llava/blip_6m/images \
-    --vision_tower ${VISION_MODEL_VERSION} \
+    --vision_tower open_clip_hub:${VISION_MODEL_VERSION} \
     --vision_tower_pretrained ${VISION_PRETRAINED} \
     --tune_mm_mlp_adapter True \
     --mm_vision_select_layer -2 \
@@ -95,7 +94,7 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
 PROMPT_VERSION="vicuna_v1"
 deepspeed --include=localhost:$GPUS --master_port $PORT \
     llava/train/train_mem.py \
-    --deepspeed chunyl_scripts/vc/train/ds_zero3.json \
+    --deepspeed chunyl_scripts/vc/train/ds_zero2.json \
     --model_name_or_path ./checkpoints/$MODEL_VERSION \
     --version $PROMPT_VERSION \
     --data_path ./playground/data/llava_instruct/llava_158k_detailv3reinst_sgpt4v_coco1k_lcs15k_laion8k_wild15k_vqav2_83k_okvqa_9k_aokvqa_17k_mc_ar_refcoco30k_rec_s10_vg86k_reg_f20_gqa72k_ocrvqa80k_docvqa10k_sg40k_ori_p3.json \
@@ -136,7 +135,7 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
 PROMPT_VERSION="vicuna_v1"
 deepspeed --include=localhost:$GPUS --master_port $PORT \
     llava/train/train_mem.py \
-    --deepspeed chunyl_scripts/vc/train/ds_zero3.json \
+    --deepspeed chunyl_scripts/vc/train/ds_zero2.json \
     --model_name_or_path ./checkpoints/$MODEL_VERSION \
     --version $PROMPT_VERSION \
     --data_path ./playground/data/llava_instruct/llava_158k_detailv3reinst_sgpt4v_coco1k_lcs15k_laion8k_wild15k_vqav2_83k_okvqa_9k_aokvqa_17k_mc_ar_refcoco30k_rec_s10_vg86k_reg_f20_gqa72k_ocrvqa80k_docvqa10k_sg40k_ori_p3.json \
