@@ -42,7 +42,7 @@ class OpenCLIPVisionTower(nn.Module):
         )
         self.vision_tower = vision_tower.visual
         self.vision_tower.requires_grad_(False)
-        self.vision_tower.eval()
+        # self.vision_tower.eval()
         self.is_loaded = True
 
     def train(self, mode=True):

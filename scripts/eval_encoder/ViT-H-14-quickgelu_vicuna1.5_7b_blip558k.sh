@@ -99,7 +99,7 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --version $PROMPT_VERSION \
     --data_path ./playground/data/llava_instruct/llava_158k_detailv3reinst_sgpt4v_coco1k_lcs15k_laion8k_wild15k_vqav2_83k_okvqa_9k_aokvqa_17k_mc_ar_refcoco30k_rec_s10_vg86k_reg_f20_gqa72k_ocrvqa80k_docvqa10k_sg40k_ori_p3.json \
     --image_folder /mnt/bn/vl-research/data/llava \
-    --vision_tower ${VISION_MODEL_VERSION} \
+    --vision_tower open_clip_hub:${VISION_MODEL_VERSION} \
     --vision_tower_pretrained ${VISION_PRETRAINED} \
     --mm_projector_type mlp2x_gelu \
     --pretrain_mm_mlp_adapter ./checkpoints/llavanext-${MODEL_VERSION}-${VISION_MODEL_VERSION}-mlp2x_gelu-pretrain_${DATA_VERSION}_plain/mm_projector.bin \
@@ -140,7 +140,7 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --version $PROMPT_VERSION \
     --data_path ./playground/data/llava_instruct/llava_158k_detailv3reinst_sgpt4v_coco1k_lcs15k_laion8k_wild15k_vqav2_83k_okvqa_9k_aokvqa_17k_mc_ar_refcoco30k_rec_s10_vg86k_reg_f20_gqa72k_ocrvqa80k_docvqa10k_sg40k_ori_p3.json \
     --image_folder /mnt/bn/vl-research/data/llava \
-    --vision_tower ${VISION_MODEL_VERSION} \
+    --vision_tower open_clip_hub:${VISION_MODEL_VERSION} \
     --vision_tower_pretrained ${VISION_PRETRAINED} \
     --mm_projector_type mlp2x_gelu \
     --pretrain_mm_mlp_adapter ./checkpoints/llavanext-${MODEL_VERSION}-${VISION_MODEL_VERSION}-mlp2x_gelu-pretrain_${DATA_VERSION}_plain/mm_projector.bin \

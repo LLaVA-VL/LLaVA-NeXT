@@ -31,7 +31,7 @@ class HFVisionTower(nn.Module):
             else:
                 self.image_processor = CLIPImageProcessor.from_pretrained("openai/clip-vit-large-patch14")
         rank0_print(f"Loaded image processor: {self.image_processor}")
-        self.vision_tower = AutoModel.from_pretrained(self.vision_tower_name, torch_dtype=torch.float16).to("cuda")
+        self.vision_tower = AutoModel.from_pretrained(self.vision_tower_name, torch_dtype=torch.bfloat16, trust_remote_code=True).to("cuda")
         self.device = self.vision_tower.device
         self.dtype = self.vision_tower.dtype
         self.config = self.vision_tower.config
@@ -39,7 +39,7 @@ class HFVisionTower(nn.Module):
         if hasattr(self.vision_tower, "vision_model"):
             self.vision_tower = self.vision_tower.vision_model
         self.vision_tower.requires_grad_(False)
-
+        # self.vision_tower.eval()
         self.is_loaded = True
 
     def feature_select(self, image_forward_outs):
