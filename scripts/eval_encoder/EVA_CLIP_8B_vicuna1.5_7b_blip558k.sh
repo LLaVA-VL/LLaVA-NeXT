@@ -12,25 +12,6 @@ nvidia-smi
 
 # run experiment
 
-# PORT=26000
-# GPUS="0,1,2,3,4,5,6,7"
-
-# CUR_DIR=$(cd $(dirname $0); pwd)
-# cd $CUR_DIR
-
-# 取 worker0 第一个 port
-# ports=($(echo $METIS_WORKER_0_PORT | tr ',' ' '))
-# port=${ports[0]}
-
-# port_in_cmd="$(echo "${METIS_WORKER_0_PORT:-2222}" | awk -F',' '{print $1}')"
-
-# echo "total workers: ${ARNOLD_WORKER_NUM}"
-# echo "cur worker id: ${ARNOLD_ID}"
-# echo "gpus per worker: ${ARNOLD_WORKER_GPU}"
-# echo "master ip: ${METIS_WORKER_0_HOST}"
-# echo "master port: ${port}"
-# echo "master port in cmd: ${port_in_cmd}"
-
 export OMP_NUM_THREADS=8
 export NCCL_IB_DISABLE=0
 export NCCL_IB_GID_INDEX=3
@@ -47,7 +28,7 @@ VISION_MODEL_VERSION_CLEAN="${VISION_MODEL_VERSION//\//_}"
 
 PROMPT_VERSION=plain
 DATA_VERSION="blip558k"
-
+RUN_NAME="llavanext-${MODEL_VERSION}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_${DATA_VERSION}_plain"
 deepspeed --include=localhost:$GPUS --master_port $PORT \
     llava/train/train_mem.py \
     --deepspeed chunyl_scripts/vc/train/ds_zero2.json \
@@ -81,15 +62,17 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --gradient_checkpointing True \
     --dataloader_num_workers 16 \
     --lazy_preprocess True \
-    --report_to wandb
+    --report_to wandb \
+    --run_name ${RUN_NAME}
 
 PROMPT_VERSION="vicuna_v1"
+RUN_NAME="llavanext-${MODEL_VERSION}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_${DATA_VERSION}_${PROMPT_VERSION}_finetune_llava1.6_datamix_unfreezeVIS_1e"
 deepspeed --include=localhost:$GPUS --master_port $PORT \
     llava/train/train_mem.py \
     --deepspeed chunyl_scripts/vc/train/ds_zero2.json \
     --model_name_or_path ./checkpoints/$MODEL_VERSION \
     --version $PROMPT_VERSION \
-    --data_path ./playground/data/llava_instruct/llava_158k_detailv3reinst_sgpt4v_coco1k_lcs15k_laion8k_wild15k_vqav2_83k_okvqa_9k_aokvqa_17k_mc_ar_refcoco30k_rec_s10_vg86k_reg_f20_gqa72k_ocrvqa80k_docvqa10k_sg40k_ori_p3.json \
+    --data_path ./playground/data/llava_instruct/llava_158k_detailv3_reinstall_gpt4v24k_wild15k_mixdocvqa_dca45k_synden40k_cococaps20k_sg40kt2k_ori.json \
     --image_folder /mnt/bn/vl-research/data/llava \
     --vision_tower hf:${VISION_MODEL_VERSION} \
     --mm_projector_type mlp2x_gelu \
@@ -102,7 +85,7 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --unfreeze_mm_vision_tower True \
     --mm_vision_tower 2e-6 \
     --bf16 True \
-    --output_dir ./checkpoints/llavanext-${MODEL_VERSION}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_${DATA_VERSION}_plain_finetune_llava1.6_datamix_unfreezeVIS_1e \
+    --output_dir ./checkpoints/llavanext-${MODEL_VERSION}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_${DATA_VERSION}_${PROMPT_VERSION}_finetune_llava1.6_datamix_unfreezeVIS_1e \
     --num_train_epochs 1 \
     --per_device_train_batch_size 8 \
     --per_device_eval_batch_size 4 \
@@ -121,15 +104,17 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --gradient_checkpointing True \
     --dataloader_num_workers 16 \
     --lazy_preprocess True \
-    --report_to wandb
+    --report_to wandb \
+    --run_name ${RUN_NAME}
 
 PROMPT_VERSION="vicuna_v1"
+RUN_NAME="llavanext-${MODEL_VERSION}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_${DATA_VERSION}_${PROMPT_VERSION}_finetune_llava1.6_datamix_unfreezeVIS_1e"
 deepspeed --include=localhost:$GPUS --master_port $PORT \
     llava/train/train_mem.py \
     --deepspeed chunyl_scripts/vc/train/ds_zero2.json \
     --model_name_or_path ./checkpoints/$MODEL_VERSION \
     --version $PROMPT_VERSION \
-    --data_path ./playground/data/llava_instruct/llava_158k_detailv3reinst_sgpt4v_coco1k_lcs15k_laion8k_wild15k_vqav2_83k_okvqa_9k_aokvqa_17k_mc_ar_refcoco30k_rec_s10_vg86k_reg_f20_gqa72k_ocrvqa80k_docvqa10k_sg40k_ori_p3.json \
+    --data_path ./playground/data/llava_instruct/llava_158k_detailv3_reinstall_gpt4v24k_wild15k_mixdocvqa_dca45k_synden40k_cococaps20k_sg40kt2k_ori.json \
     --image_folder /mnt/bn/vl-research/data/llava \
     --vision_tower hf:${VISION_MODEL_VERSION} \
     --mm_projector_type mlp2x_gelu \
@@ -140,7 +125,7 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --image_aspect_ratio pad \
     --group_by_modality_length True \
     --bf16 True \
-    --output_dir ./checkpoints/llavanext-${MODEL_VERSION}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_${DATA_VERSION}_plain_finetune_llava1.6_datamix_freezeVIS_1e \
+    --output_dir ./checkpoints/llavanext-${MODEL_VERSION}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_${DATA_VERSION}_${PROMPT_VERSION}_finetune_llava1.6_datamix_freezeVIS_1e \
     --num_train_epochs 1 \
     --per_device_train_batch_size 8 \
     --per_device_eval_batch_size 4 \
@@ -159,4 +144,5 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --gradient_checkpointing True \
     --dataloader_num_workers 16 \
     --lazy_preprocess True \
-    --report_to wandb
+    --report_to wandb \
+    --run_name ${RUN_NAME}
