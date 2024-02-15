@@ -5,7 +5,7 @@ from llava.train.llava_trainer import LLaVATrainer
     
 class LLaVAEvalTrainer(LLaVATrainer):
     def evaluate(self, evaluate_args):
-        cmd = f"accelerate launch --num_processes {evaluate_args.num_processes} -m lmms_eval \
+        cmd = f"accelerate launch --num_processes {evaluate_args.eval_num_processes} -m lmms_eval \
                 --model {evaluate_args.model} \
                 --model_args {evaluate_args.model_args} \
                 --tasks {evaluate_args.task_names} \

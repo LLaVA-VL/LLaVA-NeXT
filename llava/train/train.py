@@ -125,7 +125,7 @@ class TrainingArguments(transformers.TrainingArguments):
 
 @dataclass
 class EvaluationArguments:
-    num_processes: int = field(default=1)
+    eval_num_processes: int = field(default=1)
     task_names: str = field(default=None)
     model: str = field(default="llava")
     model_args: Optional[str] = field(default=None)

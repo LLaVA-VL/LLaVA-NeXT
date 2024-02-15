@@ -98,7 +98,7 @@ DS_SKIP_CUDA_CHECK=1 CUDA_VISIBLE_DEVICES="0,1,2,3,4,5,6,7" deepspeed --master_p
     --dataloader_num_workers 8 \
     --lazy_preprocess True \
     --report_to wandb \
-    --num_processes 4 \
+    --eval_num_processes 4 \
     --task_names gqa,coco_val2017 \
     --model_args pretrained=./checkpoints/$PROJECT_NAME--$DATA_NAME--336px--anyres--sft \
     --limit 8 \
