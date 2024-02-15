@@ -31,6 +31,7 @@ import tokenizers
 from llava.constants import IGNORE_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 from torch.utils.data import Dataset
 from llava.train.llava_trainer import LLaVATrainer
+from llava.train.llava_trainer_eval import LLaVAEvalTrainer
 
 from llava import conversation as conversation_lib
 from llava.model import *
@@ -121,6 +122,23 @@ class TrainingArguments(transformers.TrainingArguments):
     group_by_varlen: bool = field(default=False)
     group_by_modality_length: bool = field(default=False)
     group_by_modality_length_auto: bool = field(default=False)
+
+@dataclass
+class EvaluationArguments:
+    num_processes: int = field(default=1)
+    task_names: str = field(default=None)
+    model: str = field(default="llava")
+    model_args: Optional[str] = field(default=None)
+    num_fewshot: Optional[int] = field(default=None)
+    batch_size: int = field(default=1)
+    device: Optional[str] = field(default=None)
+    limit: Optional[int] = field(default=None)
+    check_integrity: Optional[bool] = field(default=False)
+    show_task_to_terminal: Optional[bool] = field(default=False)
+    log_samples: Optional[bool] = field(default=True)
+    gen_kwargs: Optional[str] = field(default="")
+    log_samples_suffix: Optional[str] = field(default="")
+    output_path: Optional[str] = field(default="./logs/")
 
 
 def maybe_zero_3(param, ignore_status=False, name=None):
@@ -772,12 +790,13 @@ def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer, dat
 def train():
     global local_rank
 
-    parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
-    model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+    parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments, EvaluationArguments))
+    model_args, data_args, training_args, evaluation_args = parser.parse_args_into_dataclasses()
     rank0_print(f"\nInspecting experiment hyperparameters:\n")
     rank0_print(f"model_args = {vars(model_args)}\n\n")
     rank0_print(f"data_args = {vars(data_args)}\n\n")
     rank0_print(f"training_args = {vars(training_args)}\n\n")
+    rank0_print(f"evaluation_args = {vars(evaluation_args)}\n\n")
     local_rank = training_args.local_rank
     compute_dtype = torch.float16 if training_args.fp16 else (torch.bfloat16 if training_args.bf16 else torch.float32)
 
@@ -962,7 +981,8 @@ def train():
                         module = module.to(torch.bfloat16)
 
     data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args)
-    trainer = LLaVATrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
+    # trainer = LLaVATrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
+    trainer = LLaVAEvalTrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
 
     if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")):
         trainer.train(resume_from_checkpoint=True)
@@ -981,7 +1001,10 @@ def train():
             torch.save(non_lora_state_dict, os.path.join(training_args.output_dir, "non_lora_trainables.bin"))
     else:
         safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
-
+    
+    if training_args.local_rank == 0:
+        results = trainer.evaluate(evaluate_args=evaluation_args)
+        print(results)
 
 if __name__ == "__main__":
     train()
