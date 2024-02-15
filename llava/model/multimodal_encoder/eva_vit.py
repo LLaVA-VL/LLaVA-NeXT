@@ -15,12 +15,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
 from timm.models.layers import drop_path, to_2tuple, trunc_normal_
-from .eva_clip import create_model_and_transforms, get_tokenizer
+from .eva_clip import create_model_and_transforms, get_model_config
 import torch
 import torchvision
 import time
 
 from llava.utils import rank0_print
+
 
 class EvaViTWrapper(nn.Module):
     def __init__(self, vision_tower, args, delay_load=False):
@@ -36,6 +37,9 @@ class EvaViTWrapper(nn.Module):
         if self.select_layer < -1:
             self.select_layer += 1
         self.select_feature = getattr(args, "mm_vision_select_feature", "patch")
+
+        self.model_config = get_model_config(self.vision_tower_name)
+        self.hidden_size = self.model_config["vision_cfg"]["width"]
 
         if not delay_load:
             self.load_model()
@@ -68,16 +72,16 @@ class EvaViTWrapper(nn.Module):
     def feature_select(self, image_features):
         select_feature_type = self.select_feature
 
-        if self.select_feature in ["slicefour_patch", "slicefour_cls_patch"]:
-            select_every_k_layer = len(image_features) // 4
-            image_features = torch.cat([image_features[i] for i in range(select_every_k_layer + self.select_layer, len(image_features), select_every_k_layer)], dim=-1)
-            select_feature_type = select_feature_type.replace("slicefour_", "")
-        elif self.select_feature in ["slice_m25811_f6_patch", "slice_m25811_f6_cls_patch"]:
-            select_layers = [-1, -4, -7, -10, 6]
-            image_features = torch.cat([image_features[i] for i in select_layers], dim=-1)
-            select_feature_type = select_feature_type.replace("slice_m25811_f6_", "")
-        else:
-            image_features = image_features[self.select_layer]
+        # if self.select_feature in ["slicefour_patch", "slicefour_cls_patch"]:
+        #     select_every_k_layer = len(image_features) // 4
+        #     image_features = torch.cat([image_features[i] for i in range(select_every_k_layer + self.select_layer, len(image_features), select_every_k_layer)], dim=-1)
+        #     select_feature_type = select_feature_type.replace("slicefour_", "")
+        # elif self.select_feature in ["slice_m25811_f6_patch", "slice_m25811_f6_cls_patch"]:
+        #     select_layers = [-1, -4, -7, -10, 6]
+        #     image_features = torch.cat([image_features[i] for i in select_layers], dim=-1)
+        #     select_feature_type = select_feature_type.replace("slice_m25811_f6_", "")
+        # else:
+        #     image_features = image_features[self.select_layer]
 
         if select_feature_type == "patch":
             image_features = image_features[:, 1:]
@@ -98,18 +102,18 @@ class EvaViTWrapper(nn.Module):
         if type(images) is list:
             image_features = []
             for image in images:
-                image_forward_out = self.vision_tower(image.to(self.dtype)).unsqueeze(0)
-                image_feature = self.feature_select(image_forward_out).to(self.dtype)
-                image_features.append(image_feature)
+                image_features = self.vision_tower.forward_features(image.to(self.dtype), return_all_features=True)
+                image_feature = self.feature_select(image_features).to(self.dtype)
+                image_features.append(image_features)
         else:
-            image_forward_outs = self.vision_tower(images.to(self.dtype)).unsqueeze(0)
-            image_features = self.feature_select(image_forward_outs).to(self.dtype)
+            image_features = self.vision_tower.forward_features(images.to(self.dtype), return_all_features=True)
+            image_features = self.feature_select(image_features).to(self.dtype)
 
         return image_features
 
     @property
     def dummy_feature(self):
-        return torch.zeros(1, 1408, device=self.device, dtype=self.dtype)
+        return torch.zeros(1, self.hidden_size, device=self.device, dtype=self.dtype)
 
     @property
     def num_patches(self):
@@ -119,21 +123,14 @@ class EvaViTWrapper(nn.Module):
         return _num_patches
 
     @property
-    def hidden_size(self):
-        _hidden_size = 1408
-        if "slicefour" in self.select_feature:
-            _hidden_size *= 4
-        if "slice_m25811_f6" in self.select_feature:
-            _hidden_size *= 5
-        return _hidden_size
-
-    @property
     def config(self):
+        image_size = self.model_config["vision_cfg"]["image_size"]
+        patch_size = self.model_config["vision_cfg"]["patch_size"]
         return type(
             "LLaVAConfigWrapper",
             (),
             {
-                "image_size": 224,
-                "patch_size": 14,
+                "image_size": image_size,
+                "patch_size": patch_size,
             },
         )()

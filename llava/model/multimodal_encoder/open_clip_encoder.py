@@ -47,9 +47,8 @@ class OpenCLIPVisionTower(nn.Module):
 
     def train(self, mode=True):
         self.training = mode
-
-        if self.is_loaded:
-            self.vision_tower.eval()
+        # if self.is_loaded:
+        #     self.vision_tower.eval()
 
     def feature_select(self, image_forward_outs):
         image_features = image_forward_outs[self.select_layer]
@@ -63,11 +62,11 @@ class OpenCLIPVisionTower(nn.Module):
             raise ValueError(f"Unexpected select feature: {self.select_feature}")
         return image_features
 
-
     def forward_visual(self, x, output_hidden_states=False):
         if hasattr(self.vision_tower, "trunk") and hasattr(self.vision_tower.trunk, "_intermediate_layers"):
             return self.vision_tower.trunk._intermediate_layers(x, abs(self.select_layer))
         else:
+
             def forward_openclip(self, x: torch.Tensor):
                 features = []
                 x = self.conv1(x)  # shape = [*, width, grid, grid]

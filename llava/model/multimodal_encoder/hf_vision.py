@@ -27,7 +27,7 @@ class HFVisionTower(nn.Module):
             if "448" in self.vision_tower_name:
                 image_size = 448
                 # use image processor with conig
-                self.image_processor = CLIPImageProcessor(size={"shortest_edge":image_size}, do_center_crop=True, crop_size=image_size)
+                self.image_processor = CLIPImageProcessor(size={"shortest_edge": image_size}, do_center_crop=True, crop_size=image_size)
             else:
                 self.image_processor = CLIPImageProcessor.from_pretrained("openai/clip-vit-large-patch14")
         rank0_print(f"Loaded image processor: {self.image_processor}")
@@ -35,7 +35,7 @@ class HFVisionTower(nn.Module):
         self.device = self.vision_tower.device
         self.dtype = self.vision_tower.dtype
         self.config = self.vision_tower.config
-        
+
         if hasattr(self.vision_tower, "vision_model"):
             self.vision_tower = self.vision_tower.vision_model
         self.vision_tower.requires_grad_(False)
