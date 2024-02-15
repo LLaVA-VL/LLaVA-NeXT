@@ -11,26 +11,6 @@ cd /mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next
 nvidia-smi
 
 # run experiment
-
-# PORT=26000
-# GPUS="0,1,2,3,4,5,6,7"
-
-# CUR_DIR=$(cd $(dirname $0); pwd)
-# cd $CUR_DIR
-
-# 取 worker0 第一个 port
-ports=($(echo $METIS_WORKER_0_PORT | tr ',' ' '))
-port=${ports[0]}
-
-port_in_cmd="$(echo "${METIS_WORKER_0_PORT:-2222}" | awk -F',' '{print $1}')"
-
-echo "total workers: ${ARNOLD_WORKER_NUM}"
-echo "cur worker id: ${ARNOLD_ID}"
-echo "gpus per worker: ${ARNOLD_WORKER_GPU}"
-echo "master ip: ${METIS_WORKER_0_HOST}"
-echo "master port: ${port}"
-echo "master port in cmd: ${port_in_cmd}"
-
 export OMP_NUM_THREADS=8
 export NCCL_IB_DISABLE=0
 export NCCL_IB_GID_INDEX=3

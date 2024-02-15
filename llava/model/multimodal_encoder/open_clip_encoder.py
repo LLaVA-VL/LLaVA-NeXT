@@ -40,15 +40,16 @@ class OpenCLIPVisionTower(nn.Module):
             image_mean=list(normalize_transform.mean),
             image_std=list(normalize_transform.std),
         )
+        rank0_print(f"Loaded image processor: {self.image_processor}")
         self.vision_tower = vision_tower.visual
         self.vision_tower.requires_grad_(False)
-        # self.vision_tower.eval()
+        self.vision_tower.eval()
         self.is_loaded = True
 
     def train(self, mode=True):
         self.training = mode
-        # if self.is_loaded:
-        #     self.vision_tower.eval()
+        if self.is_loaded:
+            self.vision_tower.eval()
 
     def feature_select(self, image_forward_outs):
         image_features = image_forward_outs[self.select_layer]

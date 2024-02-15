@@ -1002,7 +1002,7 @@ def train():
     else:
         safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
     
-    if training_args.local_rank == 0:
+    if training_args.local_rank == 0 and evaluation_args.task_names is not None:
         results = trainer.evaluate(evaluate_args=evaluation_args)
         print(results)
 
