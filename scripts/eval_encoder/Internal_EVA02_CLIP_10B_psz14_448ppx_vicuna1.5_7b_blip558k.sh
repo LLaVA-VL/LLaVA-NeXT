@@ -4,6 +4,7 @@
 export WANDB_API_KEY=a651c244635bc6f913ab654af3f0eebaecdc9381
 export WANDB_ENTITY=llava-vl
 export WANDB_PROJECT=llava-next
+export WANDB_MODE=online
 export PYTHONWARNINGS="ignore"
 # set up llava dev env
 cd /mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next

@@ -4,6 +4,7 @@
 export WANDB_API_KEY=a651c244635bc6f913ab654af3f0eebaecdc9381
 export WANDB_ENTITY=llava-vl
 export WANDB_PROJECT=llava-next
+export WANDB_MODE=online
 export PYTHONWARNINGS="ignore"
 # set up llava dev env
 cd /mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next
@@ -18,7 +19,8 @@ export NCCL_SOCKET_IFNAME=eth0
 # export NCCL_DEBUG=INFO
 
 PORT=26000
-GPUS="0,1,2,3,4,5,6,7"
+# GPUS="0,1,2,3,4,5,6,7"
+GPUS="0"
 
 MODEL_VERSION="vicuna-7b-v1-5"
 VISION_MODEL_VERSION="ViT-SO400M-14-SigLIP-384"
@@ -65,7 +67,6 @@ DATA_VERSION="blip558k"
 #     --report_to wandb \
 #     --run_name $RUN_NAME
 
-
 PROMPT_VERSION="vicuna_v1"
 RUN_NAME="llavanext-${MODEL_VERSION}-${VISION_MODEL_VERSION}-mlp2x_gelu-pretrain_${DATA_VERSION}_plain_finetune_llava1.6_datamix_unfreezeVIS_1e"
 deepspeed --include=localhost:$GPUS --master_port $PORT \
@@ -89,7 +90,7 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --bf16 True \
     --output_dir ./checkpoints/llavanext-${MODEL_VERSION}-${VISION_MODEL_VERSION}-mlp2x_gelu-pretrain_${DATA_VERSION}_plain_finetune_llava1.6_datamix_unfreezeVIS_1e \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 4 \
+    --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 2 \
     --evaluation_strategy "no" \
@@ -113,7 +114,7 @@ PROMPT_VERSION="vicuna_v1"
 RUN_NAME="llavanext-${MODEL_VERSION}-${VISION_MODEL_VERSION}-mlp2x_gelu-pretrain_${DATA_VERSION}_${PROMPT_VERSION}_finetune_llava1.6_datamix_freezeVIS_1e"
 deepspeed --include=localhost:$GPUS --master_port $PORT \
     llava/train/train_mem.py \
-    --deepspeed chunyl_scripts/vc/train/ds_zero2.json \
+    --deepspeed chunyl_scripts/vc/train/ds_zero3.json \
     --model_name_or_path ./checkpoints/$MODEL_VERSION \
     --version $PROMPT_VERSION \
     --data_path ./playground/data/llava_instruct/llava_158k_detailv3_reinstall_gpt4v24k_wild15k_mixdocvqa_dca45k_synden40k_cococaps20k_sg40kt2k_ori.json \

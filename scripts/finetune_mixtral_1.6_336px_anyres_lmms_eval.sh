@@ -5,6 +5,11 @@ export WANDB_API_KEY=a651c244635bc6f913ab654af3f0eebaecdc9381
 export WANDB_ENTITY=llava-vl
 export WANDB_PROJECT=llava-next
 export PYTHONWARNINGS="ignore"
+
+cd /mnt/bn/vl-research/workspace/boli01/projects/lmms-eval
+
+pip install -e .
+
 # set up llava dev env
 cd /mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next
 
