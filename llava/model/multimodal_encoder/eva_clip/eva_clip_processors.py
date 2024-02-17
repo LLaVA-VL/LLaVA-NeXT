@@ -66,3 +66,7 @@ class EvaClipImageTrainProcessor(EvaClipImageBaseProcessor):
     @property
     def crop_size(self):
         return {'height': self.image_size, 'width': self.image_size}
+
+    @property
+    def size(self):
+        return {'shortest_edge': self.image_size}
