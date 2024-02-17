@@ -5,6 +5,7 @@
 # https://github.com/facebookresearch/deit/
 # https://github.com/facebookresearch/dino
 # --------------------------------------------------------'
+# not tested yet
 import math
 from functools import partial
 
@@ -48,9 +49,10 @@ class EvaViTWrapper(nn.Module):
         rank0_print(f"Loading EVA ViT: {self.vision_tower_name}")
         rank0_print(f"Pretrained: {self.pretrained}")
         time_start = time.time()
-        model, _, image_processor = create_model_and_transforms(self.vision_tower_name, self.pretrained, force_custom_clip=True, precision="bf16", device="cuda")
+        model, _, image_processor = create_model_and_transforms(self.vision_tower_name, self.pretrained, force_custom_clip=True, precision="bf16")
         time_end = time.time()
         rank0_print(f"Loaded EVA ViT: {self.vision_tower_name} in {time_end - time_start:.2f}s")
+        model = model.to("cuda")
         self.device = next(model.parameters()).device
         self.dtype = next(model.parameters()).dtype
         self.vision_tower = model.visual
@@ -64,9 +66,8 @@ class EvaViTWrapper(nn.Module):
             image_mean=list(normalize_transform.mean),
             image_std=list(normalize_transform.std),
         )
-        for p in self.vision_tower.parameters():
-            p.requires_grad = False
-        self.vision_tower.eval()
+        rank0_print(f"Loaded image processor: {self.image_processor}")
+        self.vision_tower.requires_grad_(False)
         self.is_loaded = True
 
     def feature_select(self, image_features):
