@@ -25,7 +25,6 @@ export NCCL_SOCKET_IFNAME=eth0
 
 PORT=26000
 GPUS="0,1,2,3,4,5,6,7"
-# GPUS="0"
 
 LLM_VERSION="lmsys/vicuna-7b-v1.5"
 LLM_VERSION_CLEAN="${LLM_VERSION//\//_}"
@@ -99,7 +98,7 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --bf16 True \
     --output_dir ./project_checkpoints/${RUN_NAME} \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 1 \
+    --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 2 \
     --evaluation_strategy "no" \

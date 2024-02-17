@@ -19,7 +19,7 @@ class EvaClipVisionTower(nn.Module):
         else:
             self.cfg_only = self.config
 
-    def load_model(self):
+    def load_model(self, device_map=None):
         self.image_processor = EvaClipImageTrainProcessor(self.config["vision_cfg"]["image_size"])
         self.vision_tower = EVAEncoderWrapper(self.vision_tower_pretrained, self.config)
         self.vision_tower.requires_grad_(False)
@@ -53,6 +53,10 @@ class EvaClipVisionTower(nn.Module):
     @property
     def num_patches(self):
         return (self.config["vision_cfg"]["image_size"] // self.config["vision_cfg"]["patch_size"]) ** 2
+
+    @property
+    def num_patches_per_side(self):
+        return self.config["vision_cfg"]["image_size"] // self.config["vision_cfg"]["patch_size"]
 
 
 # class VisionTowerConfig():

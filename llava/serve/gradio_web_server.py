@@ -172,15 +172,15 @@ def http_bot(state, model_selector, temperature, top_p, max_new_tokens, request:
                 template_name = "mistral_zephyr"
             elif "hermes" in model_name.lower():
                 template_name = "mistral_direct"
-            # elif "v1" in model_name.lower():
-            #     if "mmtag" in model_name.lower():
-            #         template_name = "v1_mmtag"
-            #     elif "plain" in model_name.lower() and "finetune" not in model_name.lower():
-            #         template_name = "v1_mmtag"
-            #     else:
-            #         template_name = "llava_v1"
-            # elif "mpt" in model_name.lower():
-            #     template_name = "mpt"
+            elif "v1" in model_name.lower():
+                if "mmtag" in model_name.lower():
+                    template_name = "llava_v1_mmtag"
+                elif "plain" in model_name.lower() and "finetune" not in model_name.lower():
+                    template_name = "llava_v1_mmtag"
+                else:
+                    template_name = "llava_v1"
+            elif "mpt" in model_name.lower():
+                template_name = "mpt"
             else:
                 if "mmtag" in model_name.lower():
                     template_name = "v0_plain"
