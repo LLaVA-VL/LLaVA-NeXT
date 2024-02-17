@@ -1,0 +1,25 @@
+{
+    "embed_dim": 1024,
+    "vision_cfg": {
+        "image_size": 224,
+        "layers": 77,
+        "width": 2304,
+        "head_width": 144,
+        "mlp_ratio": 10.9722,
+        "patch_size": 14,
+        "eva_model_name": "eva-clip-10b-14-x",
+        "drop_path_rate": 0,
+        "xattn": true,
+        "postnorm": false,
+        "fusedLN": true
+    },
+    "text_cfg": {
+        "context_length": 77,
+        "vocab_size": 49408,
+        "width": 1280,
+        "heads": 20,
+        "layers": 32,
+        "xattn": false,
+        "fusedLN": true
+    }
+}

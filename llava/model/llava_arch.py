@@ -25,6 +25,7 @@ from .multimodal_projector.builder import build_vision_projector
 from llava.constants import IGNORE_INDEX, IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 
 from llava.mm_utils import get_anyres_image_grid_shape
+from llava.utils import rank0_print
 
 
 class LlavaMetaModel:
@@ -54,6 +55,7 @@ class LlavaMetaModel:
         mm_patch_merge_type = model_args.mm_patch_merge_type
 
         self.config.mm_vision_tower = vision_tower
+        self.config.vision_tower_pretrained = getattr(model_args, "vision_tower_pretrained", "")
 
         if self.get_vision_tower() is None:
             vision_tower = build_vision_tower(model_args)
@@ -105,9 +107,9 @@ class LlavaMetaModel:
                 return {k.split(keyword + ".")[1]: v for k, v in weights.items() if keyword in k}
 
             incompatible_keys = self.mm_projector.load_state_dict(get_w(mm_projector_weights, "mm_projector"))
-            print(f"Loaded mm projector weights from {pretrain_mm_mlp_adapter}. Incompatible keys: {incompatible_keys}")
+            rank0_print(f"Loaded mm projector weights from {pretrain_mm_mlp_adapter}. Incompatible keys: {incompatible_keys}")
             incompatible_keys = self.vision_resampler.load_state_dict(get_w(mm_projector_weights, "vision_resampler"), strict=False)
-            print(f"Loaded vision resampler weights from {pretrain_mm_mlp_adapter}. Incompatible keys: {incompatible_keys}")
+            rank0_print(f"Loaded vision resampler weights from {pretrain_mm_mlp_adapter}. Incompatible keys: {incompatible_keys}")
 
 
 def unpad_image(tensor, original_size):

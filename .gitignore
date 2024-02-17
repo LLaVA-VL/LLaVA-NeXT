@@ -7,8 +7,8 @@ dist
 # Log
 *.log
 *.log.*
-*.json
-*.jsonl
+# *.json
+# *.jsonl
 
 # Data
 !**/alpaca-data-conversation.json
@@ -16,6 +16,7 @@ dist
 # Editor
 .idea
 *.swp
+.vscode
 
 # Other
 .DS_Store
@@ -23,6 +24,7 @@ wandb
 output
 
 checkpoints
+project_checkpoints
 playground/data
 ckpts*
 

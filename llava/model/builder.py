@@ -93,7 +93,8 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
 
             mm_projector_weights = torch.load(os.path.join(model_path, "mm_projector.bin"), map_location="cpu")
             mm_projector_weights = {k: v.to(torch.float16) for k, v in mm_projector_weights.items()}
-            model.load_state_dict(mm_projector_weights, strict=True)
+            model.load_state_dict(mm_projector_weights, strict=False)
+            # print(f"Loaded mm projector weights, incompatible keys: {incompatible_keys}")
         else:
             # import pdb; pdb.set_trace()
             if "mpt" in model_name.lower().replace("prompt", ""):
