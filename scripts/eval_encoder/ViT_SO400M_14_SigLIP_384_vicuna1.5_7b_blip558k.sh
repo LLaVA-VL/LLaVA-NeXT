@@ -76,7 +76,7 @@ PRETRAIN_DATA_VERSION="blip558k"
 # ############### Finetune ################
 
 PROMPT_VERSION="vicuna_v1"
-RUN_NAME="llavanext-${LLM_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_${PRETRAIN_DATA_VERSION}_plain_finetune_llava1.6_datamix_unfreezeVIS_1e"
+RUN_NAME="llavanext-${LLM_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_${PRETRAIN_DATA_VERSION}_plain_finetune_llava1.6_datamix_unfreezeVIS_1e_anyres"
 echo "RUN_NAME: ${RUN_NAME}"
 deepspeed --include=localhost:$GPUS --master_port $PORT \
     llava/train/train_mem.py \
@@ -91,10 +91,12 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --mm_vision_select_layer -2 \
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
-    --image_aspect_ratio pad \
     --group_by_modality_length True \
     --unfreeze_mm_vision_tower True \
-    --mm_vision_tower 2e-6 \
+    --mm_vision_tower_lr 2e-6 \
+    --image_aspect_ratio anyres \
+    --image_grid_pinpoints "[(384, 768), (768, 384), (768, 768), (1152, 384), (384, 1152)]" \
+    --mm_patch_merge_type spatial_unpad \
     --bf16 True \
     --output_dir ./project_checkpoints/${RUN_NAME} \
     --num_train_epochs 1 \
@@ -111,7 +113,7 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --lr_scheduler_type "cosine" \
     --logging_steps 1 \
     --tf32 True \
-    --model_max_length 2048 \
+    --model_max_length 4096 \
     --gradient_checkpointing True \
     --dataloader_num_workers 16 \
     --lazy_preprocess True \
@@ -121,7 +123,7 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
 # ############### Finetune ################
 
 PROMPT_VERSION="vicuna_v1"
-RUN_NAME="llavanext-${LLM_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_${PRETRAIN_DATA_VERSION}_${PROMPT_VERSION}_finetune_llava1.6_datamix_freezeVIS_1e"
+RUN_NAME="llavanext-${LLM_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_${PRETRAIN_DATA_VERSION}_${PROMPT_VERSION}_finetune_llava1.6_datamix_freezeVIS_1e_anyres"
 deepspeed --include=localhost:$GPUS --master_port $PORT \
     llava/train/train_mem.py \
     --deepspeed chunyl_scripts/vc/train/ds_zero3.json \
@@ -135,8 +137,12 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --mm_vision_select_layer -2 \
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
-    --image_aspect_ratio pad \
     --group_by_modality_length True \
+    --unfreeze_mm_vision_tower True \
+    --mm_vision_tower_lr 2e-6 \
+    --image_aspect_ratio anyres \
+    --image_grid_pinpoints "[(384, 768), (768, 384), (768, 768), (1152, 384), (384, 1152)]" \
+    --mm_patch_merge_type spatial_unpad \
     --bf16 True \
     --output_dir ./project_checkpoints/${RUN_NAME} \
     --num_train_epochs 1 \
@@ -153,7 +159,7 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --lr_scheduler_type "cosine" \
     --logging_steps 1 \
     --tf32 True \
-    --model_max_length 2048 \
+    --model_max_length 4096 \
     --gradient_checkpointing True \
     --dataloader_num_workers 16 \
     --lazy_preprocess True \
