@@ -15,6 +15,15 @@ export HF_HUB_ENABLE_HF_TRANSFER="1"
 cd /mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next
 
 nvidia-smi
+
+# run experiment
+export OMP_NUM_THREADS=8
+export NCCL_IB_DISABLE=0
+export NCCL_IB_GID_INDEX=3
+# export NCCL_IB_HCA=${ARNOLD_RDMA_DEVICE}
+export NCCL_SOCKET_IFNAME=eth0
+# export NCCL_DEBUG=INFO
+
 PORT=26000
 GPUS="0,1,2,3,4,5,6,7"
 
@@ -22,7 +31,7 @@ MODEL_VERSION="lmsys/vicuna-7b-v1.5"
 MODEL_VERSION_CLEAN="${MODEL_VERSION//\//_}"
 VISION_MODEL_VERSION="Internal-EVA02-CLIP-10B-14-448"
 VISION_MODEL_VERSION_CLEAN="${VISION_MODEL_VERSION//\//_}"
-VISION_MODEL_PRETRAINED="/mnt/bn/vl-research/checkpoints/eva-clip-10b/EVA02-CLIP-10B-14-up448/checkpoints/epoch_50/mp_rank_00_model_states.pt"
+VISION_MODEL_PRETRAINED="/mnt/bn/vl-research/checkpoints/eva-clip-10b/EVA02-CLIP-10B-14-up448/checkpoints/epoch_50/mp_rank_00_model_states_fp16.pt"
 PROMPT_VERSION=plain
 DATA_VERSION="blip558k"
 
@@ -42,8 +51,6 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
     --group_by_modality_length True \
-    --unfreeze_mm_vision_tower True \
-    --mm_vision_tower_lr 2e-6 \
     --image_aspect_ratio anyres \
     --output_dir ./project_checkpoints/${RUN_NAME} \
     --num_train_epochs 1 \
