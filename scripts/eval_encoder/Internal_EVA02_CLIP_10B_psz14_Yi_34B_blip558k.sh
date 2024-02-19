@@ -21,14 +21,12 @@ python3 -mpip install ninja
 python3 -mpip install flash-attn --no-build-isolation
 
 nvidia-smi
-
-# run experiment
-
-# PORT=26000
-# GPUS="0,1,2,3,4,5,6,7"
-
-# CUR_DIR=$(cd $(dirname $0); pwd)
-# cd $CUR_DIR
+export OMP_NUM_THREADS=8
+export NCCL_IB_DISABLE=0
+export NCCL_IB_GID_INDEX=3
+# export NCCL_IB_HCA=${ARNOLD_RDMA_DEVICE}
+export NCCL_SOCKET_IFNAME=eth0
+# export NCCL_DEBUG=INFO
 
 # 取 worker0 第一个 port
 ports=(`echo $METIS_WORKER_0_PORT | tr ',' ' '`)

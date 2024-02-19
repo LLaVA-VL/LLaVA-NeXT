@@ -172,8 +172,9 @@ else:
 
 try:
     import xformers.ops as xops
-except:
+except ImportError:
     xops = None
+    print("Please 'pip install xformers'")
 
 
 class DropPath(nn.Module):
