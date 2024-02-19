@@ -122,6 +122,8 @@ class TrainingArguments(transformers.TrainingArguments):
     group_by_varlen: bool = field(default=False)
     group_by_modality_length: bool = field(default=False)
     group_by_modality_length_auto: bool = field(default=False)
+    auto_find_batch_size: bool = field(default=False)
+    gradient_checkpointing: bool = field(default=True)
 
 @dataclass
 class EvaluationArguments:

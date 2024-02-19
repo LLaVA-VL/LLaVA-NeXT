@@ -40,7 +40,6 @@ class EvaViTWrapper(nn.Module):
         self.select_feature = getattr(args, "mm_vision_select_feature", "patch")
 
         self.model_config = get_model_config(self.vision_tower_name)
-        self.hidden_size = self.model_config["vision_cfg"]["width"]
 
         if not delay_load:
             self.load_model()
@@ -104,7 +103,7 @@ class EvaViTWrapper(nn.Module):
             image_features = []
             for image in images:
                 image_features = self.vision_tower.forward_features(image.to(self.dtype), return_all_features=True)
-                image_feature = self.feature_select(image_features).to(self.dtype)
+                image_features = self.feature_select(image_features).to(self.dtype)
                 image_features.append(image_features)
         else:
             image_features = self.vision_tower.forward_features(images.to(self.dtype), return_all_features=True)
@@ -117,21 +116,17 @@ class EvaViTWrapper(nn.Module):
         return torch.zeros(1, self.hidden_size, device=self.device, dtype=self.dtype)
 
     @property
+    def hidden_size(self):
+        return self.model_config["vision_cfg"]["width"]
+
+    @property
     def num_patches(self):
-        _num_patches = 256
-        if "cls_patch" in self.select_feature:
-            _num_patches += 1
-        return _num_patches
+        return (self.model_config["vision_cfg"]["image_size"] // self.model_config["vision_cfg"]["patch_size"]) ** 2
+
+    @property
+    def num_patches_per_side(self):
+        return self.model_config["vision_cfg"]["image_size"] // self.model_config["vision_cfg"]["patch_size"]
 
     @property
     def config(self):
-        image_size = self.model_config["vision_cfg"]["image_size"]
-        patch_size = self.model_config["vision_cfg"]["patch_size"]
-        return type(
-            "LLaVAConfigWrapper",
-            (),
-            {
-                "image_size": image_size,
-                "patch_size": patch_size,
-            },
-        )()
+        return self.model_config
