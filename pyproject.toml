@@ -43,7 +43,8 @@ dependencies = [
     "pydantic==1.10.9",
     "open_clip_torch",
     "timm",
-    "xformers"
+    "xformers",
+    "hf_transfer",
 ]
 
 [project.urls]

@@ -20,20 +20,20 @@ GPUS="0,1,2,3,4,5,6,7"
 
 MODEL_VERSION="lmsys/vicuna-7b-v1.5"
 MODEL_VERSION_CLEAN="${MODEL_VERSION//\//_}"
-VISION_MODEL_VERSION="Internal-EVA02-CLIP-10B-14-448"
+VISION_MODEL_VERSION="EVA-CLIP-8B"
 VISION_MODEL_VERSION_CLEAN="${VISION_MODEL_VERSION//\//_}"
-VISION_MODEL_PRETRAINED="/mnt/bn/vl-research/checkpoints/eva-clip-10b/EVA02-CLIP-10B-14-up448/checkpoints/epoch_37/mp_rank_00_model_states.pt"
+VISION_MODEL_PRETRAINED="/mnt/bn/vl-research/checkpoints/eva-clip-8b/EVA_CLIP_8B_psz14_s9B.pt"
 PROMPT_VERSION=plain
 DATA_VERSION="blip558k"
 
-RUN_NAME="llavanext-${MODEL_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_${DATA_VERSION}_plain_debug"
+RUN_NAME="llavanext-${MODEL_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_${DATA_VERSION}_plain"
 echo "RUN_NAME: ${RUN_NAME}"
 deepspeed --include=localhost:$GPUS --master_port $PORT \
     llava/train/train_mem.py \
-    --deepspeed chunyl_scripts/vc/train/ds_zero3.json \
+    --deepspeed chunyl_scripts/vc/train/ds_zero2.json \
     --model_name_or_path ${MODEL_VERSION} \
     --version ${PROMPT_VERSION} \
-    --data_path /mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/notebooks/blip_debug256_plain.json \
+    --data_path /mnt/bn/vl-research/data/llava/blip_6m/blip_558k_plain.json \
     --image_folder /mnt/bn/vl-research/data/llava/blip_6m/images \
     --vision_tower ${VISION_MODEL_VERSION} \
     --vision_tower_pretrained ${VISION_MODEL_PRETRAINED} \
@@ -70,7 +70,7 @@ RUN_NAME="llavanext-${MODEL_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_g
 echo "RUN_NAME: ${RUN_NAME}"
 deepspeed --include=localhost:$GPUS --master_port $PORT \
     llava/train/train_mem.py \
-    --deepspeed chunyl_scripts/vc/train/ds_zero3.json \
+    --deepspeed chunyl_scripts/vc/train/ds_zero2.json \
     --model_name_or_path $MODEL_VERSION \
     --version $PROMPT_VERSION \
     --data_path ./playground/data/llava_instruct/llava_158k_detailv3_reinstall_gpt4v24k_wild15k_mixdocvqa_dca45k_synden40k_cococaps20k_sg40kt2k_ori.json \
@@ -78,16 +78,18 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --vision_tower ${VISION_MODEL_VERSION} \
     --vision_tower_pretrained ${VISION_MODEL_PRETRAINED} \
     --mm_projector_type mlp2x_gelu \
-    --pretrain_mm_mlp_adapter ./project_checkpoints/llavanext-${MODEL_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_${DATA_VERSION}_plain_debug/mm_projector.bin \
+    --pretrain_mm_mlp_adapter ./project_checkpoints/llavanext-${MODEL_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_${DATA_VERSION}_plain/mm_projector.bin \
     --mm_vision_select_layer -2 \
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
-    --image_aspect_ratio pad \
     --group_by_modality_length True \
     --unfreeze_mm_vision_tower True \
-    --mm_vision_tower 2e-6 \
+    --mm_vision_tower_lr 2e-6 \
+    --image_aspect_ratio anyres \
+    --image_grid_pinpoints "[(224, 448), (448, 224), (448, 448), (672, 224), (224, 672)]" \
+    --mm_patch_merge_type spatial_unpad \
     --bf16 True \
-    --output_dir ./checkpoints/${RUN_NAME} \
+    --output_dir ./project_checkpoints/${RUN_NAME} \
     --num_train_epochs 1 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
@@ -104,7 +106,7 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --tf32 True \
     --model_max_length 2048 \
     --gradient_checkpointing True \
-    --dataloader_num_workers 16 \
+    --dataloader_num_workers 0 \
     --lazy_preprocess True \
     --report_to wandb \
     --run_name $RUN_NAME
@@ -124,14 +126,19 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --vision_tower ${VISION_MODEL_VERSION} \
     --vision_tower_pretrained ${VISION_MODEL_PRETRAINED} \
     --mm_projector_type mlp2x_gelu \
-    --pretrain_mm_mlp_adapter ./project_checkpoints/llavanext-${MODEL_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_${DATA_VERSION}_plain_debug/mm_projector.bin \
+    --pretrain_mm_mlp_adapter ./project_checkpoints/llavanext-${MODEL_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_${DATA_VERSION}_plain/mm_projector.bin \
     --mm_vision_select_layer -2 \
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
     --image_aspect_ratio pad \
     --group_by_modality_length True \
+    --unfreeze_mm_vision_tower True \
+    --mm_vision_tower_lr 2e-6 \
+    --image_aspect_ratio anyres \
+    --image_grid_pinpoints "[(224, 448), (448, 224), (448, 448), (672, 224), (224, 672)]" \
+    --mm_patch_merge_type spatial_unpad \
     --bf16 True \
-    --output_dir ./checkpoints/${RUN_NAME} \
+    --output_dir ./project_checkpoints/${RUN_NAME} \
     --num_train_epochs 1 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \

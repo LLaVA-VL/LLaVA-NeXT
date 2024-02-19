@@ -1,166 +1,19 @@
-'''
-# Adapted from https://github.com/baaivision/EVA/tree/master/EVA-CLIP
-'''
-
-from math import pi
-import torch
-from torch import nn
-from einops import rearrange, repeat
-import logging
-from llava.utils import rank0_print
-
-def broadcat(tensors, dim=-1):
-    num_tensors = len(tensors)
-    shape_lens = set(list(map(lambda t: len(t.shape), tensors)))
-    assert len(shape_lens) == 1, 'tensors must all have the same number of dimensions'
-    shape_len = list(shape_lens)[0]
-    dim = (dim + shape_len) if dim < 0 else dim
-    dims = list(zip(*map(lambda t: list(t.shape), tensors)))
-    expandable_dims = [(i, val) for i, val in enumerate(dims) if i != dim]
-    assert all(
-        [*map(lambda t: len(set(t[1])) <= 2, expandable_dims)]), 'invalid dimensions for broadcastable concatentation'
-    max_dims = list(map(lambda t: (t[0], max(t[1])), expandable_dims))
-    expanded_dims = list(map(lambda t: (t[0], (t[1],) * num_tensors), max_dims))
-    expanded_dims.insert(dim, (dim, dims[dim]))
-    expandable_shapes = list(zip(*map(lambda t: t[1], expanded_dims)))
-    tensors = list(map(lambda t: t[0].expand(*t[1]), zip(tensors, expandable_shapes)))
-    return torch.cat(tensors, dim=dim)
-
-
-def rotate_half(x):
-    x = rearrange(x, '... (d r) -> ... d r', r=2)
-    x1, x2 = x.unbind(dim=-1)
-    x = torch.stack((-x2, x1), dim=-1)
-    return rearrange(x, '... d r -> ... (d r)')
-
-
-class VisionRotaryEmbeddingFast(nn.Module):
-    def __init__(
-            self,
-            dim,
-            pt_seq_len,
-            ft_seq_len=None,
-            custom_freqs=None,
-            freqs_for='lang',
-            theta=10000,
-            max_freq=10,
-            num_freqs=1,
-            patch_dropout=0.
-    ):
-        super().__init__()
-        if custom_freqs:
-            freqs = custom_freqs
-        elif freqs_for == 'lang':
-            freqs = 1. / (theta ** (torch.arange(0, dim, 2)[:(dim // 2)].float() / dim))
-        elif freqs_for == 'pixel':
-            freqs = torch.linspace(1., max_freq / 2, dim // 2) * pi
-        elif freqs_for == 'constant':
-            freqs = torch.ones(num_freqs).float()
-        else:
-            raise ValueError(f'unknown modality {freqs_for}')
-
-        if ft_seq_len is None: ft_seq_len = pt_seq_len
-        t = torch.arange(ft_seq_len) / ft_seq_len * pt_seq_len
-
-        freqs = torch.einsum('..., f -> ... f', t, freqs)
-        freqs = repeat(freqs, '... n -> ... (n r)', r=2)
-        freqs = broadcat((freqs[:, None, :], freqs[None, :, :]), dim=-1)
-
-        freqs_cos = freqs.cos().view(-1, freqs.shape[-1])
-        freqs_sin = freqs.sin().view(-1, freqs.shape[-1])
-
-        self.patch_dropout = patch_dropout
-
-        self.register_buffer("freqs_cos", freqs_cos)
-        self.register_buffer("freqs_sin", freqs_sin)
-
-        logging.info(f'Shape of rope freq: {self.freqs_cos.shape}')
-
-    def forward(self, t, patch_indices_keep=None):
-        if patch_indices_keep is not None:
-            batch = t.size()[0]
-            batch_indices = torch.arange(batch)
-            batch_indices = batch_indices[..., None]
-
-            freqs_cos = repeat(self.freqs_cos, 'i j -> n i m j', n=t.shape[0], m=t.shape[1])
-            freqs_sin = repeat(self.freqs_sin, 'i j -> n i m j', n=t.shape[0], m=t.shape[1])
-
-            freqs_cos = freqs_cos[batch_indices, patch_indices_keep]
-            freqs_cos = rearrange(freqs_cos, 'n i m j -> n m i j')
-            freqs_sin = freqs_sin[batch_indices, patch_indices_keep]
-            freqs_sin = rearrange(freqs_sin, 'n i m j -> n m i j')
-
-            return t * freqs_cos + rotate_half(t) * freqs_sin
-
-        return t * self.freqs_cos + rotate_half(t) * self.freqs_sin
-
-
-class LayerNorm(nn.LayerNorm):
-    """Subclass torch's LayerNorm (with cast back to input dtype)."""
-
-    def forward(self, x: torch.Tensor):
-        orig_type = x.dtype
-        x = F.layer_norm(x, self.normalized_shape, self.weight, self.bias, self.eps)
-        return x.to(orig_type)
-
-
-class PatchDropout(nn.Module):
-    """
-    https://arxiv.org/abs/2212.00794
-    """
-
-    def __init__(self, prob, exclude_first_token=True):
-        super().__init__()
-        assert 0 <= prob < 1.
-        self.prob = prob
-        self.exclude_first_token = exclude_first_token  # exclude CLS token
-        logging.info(f"os.getenv('RoPE')={os.getenv('RoPE')}")
-
-    def forward(self, x):
-        if not self.training or self.prob == 0.:
-            return x
-
-        if self.exclude_first_token:
-            cls_tokens, x = x[:, :1], x[:, 1:]
-        else:
-            cls_tokens = torch.jit.annotate(torch.Tensor, x[:, :1])
-
-        batch = x.size()[0]
-        num_tokens = x.size()[1]
-
-        batch_indices = torch.arange(batch)
-        batch_indices = batch_indices[..., None]
-
-        keep_prob = 1 - self.prob
-        num_patches_keep = max(1, int(num_tokens * keep_prob))
-
-        rand = torch.randn(batch, num_tokens)
-        patch_indices_keep = rand.topk(num_patches_keep, dim=-1).indices
-
-        x = x[batch_indices, patch_indices_keep]
-
-        if self.exclude_first_token:
-            x = torch.cat((cls_tokens, x), dim=1)
-
-        if self.training and os.getenv('RoPE') == '1':
-            return x, patch_indices_keep
-
-        return x
-
-
 # --------------------------------------------------------
 # Adapted from  https://github.com/microsoft/unilm/tree/master/beit
 # --------------------------------------------------------
 import math
 import os
 from functools import partial
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 try:
     from timm.models.layers import drop_path, to_2tuple, trunc_normal_
 except:
     from timm.layers import drop_path, to_2tuple, trunc_normal_
+    
+from .transformer import PatchDropout
+from .rope import VisionRotaryEmbedding, VisionRotaryEmbeddingFast
 
 if os.getenv('ENV_TYPE') == 'deepspeed':
     try:
@@ -170,36 +23,39 @@ if os.getenv('ENV_TYPE') == 'deepspeed':
 else:
     from torch.utils.checkpoint import checkpoint
 
-import xformers.ops as xops
+try:
+    import xformers.ops as xops
+except ImportError:
+    xops = None
+    print("Please 'pip install xformers'")
 
 
 class DropPath(nn.Module):
     """Drop paths (Stochastic Depth) per sample  (when applied in main path of residual blocks).
     """
-
     def __init__(self, drop_prob=None):
         super(DropPath, self).__init__()
         self.drop_prob = drop_prob
 
     def forward(self, x):
         return drop_path(x, self.drop_prob, self.training)
-
+    
     def extra_repr(self) -> str:
         return 'p={}'.format(self.drop_prob)
 
 
 class Mlp(nn.Module):
     def __init__(
-            self,
-            in_features,
-            hidden_features=None,
-            out_features=None,
-            act_layer=nn.GELU,
-            norm_layer=nn.LayerNorm,
-            drop=0.,
-            subln=False,
+        self, 
+        in_features, 
+        hidden_features=None, 
+        out_features=None, 
+        act_layer=nn.GELU, 
+        norm_layer=nn.LayerNorm, 
+        drop=0.,
+        subln=False,
 
-    ):
+        ):
         super().__init__()
         out_features = out_features or in_features
         hidden_features = hidden_features or in_features
@@ -222,10 +78,9 @@ class Mlp(nn.Module):
         x = self.drop(x)
         return x
 
-
 class SwiGLU(nn.Module):
-    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.SiLU, drop=0.,
-                 norm_layer=nn.LayerNorm, subln=False):
+    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.SiLU, drop=0., 
+                norm_layer=nn.LayerNorm, subln=False):
         super().__init__()
         out_features = out_features or in_features
         hidden_features = hidden_features or in_features
@@ -236,7 +91,7 @@ class SwiGLU(nn.Module):
         self.act = act_layer()
         self.ffn_ln = norm_layer(hidden_features) if subln else nn.Identity()
         self.w3 = nn.Linear(hidden_features, out_features)
-
+        
         self.drop = nn.Dropout(drop)
 
     def forward(self, x):
@@ -248,12 +103,10 @@ class SwiGLU(nn.Module):
         x = self.drop(x)
         return x
 
-
 class Attention(nn.Module):
     def __init__(
             self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0.,
-            proj_drop=0., window_size=None, attn_head_dim=None, xattn=False, rope=None, subln=False,
-            norm_layer=nn.LayerNorm):
+            proj_drop=0., window_size=None, attn_head_dim=None, xattn=False, rope=None, subln=False, norm_layer=nn.LayerNorm):
         super().__init__()
         self.num_heads = num_heads
         head_dim = dim // num_heads
@@ -295,7 +148,7 @@ class Attention(nn.Module):
             relative_coords[:, :, 1] += window_size[1] - 1
             relative_coords[:, :, 0] *= 2 * window_size[1] - 1
             relative_position_index = \
-                torch.zeros(size=(window_size[0] * window_size[1] + 1,) * 2, dtype=relative_coords.dtype)
+                torch.zeros(size=(window_size[0] * window_size[1] + 1, ) * 2, dtype=relative_coords.dtype)
             relative_position_index[1:, 1:] = relative_coords.sum(-1)  # Wh*Ww, Wh*Ww
             relative_position_index[0, 0:] = self.num_relative_distance - 3
             relative_position_index[0:, 0] = self.num_relative_distance - 2
@@ -319,22 +172,22 @@ class Attention(nn.Module):
 
     def forward(self, x, rel_pos_bias=None, attn_mask=None):
         B, N, C = x.shape
-        if self.subln:
+        if self.subln: 
             q = F.linear(input=x, weight=self.q_proj.weight, bias=self.q_bias)
             k = F.linear(input=x, weight=self.k_proj.weight, bias=None)
             v = F.linear(input=x, weight=self.v_proj.weight, bias=self.v_bias)
 
-            q = q.reshape(B, N, self.num_heads, -1).permute(0, 2, 1, 3)  # B, num_heads, N, C
-            k = k.reshape(B, N, self.num_heads, -1).permute(0, 2, 1, 3)
-            v = v.reshape(B, N, self.num_heads, -1).permute(0, 2, 1, 3)
-        else:
+            q = q.reshape(B, N, self.num_heads, -1).permute(0, 2, 1, 3)     # B, num_heads, N, C
+            k = k.reshape(B, N, self.num_heads, -1).permute(0, 2, 1, 3)  
+            v = v.reshape(B, N, self.num_heads, -1).permute(0, 2, 1, 3) 
+        else: 
 
             qkv_bias = None
             if self.q_bias is not None:
                 qkv_bias = torch.cat((self.q_bias, torch.zeros_like(self.v_bias, requires_grad=False), self.v_bias))
-
+            
             qkv = F.linear(input=x, weight=self.qkv.weight, bias=qkv_bias)
-            qkv = qkv.reshape(B, N, 3, self.num_heads, -1).permute(2, 0, 3, 1, 4)  # 3, B, num_heads, N, C
+            qkv = qkv.reshape(B, N, 3, self.num_heads, -1).permute(2, 0, 3, 1, 4)   # 3, B, num_heads, N, C
             q, k, v = qkv[0], qkv[1], qkv[2]
 
         if self.rope:
@@ -348,7 +201,7 @@ class Attention(nn.Module):
             k = torch.cat((k[:, :, :1, :], ro_k_t), -2).type_as(v)
 
         if self.xattn:
-            q = q.permute(0, 2, 1, 3)  # B, num_heads, N, C -> B, N, num_heads, C
+            q = q.permute(0, 2, 1, 3)   # B, num_heads, N, C -> B, N, num_heads, C
             k = k.permute(0, 2, 1, 3)
             v = v.permute(0, 2, 1, 3)
 
@@ -356,7 +209,7 @@ class Attention(nn.Module):
                 q, k, v,
                 p=self.xattn_drop,
                 scale=self.scale,
-            )
+                )
             x = x.reshape(B, N, -1)
             x = self.inner_attn_ln(x)
             x = self.proj(x)
@@ -379,7 +232,7 @@ class Attention(nn.Module):
             if attn_mask is not None:
                 attn_mask = attn_mask.bool()
                 attn = attn.masked_fill(~attn_mask[:, None, None, :], float("-inf"))
-
+            
             attn = attn.softmax(dim=-1)
             attn = self.attn_drop(attn)
 
@@ -409,23 +262,23 @@ class Block(nn.Module):
 
         if naiveswiglu:
             self.mlp = SwiGLU(
-                in_features=dim,
-                hidden_features=mlp_hidden_dim,
+                in_features=dim, 
+                hidden_features=mlp_hidden_dim, 
                 subln=subln,
                 norm_layer=norm_layer,
             )
         else:
             self.mlp = Mlp(
-                in_features=dim,
-                hidden_features=mlp_hidden_dim,
+                in_features=dim, 
+                hidden_features=mlp_hidden_dim, 
                 act_layer=act_layer,
                 subln=subln,
                 drop=drop
             )
 
         if init_values is not None and init_values > 0:
-            self.gamma_1 = nn.Parameter(init_values * torch.ones((dim)), requires_grad=True)
-            self.gamma_2 = nn.Parameter(init_values * torch.ones((dim)), requires_grad=True)
+            self.gamma_1 = nn.Parameter(init_values * torch.ones((dim)),requires_grad=True)
+            self.gamma_2 = nn.Parameter(init_values * torch.ones((dim)),requires_grad=True)
         else:
             self.gamma_1, self.gamma_2 = None, None
 
@@ -441,12 +294,10 @@ class Block(nn.Module):
                 x = x + self.drop_path(self.mlp(self.norm2(x)))
         else:
             if self.postnorm:
-                x = x + self.drop_path(
-                    self.gamma_1 * self.norm1(self.attn(x, rel_pos_bias=rel_pos_bias, attn_mask=attn_mask)))
+                x = x + self.drop_path(self.gamma_1 * self.norm1(self.attn(x, rel_pos_bias=rel_pos_bias, attn_mask=attn_mask)))
                 x = x + self.drop_path(self.gamma_2 * self.norm2(self.mlp(x)))
             else:
-                x = x + self.drop_path(
-                    self.gamma_1 * self.attn(self.norm1(x), rel_pos_bias=rel_pos_bias, attn_mask=attn_mask))
+                x = x + self.drop_path(self.gamma_1 * self.attn(self.norm1(x), rel_pos_bias=rel_pos_bias, attn_mask=attn_mask))
                 x = x + self.drop_path(self.gamma_2 * self.mlp(self.norm2(x)))
         return x
 
@@ -454,7 +305,6 @@ class Block(nn.Module):
 class PatchEmbed(nn.Module):
     """ Image to Patch Embedding
     """
-
     def __init__(self, img_size=224, patch_size=16, in_chans=3, embed_dim=768):
         super().__init__()
         img_size = to_2tuple(img_size)
@@ -516,7 +366,6 @@ class RelativePositionBias(nn.Module):
 class EVAVisionTransformer(nn.Module):
     """ Vision Transformer with support for patch or hybrid CNN input stage
     """
-
     def __init__(self, img_size=224, patch_size=16, in_chans=3, num_classes=1000, embed_dim=768, depth=12,
                  num_heads=12, mlp_ratio=4., qkv_bias=False, qk_scale=None, drop_rate=0., attn_drop_rate=0.,
                  drop_path_rate=0., norm_layer=nn.LayerNorm, init_values=None, patch_dropout=0.,
@@ -554,7 +403,7 @@ class EVAVisionTransformer(nn.Module):
                 ft_seq_len=hw_seq_len if intp_freq else None,
                 # patch_dropout=patch_dropout
             )
-        else:
+        else: 
             self.rope = None
 
         self.naiveswiglu = naiveswiglu
@@ -570,13 +419,12 @@ class EVAVisionTransformer(nn.Module):
             for i in range(depth)])
         self.norm = nn.Identity() if use_mean_pooling else norm_layer(embed_dim)
         self.fc_norm = norm_layer(embed_dim) if use_mean_pooling else None
-        self.head = nn.Linear(embed_dim, num_classes) if num_classes > 0 else nn.Identity()
+        self.head = nn.Linear(embed_dim, num_classes, bias=qkv_bias) if num_classes > 0 else nn.Identity()
 
         if self.pos_embed is not None:
             trunc_normal_(self.pos_embed, std=.02)
 
         trunc_normal_(self.cls_token, std=.02)
-        # trunc_normal_(self.mask_token, std=.02)
 
         self.apply(self._init_weights)
         self.fix_init_weight()
@@ -584,7 +432,8 @@ class EVAVisionTransformer(nn.Module):
         if isinstance(self.head, nn.Linear):
             trunc_normal_(self.head.weight, std=.02)
             self.head.weight.data.mul_(init_scale)
-            self.head.bias.data.mul_(init_scale)
+            if self.head.bias is not None:
+                self.head.bias.data.mul_(init_scale)
 
         # setting a patch_dropout of 0. would mean it is disabled and this function would be the identity fn
         self.patch_dropout = PatchDropout(patch_dropout) if patch_dropout > 0. else nn.Identity()
@@ -616,7 +465,7 @@ class EVAVisionTransformer(nn.Module):
 
     def get_num_layers(self):
         return len(self.blocks)
-
+    
     def lock(self, unlocked_groups=0, freeze_bn_stats=False):
         assert unlocked_groups == 0, 'partial locking not currently supported for this model'
         for param in self.parameters():
@@ -638,7 +487,7 @@ class EVAVisionTransformer(nn.Module):
         self.head = nn.Linear(self.embed_dim, num_classes) if num_classes > 0 else nn.Identity()
 
     def forward_features(self, x, return_all_features=False):
-
+        
         x = self.patch_embed(x)
         batch_size, seq_len, _ = x.size()
 
@@ -660,9 +509,7 @@ class EVAVisionTransformer(nn.Module):
             x = self.patch_dropout(x)
 
         rel_pos_bias = self.rel_pos_bias() if self.rel_pos_bias is not None else None
-        for i, blk in enumerate(self.blocks):
-            if i == len(self.blocks) - 1:
-                continue
+        for blk in self.blocks:
             if self.grad_checkpointing:
                 x = checkpoint(blk, x, (rel_pos_bias,))
             else:
@@ -682,151 +529,3 @@ class EVAVisionTransformer(nn.Module):
         x = self.forward_features(x)
         x = self.head(x)
         return x
-
-
-def load_state_dict(checkpoint_path: str, map_location: str = 'cpu', model_key: str = 'model|module|state_dict',
-                    is_openai: bool = False, skip_list: list = []):
-    if is_openai:
-        model = torch.jit.load(checkpoint_path, map_location="cpu").eval()
-        state_dict = model.state_dict()
-        for key in ["input_resolution", "context_length", "vocab_size"]:
-            state_dict.pop(key, None)
-    else:
-        checkpoint = torch.load(checkpoint_path, map_location=map_location)
-        for mk in model_key.split('|'):
-            if isinstance(checkpoint, dict) and mk in checkpoint:
-                state_dict = checkpoint[mk]
-                break
-            else:
-                state_dict = checkpoint
-        if next(iter(state_dict.items()))[0].startswith('module'):
-            state_dict = {k[7:]: v for k, v in state_dict.items()}
-
-    for k in skip_list:
-        if k in list(state_dict.keys()):
-            logging.info(f"Removing key {k} from pretrained checkpoint")
-            del state_dict[k]
-
-    if os.getenv('RoPE') == '1':
-        for k in list(state_dict.keys()):
-            if 'freqs_cos' in k or 'freqs_sin' in k:
-                del state_dict[k]
-    return state_dict
-
-
-def load_clip_visual_state_dict(checkpoint_path: str, map_location: str = 'cpu', is_openai: bool = False,
-                                skip_list: list = []):
-    state_dict = load_state_dict(checkpoint_path, map_location=map_location, is_openai=is_openai, skip_list=skip_list)
-
-    for k in list(state_dict.keys()):
-        if not k.startswith('visual.'):
-            del state_dict[k]
-    for k in list(state_dict.keys()):
-        if k.startswith('visual.'):
-            new_k = k[7:]
-            state_dict[new_k] = state_dict[k]
-            del state_dict[k]
-    return state_dict
-
-
-from dataclasses import dataclass
-from typing import Optional, Tuple, Union
-
-try:
-    from apex.normalization import FusedLayerNorm
-except:
-    FusedLayerNorm = LayerNorm
-    print(
-        "Please build and install Nvidia apex package with option '--cuda_ext' according to https://github.com/NVIDIA/apex#from-source .")
-
-
-@dataclass
-class CLIPVisionCfg:
-    layers: Union[Tuple[int, int, int, int], int] = 12
-    width: int = 768
-    head_width: int = 64
-    mlp_ratio: float = 4.0
-    patch_size: int = 16
-    image_size: Union[Tuple[int, int], int] = 224
-    ls_init_value: Optional[float] = None  # layer scale initial value
-    patch_dropout: float = 0.  # what fraction of patches to dropout during training (0 would mean disabled and no patches dropped) - 0.5 to 0.75 recommended in the paper for optimal results
-    global_average_pool: bool = False  # whether to global average pool the last embedding layer, instead of using CLS token (https://arxiv.org/abs/2205.01580)
-    drop_path_rate: Optional[float] = None  # drop path rate
-    timm_model_name: str = None  # a valid model name overrides layers, width, patch_size
-    timm_model_pretrained: bool = False  # use (imagenet) pretrained weights for named model
-    timm_pool: str = 'avg'  # feature pooling for timm model ('abs_attn', 'rot_attn', 'avg', '')
-    timm_proj: str = 'linear'  # linear projection for timm model output ('linear', 'mlp', '')
-    timm_proj_bias: bool = False  # enable bias final projection
-    eva_model_name: str = None  # a valid eva model name overrides layers, width, patch_size
-    qkv_bias: bool = True
-    fusedLN: bool = False
-    xattn: bool = False
-    postnorm: bool = False
-    rope: bool = False
-    pt_hw_seq_len: int = 16  # 224/14
-    intp_freq: bool = False
-    naiveswiglu: bool = False
-    subln: bool = False
-
-
-def _build_vision_tower(
-        vision_tower_path: str,
-        embed_dim: int,
-        vision_cfg: CLIPVisionCfg,
-        **kwargs
-):
-    if isinstance(vision_cfg, dict):
-        vision_cfg = CLIPVisionCfg(**vision_cfg)
-
-    if vision_cfg.eva_model_name:
-        vision_heads = vision_cfg.width // vision_cfg.head_width
-        norm_layer = LayerNorm
-
-        visual = EVAVisionTransformer(
-            img_size=vision_cfg.image_size,
-            patch_size=vision_cfg.patch_size,
-            num_classes=embed_dim,
-            use_mean_pooling=vision_cfg.global_average_pool,  # False
-            init_values=vision_cfg.ls_init_value,
-            patch_dropout=vision_cfg.patch_dropout,
-            embed_dim=vision_cfg.width,
-            depth=vision_cfg.layers,
-            num_heads=vision_heads,
-            mlp_ratio=vision_cfg.mlp_ratio,
-            qkv_bias=vision_cfg.qkv_bias,
-            drop_path_rate=vision_cfg.drop_path_rate,
-            norm_layer=partial(FusedLayerNorm, eps=1e-6) if vision_cfg.fusedLN else partial(norm_layer, eps=1e-6),
-            xattn=vision_cfg.xattn,
-            rope=vision_cfg.rope,
-            postnorm=vision_cfg.postnorm,
-            pt_hw_seq_len=vision_cfg.pt_hw_seq_len,  # 224/14
-            intp_freq=vision_cfg.intp_freq,
-            naiveswiglu=vision_cfg.naiveswiglu,
-            subln=vision_cfg.subln
-        )
-
-        state_dict = load_clip_visual_state_dict(vision_tower_path)
-        incompatible_keys = visual.load_state_dict(state_dict, strict=False)
-        rank0_print('EVA-CLIP incompatible_keys:', incompatible_keys)
-
-    return visual
-
-
-class EVAEncoderWrapper(nn.Module):
-    def __init__(self, vision_tower_pretrained, config):
-        super(EVAEncoderWrapper, self).__init__()
-        self.config = config
-        self.config["vision_tower_path"] = vision_tower_pretrained
-        self.model = _build_vision_tower(**self.config)
-
-    def forward(self, image, **kwargs):
-        encode = self.model(image, return_all_features=True)[:, 1:, :] # remove the CLS token
-        return encode
-
-    @property
-    def dtype(self):
-        return list(self.parameters())[-1].dtype
-
-    @property
-    def device(self):
-        return list(self.parameters())[-1].device
