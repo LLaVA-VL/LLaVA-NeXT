@@ -63,9 +63,6 @@ class EvaClipVisionTower(nn.Module):
     def num_patches_per_side(self):
         return self.config["vision_cfg"]["image_size"] // self.config["vision_cfg"]["patch_size"]
 
-
-# class VisionTowerConfig():
-#     def __init__(self):
-#         self.image_size = 336
-#         self.patch_size = 14
-#         self.hidden_size = 1024
+    @property
+    def image_size(self):
+        return self.config["vision_cfg"]["image_size"]
