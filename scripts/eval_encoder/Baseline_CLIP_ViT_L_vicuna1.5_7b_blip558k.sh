@@ -125,7 +125,6 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --mm_vision_select_layer -2 \
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
-    --image_aspect_ratio pad \
     --group_by_modality_length True \
     --unfreeze_mm_vision_tower True \
     --mm_vision_tower_lr 2e-6 \

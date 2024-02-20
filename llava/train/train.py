@@ -824,12 +824,9 @@ def train():
         )
 
     if model_args.vision_tower is not None:
-        # if 'mpt' in model_args.model_name_or_path:
-        #     model = LlavaMptForCausalLM.from_pretrained(
-        #         model_args.model_name_or_path,
-        #         cache_dir=training_args.cache_dir,
-        #         **bnb_model_from_pretrained_args
-        #     )
+        # to bypass the check: https://github.com/huggingface/transformers/issues/28052
+        if training_args.bf16:
+            torch.set_default_dtype(torch.bfloat16)
         if "mixtral" in model_args.model_name_or_path.lower():
             model = LlavaMixtralForCausalLM.from_pretrained(
                 model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args

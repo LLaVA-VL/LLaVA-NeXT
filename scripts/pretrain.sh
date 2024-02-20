@@ -27,6 +27,7 @@ deepspeed llava/train/train_mem.py \
     --per_device_train_batch_size 16 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 1 \
+    --image_aspect_ratio=pad \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
     --save_steps 24000 \

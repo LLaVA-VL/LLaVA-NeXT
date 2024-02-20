@@ -49,6 +49,7 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --mm_projector_type mlp2x_gelu \
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
+    --image_aspect_ratio pad \
     --bf16 True \
     --output_dir ./project_checkpoints/${RUN_NAME} \
     --num_train_epochs 1 \
@@ -137,7 +138,6 @@ deepspeed --include=localhost:$GPUS --master_port $PORT \
     --mm_vision_select_layer -2 \
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
-    --image_aspect_ratio pad \
     --group_by_modality_length True \
     --unfreeze_mm_vision_tower True \
     --mm_vision_tower_lr 2e-6 \
