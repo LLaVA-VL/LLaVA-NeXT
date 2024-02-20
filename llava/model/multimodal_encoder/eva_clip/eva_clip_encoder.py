@@ -5,12 +5,15 @@ from .eva_clip_processors import EvaClipImageTrainProcessor
 from .eva_vit import EVAEncoderWrapper
 from .factory import list_models, add_model_config, get_model_config
 
+from llava.utils import rank0_print
+
+
 class EvaClipVisionTower(nn.Module):
     def __init__(self, vision_tower, args, delay_load=False):
         super().__init__()
 
         self.is_loaded = False
-
+        self.vision_tower_name = vision_tower
         self.vision_tower_pretrained = args.vision_tower_pretrained
         self.config = get_model_config(vision_tower)
 
@@ -20,10 +23,12 @@ class EvaClipVisionTower(nn.Module):
             self.cfg_only = self.config
 
     def load_model(self, device_map=None):
+        rank0_print(f"Loading EVA ViT: {self.vision_tower_name}")
+        rank0_print(f"Pretrained: {self.vision_tower_pretrained}")
         self.image_processor = EvaClipImageTrainProcessor(self.config["vision_cfg"]["image_size"])
         self.vision_tower = EVAEncoderWrapper(self.vision_tower_pretrained, self.config)
+        rank0_print(f"Loaded image processor: {self.image_processor}")
         self.vision_tower.requires_grad_(False)
-
         self.is_loaded = True
 
     @torch.no_grad()
