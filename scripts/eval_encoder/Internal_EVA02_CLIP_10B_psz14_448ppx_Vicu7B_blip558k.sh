@@ -7,6 +7,10 @@ export WANDB_PROJECT=llava-next
 export WANDB_MODE=online
 export PYTHONWARNINGS="ignore"
 
+export ACCELERATE_DEBUG_MODE="1"
+export HF_HOME=/mnt/bn/vl-research/workspace/boli01/.cache/huggingface
+export HF_TOKEN="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"
+export HF_HUB_ENABLE_HF_TRANSFER="1"
 # set up llava dev env
 cd /mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next
 

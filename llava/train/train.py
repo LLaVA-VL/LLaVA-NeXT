@@ -52,6 +52,7 @@ IS_TOKENIZER_GREATER_THAN_0_14 = version.parse(tokenizers.__version__) >= versio
 @dataclass
 class ModelArguments:
     model_name_or_path: Optional[str] = field(default="facebook/opt-125m")
+    model_class_name: Optional[str] = field(default=None, metadata={"help": "Used to init model class, format is XXXXForCausalLM. e.g. currently XXXX is chosen from LlavaLlama, LlavaMixtral, LlavaMistral, Llama"})
     version: Optional[str] = field(default="v0")
     freeze_backbone: bool = field(default=False)
     tune_mm_mlp_adapter: bool = field(default=False)
@@ -124,6 +125,7 @@ class TrainingArguments(transformers.TrainingArguments):
     group_by_modality_length_auto: bool = field(default=False)
     auto_find_batch_size: bool = field(default=False)
     gradient_checkpointing: bool = field(default=True)
+
 
 @dataclass
 class EvaluationArguments:
@@ -789,6 +791,34 @@ def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer, dat
     return dict(train_dataset=train_dataset, eval_dataset=None, data_collator=data_collator)
 
 
+def get_model(model_args, training_args, bnb_model_from_pretrained_args):
+    if model_args.model_class_name is not None:
+        actual_model_class_name = f"{model_args.model_class_name}ForCausalLM"
+        model_class = getattr(transformers, actual_model_class_name)
+        rank0_print(f"Using model class {model_class} from {model_args.model_class_name}")
+        model = model_class.from_pretrained(
+            model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None)
+        )
+    elif model_args.vision_tower is not None:
+        if "mixtral" in model_args.model_name_or_path.lower():
+            model = LlavaMixtralForCausalLM.from_pretrained(
+                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
+            )
+        elif "mistral" in model_args.model_name_or_path.lower() or "zephyr" in model_args.model_name_or_path.lower():
+            model = LlavaMistralForCausalLM.from_pretrained(
+                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
+            )
+        else:
+            model = LlavaLlamaForCausalLM.from_pretrained(
+                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
+            )
+    else:
+        model = transformers.LlamaForCausalLM.from_pretrained(
+            model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
+        )
+    return model
+
+
 def train():
     global local_rank
 
@@ -823,26 +853,7 @@ def train():
             )
         )
 
-    if model_args.vision_tower is not None:
-        # to bypass the check: https://github.com/huggingface/transformers/issues/28052
-        if training_args.bf16:
-            torch.set_default_dtype(torch.bfloat16)
-        if "mixtral" in model_args.model_name_or_path.lower():
-            model = LlavaMixtralForCausalLM.from_pretrained(
-                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
-            )
-        elif "mistral" in model_args.model_name_or_path.lower() or "zephyr" in model_args.model_name_or_path.lower():
-            model = LlavaMistralForCausalLM.from_pretrained(
-                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
-            )
-        else:
-            model = LlavaLlamaForCausalLM.from_pretrained(
-                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
-            )
-    else:
-        model = transformers.LlamaForCausalLM.from_pretrained(
-            model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
-        )
+    model = get_model(model_args, training_args, bnb_model_from_pretrained_args)
     model.config.use_cache = False
 
     if model_args.freeze_backbone:
@@ -1000,10 +1011,11 @@ def train():
             torch.save(non_lora_state_dict, os.path.join(training_args.output_dir, "non_lora_trainables.bin"))
     else:
         safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
-    
+
     if training_args.local_rank == 0 and evaluation_args.task_names is not None:
         results = trainer.evaluate(evaluate_args=evaluation_args)
         print(results)
+
 
 if __name__ == "__main__":
     train()

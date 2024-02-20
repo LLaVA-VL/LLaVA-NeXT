@@ -192,14 +192,10 @@ class LlavaMetaForCausalLM(ABC):
                         height = width = self.get_vision_tower().num_patches_per_side
                         assert height * width == base_image_feature.shape[0]
                         if image_aspect_ratio == "anyres":
-                            vision_tower_config = self.get_vision_tower().config
-                            if hasattr(vision_tower_config, 'image_size'):
-                                vision_tower_image_size = vision_tower_config.image_size
-                            elif hasattr(vision_tower_config, 'vision_cfg') and 'image_size' in vision_tower_config.vision_cfg:
-                                vision_tower_image_size = vision_tower_config.vision_cfg['image_size']
+                            if hasattr(self.get_vision_tower(), "image_size"):
+                                vision_tower_image_size = self.get_vision_tower().image_size
                             else:
-                                raise ValueError(f"Cannot find image_size in vision_tower_config: {vision_tower_config}")
-                            # vision_tower_image_size = vision_tower_config.get("image_size", getattr(self.get_vision_tower().config, "image_size", vision_tower_config.get("vision_cfg", {}).get("image_size")))
+                                raise ValueError("vision_tower_image_size is not found in the vision tower.")
                             num_patch_width, num_patch_height = get_anyres_image_grid_shape(image_sizes[image_idx], self.config.image_grid_pinpoints, vision_tower_image_size)
                             image_feature = image_feature.view(num_patch_height, num_patch_width, height, width, -1)
                         else:

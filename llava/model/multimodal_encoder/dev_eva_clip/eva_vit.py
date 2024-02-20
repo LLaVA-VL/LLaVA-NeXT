@@ -130,3 +130,7 @@ class EvaViTWrapper(nn.Module):
     @property
     def config(self):
         return self.model_config
+
+    @property
+    def image_size(self):
+        return self.model_config["vision_cfg"]["image_size"]
