@@ -60,7 +60,7 @@ CUDA_VISIBLE_DEVICES="0,1,2,3,4,5,6,7" deepspeed --master_port 26000 --include l
     --weight_decay 0. \
     --warmup_ratio 0.03 \
     --lr_scheduler_type "cosine" \
-    --logging_steps 1 \
+    --logging_steps 100 \
     --tf32 True \
     --model_max_length 4096 \
     --gradient_checkpointing True \
