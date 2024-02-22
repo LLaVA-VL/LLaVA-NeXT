@@ -28,6 +28,12 @@ from llava.model.llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
 
 class LlavaConfig(LlamaConfig):
     model_type = "llava_llama"
+    generator = {
+        "temperature": 0.0,
+        "max_new_tokens": 1024,
+        "do_sample": False,
+        "top_p": None,
+    }
 
 
 class LlavaLlamaModel(LlavaMetaModel, LlamaModel):

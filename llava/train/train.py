@@ -38,7 +38,8 @@ from llava.model import *
 from llava.mm_utils import process_highres_image, process_anyres_image, process_highres_image_crop_split, tokenizer_image_token
 from llava.utils import rank0_print
 
-from PIL import Image
+from PIL import Image, ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 from packaging import version
 
@@ -687,7 +688,13 @@ class LazySupervisedDataset(Dataset):
         image_folder = self.data_args.image_folder
         processor = self.data_args.image_processor
         # print(f"\n\nInspecting the image path, folder = {image_folder}, image={image_file}\n\n")
-        image = Image.open(os.path.join(image_folder, image_file)).convert("RGB")
+        try:
+            image = Image.open(os.path.join(image_folder, image_file)).convert('RGB')
+        except Exception as exn:
+            print(exn)
+            import random
+            return random.choice(self)
+        
         image_size = image.size
         if self.data_args.image_aspect_ratio == "highres":
             image = process_highres_image(image, self.data_args.image_processor, self.data_args.image_grid_pinpoints)
