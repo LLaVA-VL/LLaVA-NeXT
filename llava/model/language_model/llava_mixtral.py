@@ -29,6 +29,12 @@ from ..llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
 
 class LlavaMixtralConfig(MixtralConfig):
     model_type = "llava_mixtral"
+    generator = {
+        "temperature": 0.0,
+        "max_new_tokens": 1024,
+        "do_sample": False,
+        "top_p": None,
+    }
 
 
 class LlavaMixtralModel(LlavaMetaModel, MixtralModel):

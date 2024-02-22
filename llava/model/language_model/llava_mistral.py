@@ -29,6 +29,12 @@ from ..llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
 
 class LlavaMistralConfig(MistralConfig):
     model_type = "llava_mistral"
+    generator = {
+        "temperature": 0.0,
+        "max_new_tokens": 1024,
+        "do_sample": False,
+        "top_p": None,
+    }
 
 
 class LlavaMistralModel(LlavaMetaModel, MistralModel):
