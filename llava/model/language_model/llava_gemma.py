@@ -120,5 +120,5 @@ class LlavaGemmaForCausalLM(LlavaMetaForCausalLM):
         return inputs
 
 
-AutoConfig.register("llava_gemma", LlavaMistralConfig)
-AutoModelForCausalLM.register(LlavaMistralConfig, LlavaMistralForCausalLM)
+AutoConfig.register("llava_gemma", LlavaGemmaConfig)
+AutoModelForCausalLM.register(LlavaGemmaConfig, LlavaGemmaForCausalLM)

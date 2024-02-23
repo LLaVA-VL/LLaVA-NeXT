@@ -815,8 +815,12 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
             model = LlavaMistralForCausalLM.from_pretrained(
                 model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
             )
-        else:
+        elif "vicuna" in model_args.model_name_or_path.lower() or "llama" in model_args.model_name_or_path.lower():
             model = LlavaLlamaForCausalLM.from_pretrained(
+                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
+            )
+        elif "gemma" in model_args.model_name_or_path.lower():
+            model = LlavaGemmaForCausalLM.from_pretrained(
                 model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
             )
     else:
