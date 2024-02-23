@@ -19,7 +19,7 @@ import torch
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 
-from transformers import AutoConfig, AutoModelForCausalLM, MixtralConfig, MixtralModel, MixtralForCausalLM
+from transformers import AutoConfig, AutoModelForCausalLM, MistralModel, MistralForCausalLM
 
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.generation.utils import GenerateOutput
@@ -27,27 +27,27 @@ from transformers.generation.utils import GenerateOutput
 from ..llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
 
 
-class LlavaMixtralConfig(MixtralConfig):
-    model_type = "llava_mixtral"
+class LlavaGemmaConfig(AutoConfig):
+    model_type = "llava_gemma"
     temperature: float = 0.0 # reset to 0.0, previously 0.9 for Vicuna
     max_new_tokens: int = 1024
     do_sample: bool = False
     top_p: Optional[float] = None
 
 
-class LlavaMixtralModel(LlavaMetaModel, MixtralModel):
-    config_class = LlavaMixtralConfig
+class LlavaGemmaModel(LlavaMetaModel):
+    config_class = LlavaGemmaConfig
 
-    def __init__(self, config: MixtralConfig):
-        super(LlavaMixtralModel, self).__init__(config)
+    def __init__(self, config: LlavaGemmaConfig):
+        super(LlavaGemmaModel, self).__init__(config)
 
 
-class LlavaMixtralForCausalLM(MixtralForCausalLM, LlavaMetaForCausalLM):
-    config_class = LlavaMixtralConfig
+class LlavaGemmaForCausalLM(LlavaMetaForCausalLM):
+    config_class = LlavaGemmaConfig
 
     def __init__(self, config):
-        super(MixtralForCausalLM, self).__init__(config)
-        self.model = LlavaMixtralModel(config)
+        super(MistralForCausalLM, self).__init__(config)
+        self.model = AutoModelForCausalLM(config)
 
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
@@ -120,5 +120,5 @@ class LlavaMixtralForCausalLM(MixtralForCausalLM, LlavaMetaForCausalLM):
         return inputs
 
 
-AutoConfig.register("llava_mixtral", LlavaMixtralConfig)
-AutoModelForCausalLM.register(LlavaMixtralConfig, LlavaMixtralForCausalLM)
+AutoConfig.register("llava_gemma", LlavaMistralConfig)
+AutoModelForCausalLM.register(LlavaMistralConfig, LlavaMistralForCausalLM)
