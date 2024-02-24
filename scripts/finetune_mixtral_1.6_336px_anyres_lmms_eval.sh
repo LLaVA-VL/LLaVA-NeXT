@@ -55,7 +55,6 @@ CUDA_VISIBLE_DEVICES="0,1,2,3,4,5,6,7" deepspeed --master_port 26000 --include l
     --evaluation_strategy "no" \
     --save_strategy "steps" \
     --save_steps 1500 \
-    --save_total_limit 1 \
     --learning_rate 2e-5 \
     --weight_decay 0. \
     --warmup_ratio 0.03 \
