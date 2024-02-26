@@ -254,7 +254,11 @@ def process_anyres_image(image, processor, grid_pinpoints):
     # FIXME: this seems to be a bug that it resizes instead of pad.
     # but to keep it consistent with previous, i will keep it as it is
     # TODO: uncomment below to ablate with the padding
-    image_original_resize = image.resize((processor.size["shortest_edge"], processor.size["shortest_edge"]))
+    if isinstance(processor.size, dict):
+        shortest_edge = processor.size["shortest_edge"]
+    else:
+        shortest_edge = min(processor.size)
+    image_original_resize = image.resize((shortest_edge, shortest_edge))
     # image_padded_square = expand2square(image, tuple(int(x*255) for x in processor.image_mean))
     # image_original_resize = image_padded_square.resize((processor.size['shortest_edge'], processor.size['shortest_edge']))
 
