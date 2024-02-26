@@ -54,6 +54,7 @@ IS_TOKENIZER_GREATER_THAN_0_14 = version.parse(tokenizers.__version__) >= versio
 class ModelArguments:
     model_name_or_path: Optional[str] = field(default="facebook/opt-125m")
     model_class_name: Optional[str] = field(default=None, metadata={"help": "Used to init model class, format is XXXXForCausalLM. e.g. currently XXXX is chosen from LlavaLlama, LlavaMixtral, LlavaMistral, Llama"})
+
     version: Optional[str] = field(default="v0")
     freeze_backbone: bool = field(default=False)
     tune_mm_mlp_adapter: bool = field(default=False)
@@ -85,10 +86,13 @@ class ModelArguments:
     mm_qformer_latents: Optional[int] = field(default=32)
     mm_qformer_pretrained: Optional[str] = field(default=None)
 
+    rope_scaling_factor: Optional[float] = field(default=None)
+    rope_scaling_type: Optional[str] = field(default=None)
+
 
 @dataclass
 class DataArguments:
-    data_path: str = field(default=None, metadata={"help": "Path to the training data."})
+    data_path: str = field(default=None, metadata={"help": "Path to the training data, in llava's instruction.json format."})
     lazy_preprocess: bool = False
     is_multimodal: bool = False
     image_folder: Optional[str] = field(default=None)
@@ -866,6 +870,11 @@ def train():
 
     model = get_model(model_args, training_args, bnb_model_from_pretrained_args)
     model.config.use_cache = False
+    if model_args.rope_scaling_factor is not None and model_args.rope_scaling_type is not None:
+        model.config.rope_scaling = {
+            "factor": model_args.rope_scaling_factor,
+            "type": model_args.rope_scaling_type,
+        }
 
     if model_args.freeze_backbone:
         model.model.requires_grad_(False)
@@ -1023,6 +1032,7 @@ def train():
     else:
         safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
 
+    rank0_print(f"Model saved to {training_args.output_dir}")
     if training_args.local_rank == 0 and evaluation_args.task_names is not None:
         results = trainer.evaluate(evaluate_args=evaluation_args)
         print(results)

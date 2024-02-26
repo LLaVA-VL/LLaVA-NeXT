@@ -25,6 +25,7 @@ output
 
 checkpoints
 project_checkpoints
+debug_checkpoints
 playground/data
 ckpts*
 
