@@ -6,5 +6,6 @@ try:
     from .language_model.llava_gemma import LlavaGemmaForCausalLM, LlavaGemmaConfig
     from .language_model.llava_mistral import LlavaMistralForCausalLM, LlavaMistralConfig
     from .language_model.llava_mixtral import LlavaMixtralForCausalLM, LlavaMixtralConfig
-except:
-    pass
+except ImportError as e:
+    import traceback
+    traceback.print_exc()
