@@ -62,6 +62,7 @@ class ModelArguments:
     vision_tower: Optional[str] = field(default=None)
     vision_tower_pretrained: Optional[str] = field(default=None)  # default to the last layer
     unfreeze_mm_vision_tower: bool = field(default=False)
+    unfreeze_language_model: bool = field(default=False)
     mm_vision_select_layer: Optional[int] = field(default=-1)  # default to the last layer
     pretrain_mm_mlp_adapter: Optional[str] = field(default=None)
     mm_projector_type: Optional[str] = field(default="linear")
@@ -986,9 +987,21 @@ def train():
                 p.requires_grad = False
 
         model.config.unfreeze_mm_vision_tower = model_args.unfreeze_mm_vision_tower
+        model.config.unfreeze_language_model = model_args.unfreeze_language_model
+
+        if model_args.unfreeze_language_model:
+            model.requires_grad_(True)
+        else:
+            model.requires_grad_(False)
+        
         if model_args.unfreeze_mm_vision_tower:
             vision_tower.requires_grad_(True)
+        else:
+            vision_tower.requires_grad_(False)
 
+        total_params = sum(p.numel() for p in model.parameters())
+        total_params_b = total_params * torch.finfo(torch.float32).bits / 8
+        rank0_print(f"Total parameters: {total_params} (~{total_params_b/1e9:.2f}B)")
         if training_args.bits in [4, 8]:
             model.get_model().mm_projector.to(dtype=compute_dtype, device=training_args.device)
 
