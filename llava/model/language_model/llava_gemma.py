@@ -19,7 +19,7 @@ import torch
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 
-from transformers import AutoConfig, AutoModelForCausalLM, GemmaModel, GemmaForCausalLM, GemmaConfig
+from transformers import AutoConfig, AutoModelForCausalLM, GemmaModel, GemmaForCausalLM, GemmaConfig, GenerationConfig
 
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.generation.utils import GenerateOutput
@@ -29,10 +29,6 @@ from ..llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
 
 class LlavaGemmaConfig(GemmaConfig):
     model_type = "llava_gemma"
-    temperature: float = 0.0 # reset to 0.0, previously 0.9 for Vicuna
-    max_new_tokens: int = 1024
-    do_sample: bool = False
-    top_p: Optional[float] = None
 
 
 class LlavaGemmaModel(LlavaMetaModel, GemmaModel):
@@ -47,6 +43,16 @@ class LlavaGemmaForCausalLM(LlavaMetaForCausalLM, GemmaForCausalLM):
 
     def __init__(self, config):
         super(GemmaForCausalLM, self).__init__(config)
+        
+        config.model_type = "llava_gemma"
+        config.rope_scaling = None
+        self.generation_config = GenerationConfig(
+            temperature=0.0,
+            max_new_tokens=1024,
+            do_sample=False,
+            top_p=None,
+        )
+
         self.model = GemmaForCausalLM(config)
 
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)

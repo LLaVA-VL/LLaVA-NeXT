@@ -19,7 +19,7 @@ import torch
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 
-from transformers import AutoConfig, AutoModelForCausalLM, MixtralConfig, MixtralModel, MixtralForCausalLM
+from transformers import AutoConfig, AutoModelForCausalLM, MixtralConfig, MixtralModel, MixtralForCausalLM, GenerationConfig
 
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.generation.utils import GenerateOutput
@@ -29,10 +29,6 @@ from ..llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
 
 class LlavaMixtralConfig(MixtralConfig):
     model_type = "llava_mixtral"
-    temperature: float = 0.0 # reset to 0.0, previously 0.9 for Vicuna
-    max_new_tokens: int = 1024
-    do_sample: bool = False
-    top_p: Optional[float] = None
 
 
 class LlavaMixtralModel(LlavaMetaModel, MixtralModel):
@@ -47,10 +43,11 @@ class LlavaMixtralForCausalLM(MixtralForCausalLM, LlavaMetaForCausalLM):
 
     def __init__(self, config):
         super(MixtralForCausalLM, self).__init__(config)
+        
+        config.model_type = "llava_mixtral"
+        config.rope_scaling = None
         self.model = LlavaMixtralModel(config)
-
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
-
         # Initialize weights and apply final processing
         self.post_init()
 
