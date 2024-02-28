@@ -17,7 +17,7 @@ from typing import Optional, Tuple
 
 import torch
 
-from transformers import AutoConfig, AutoModelForCausalLM, MptConfig, MptForCausalLM, MptModel
+from transformers import AutoConfig, AutoModelForCausalLM, MptConfig, MptForCausalLM, MptModel, GenerationConfig
 from llava.model.llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
 
 
@@ -42,6 +42,15 @@ class LlavaMptForCausalLM(MptForCausalLM, LlavaMetaForCausalLM):
 
     def __init__(self, config):
         super(MptForCausalLM, self).__init__(config)
+
+        config.model_type = "llava_mpt"
+        config.rope_scaling = None
+        self.generation_config = GenerationConfig(
+            temperature=0.0,
+            max_new_tokens=1024,
+            do_sample=False,
+            top_p=None,
+        )
 
         self.transformer = LlavaMptModel(config)
         self.lm_head = torch.nn.Linear(config.hidden_size, config.vocab_size, bias=False)
