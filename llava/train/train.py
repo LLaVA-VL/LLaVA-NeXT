@@ -1018,7 +1018,7 @@ def train():
 
         else:
             rank0_print(f"Using mm_tunable_parts: {model_args.mm_tunable_parts}")
-            model.config.mm_tunable_parts = model_args.mm_tunable_parts
+            model.config.mm_tunable_parts = training_args.mm_tunable_parts = model_args.mm_tunable_parts
             # Set the entire model to not require gradients by default
             model.requires_grad_(False)
             vision_tower.requires_grad_(False)

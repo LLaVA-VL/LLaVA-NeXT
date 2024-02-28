@@ -51,17 +51,8 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
         # configure default generation settings
         config.model_type = "llava_llama"
         config.rope_scaling = None
-        self.generation_config = GenerationConfig(
-            temperature=0.0,
-            max_new_tokens=1024,
-            do_sample=False,
-            top_p=None,
-        )
-        
         self.model = LlavaLlamaModel(config)
-
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
-
         # Initialize weights and apply final processing
         self.post_init()
 
