@@ -47,6 +47,14 @@ class LlavaMixtralForCausalLM(MixtralForCausalLM, LlavaMetaForCausalLM):
 
     def __init__(self, config):
         super(MixtralForCausalLM, self).__init__(config)
+        
+        config.model_type = "llava_mixtral"
+        config.temperature = 0.0
+        config.max_new_tokens = 1024
+        config.do_sample = False
+        config.top_p = None
+        config.rope_scaling = None
+
         self.model = LlavaMixtralModel(config)
 
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
