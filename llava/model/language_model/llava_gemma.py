@@ -19,7 +19,7 @@ import torch
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 
-from transformers import AutoConfig, AutoModelForCausalLM, GemmaModel, GemmaForCausalLM, GemmaConfig
+from transformers import AutoConfig, AutoModelForCausalLM, GemmaModel, GemmaForCausalLM, GemmaConfig, GenerationConfig
 
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.generation.utils import GenerateOutput
