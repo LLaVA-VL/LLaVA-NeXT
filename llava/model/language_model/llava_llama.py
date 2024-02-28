@@ -47,6 +47,15 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
 
     def __init__(self, config):
         LlamaForCausalLM.__init__(self, config)
+
+        # configure default generation settings
+        config.model_type = "llava_llama"
+        config.temperature = 0.0
+        config.max_new_tokens = 1024
+        config.do_sample = False
+        config.top_p = None
+        config.rope_scaling = None
+        
         self.model = LlavaLlamaModel(config)
 
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)

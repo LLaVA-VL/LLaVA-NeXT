@@ -39,6 +39,7 @@ from llava.mm_utils import process_highres_image, process_anyres_image, process_
 from llava.utils import rank0_print
 
 from PIL import Image, ImageFile
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 from packaging import version
@@ -55,12 +56,18 @@ class ModelArguments:
     model_name_or_path: Optional[str] = field(default="facebook/opt-125m")
     model_class_name: Optional[str] = field(default=None, metadata={"help": "Used to init model class, format is XXXXForCausalLM. e.g. currently XXXX is chosen from LlavaLlama, LlavaMixtral, LlavaMistral, Llama"})
 
+    mm_tunable_parts: Optional[str] = field(
+        default=None, metadata={"help": 'Could be "mm_mlp_adapter", "mm_vision_resampler", "mm_vision_tower,mm_mlp_adapter,mm_language_model", "mm_vision_tower,mm_mlp_adapter,mm_language_model", "mm_mlp_adapter,mm_language_model"'}
+    )
+    # deciding which part of the multimodal model to tune, will overwrite other previous settings
+
     version: Optional[str] = field(default="v0")
     freeze_backbone: bool = field(default=False)
     tune_mm_mlp_adapter: bool = field(default=False)
     tune_mm_vision_resampler: bool = field(default=False)
     vision_tower: Optional[str] = field(default=None)
     vision_tower_pretrained: Optional[str] = field(default=None)  # default to the last layer
+
     unfreeze_mm_vision_tower: bool = field(default=False)
     unfreeze_language_model: bool = field(default=False)
     mm_vision_select_layer: Optional[int] = field(default=-1)  # default to the last layer
@@ -131,6 +138,7 @@ class TrainingArguments(transformers.TrainingArguments):
     group_by_modality_length_auto: bool = field(default=False)
     auto_find_batch_size: bool = field(default=False)
     gradient_checkpointing: bool = field(default=True)
+    verbose_logging: bool = field(default=False)
 
 
 @dataclass
@@ -224,8 +232,14 @@ def find_all_linear_names(model):
 
 def safe_save_model_for_hf_trainer(trainer: transformers.Trainer, output_dir: str):
     """Collects the state dict and dump to disk."""
+    if hasattr(trainer.args, "tune_mm_mlp_adapter") and trainer.args.tune_mm_mlp_adapter:
+        check_mm_adapter_tunnable = True
+    elif hasattr(trainer.args, "mm_tunable_parts") and "mm_mlp_adapter" in trainer.args.mm_tunable_parts:
+        check_mm_adapter_tunnable = True
+    else:
+        check_mm_adapter_tunnable = False
 
-    if getattr(trainer.args, "tune_mm_mlp_adapter", False):
+    if check_mm_adapter_tunnable:
         # Only save Adapter
         keys_to_match = ["mm_projector", "vision_resampler"]
         if getattr(trainer.args, "use_im_start_end", False):
@@ -243,7 +257,7 @@ def safe_save_model_for_hf_trainer(trainer: transformers.Trainer, output_dir: st
                 torch.save(weight_to_save, os.path.join(mm_projector_folder, f"{current_folder}.bin"))
             else:
                 torch.save(weight_to_save, os.path.join(output_dir, f"mm_projector.bin"))
-        return
+        # return
 
     if trainer.deepspeed:
         torch.cuda.synchronize()
@@ -694,12 +708,13 @@ class LazySupervisedDataset(Dataset):
         processor = self.data_args.image_processor
         # print(f"\n\nInspecting the image path, folder = {image_folder}, image={image_file}\n\n")
         try:
-            image = Image.open(os.path.join(image_folder, image_file)).convert('RGB')
+            image = Image.open(os.path.join(image_folder, image_file)).convert("RGB")
         except Exception as exn:
             print(exn)
             import random
+
             return random.choice(self)
-        
+
         image_size = image.size
         if self.data_args.image_aspect_ratio == "highres":
             image = process_highres_image(image, self.data_args.image_processor, self.data_args.image_grid_pinpoints)
@@ -808,9 +823,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
         actual_model_class_name = f"{model_args.model_class_name}ForCausalLM"
         model_class = getattr(transformers, actual_model_class_name)
         rank0_print(f"Using model class {model_class} from {model_args.model_class_name}")
-        model = model_class.from_pretrained(
-            model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None)
-        )
+        model = model_class.from_pretrained(model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None))
     elif model_args.vision_tower is not None:
         if "mixtral" in model_args.model_name_or_path.lower():
             model = LlavaMixtralForCausalLM.from_pretrained(
@@ -843,11 +856,14 @@ def train():
 
     parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments, EvaluationArguments))
     model_args, data_args, training_args, evaluation_args = parser.parse_args_into_dataclasses()
-    rank0_print(f"\nInspecting experiment hyperparameters:\n")
-    rank0_print(f"model_args = {vars(model_args)}\n\n")
-    rank0_print(f"data_args = {vars(data_args)}\n\n")
-    rank0_print(f"training_args = {vars(training_args)}\n\n")
-    rank0_print(f"evaluation_args = {vars(evaluation_args)}\n\n")
+    
+    if training_args.verbose_logging:
+        rank0_print(f"\nInspecting experiment hyperparameters:\n")
+        rank0_print(f"model_args = {vars(model_args)}\n\n")
+        rank0_print(f"data_args = {vars(data_args)}\n\n")
+        rank0_print(f"training_args = {vars(training_args)}\n\n")
+        rank0_print(f"evaluation_args = {vars(evaluation_args)}\n\n")
+        
     local_rank = training_args.local_rank
     compute_dtype = torch.float16 if training_args.fp16 else (torch.bfloat16 if training_args.bf16 else torch.float32)
 
@@ -965,43 +981,79 @@ def train():
         model.config.tokenizer_padding_side = tokenizer.padding_side
         model.config.tokenizer_model_max_length = tokenizer.model_max_length
 
-        model.config.tune_mm_mlp_adapter = training_args.tune_mm_mlp_adapter = model_args.tune_mm_mlp_adapter
-        model.config.tune_mm_vision_resampler = training_args.tune_mm_vision_resampler = model_args.tune_mm_vision_resampler
-        if model_args.tune_mm_mlp_adapter or model_args.tune_mm_vision_resampler:
-            model.requires_grad_(False)
-        if model_args.tune_mm_mlp_adapter:
-            for p in model.get_model().mm_projector.parameters():
-                p.requires_grad = True
-        if model_args.tune_mm_vision_resampler:
-            for p in model.get_model().vision_resampler.parameters():
-                p.requires_grad = True
+        ### Deciding train which part of the model
+        if model_args.mm_tunable_parts is None:  # traditional way of deciding which part to train
+            model.config.tune_mm_mlp_adapter = training_args.tune_mm_mlp_adapter = model_args.tune_mm_mlp_adapter
+            model.config.tune_mm_vision_resampler = training_args.tune_mm_vision_resampler = model_args.tune_mm_vision_resampler
+            if model_args.tune_mm_mlp_adapter or model_args.tune_mm_vision_resampler:
+                model.requires_grad_(False)
+            if model_args.tune_mm_mlp_adapter:
+                for p in model.get_model().mm_projector.parameters():
+                    p.requires_grad = True
+            if model_args.tune_mm_vision_resampler:
+                for p in model.get_model().vision_resampler.parameters():
+                    p.requires_grad = True
 
-        model.config.freeze_mm_mlp_adapter = training_args.freeze_mm_mlp_adapter
-        if training_args.freeze_mm_mlp_adapter:
-            for p in model.get_model().mm_projector.parameters():
-                p.requires_grad = False
+            model.config.freeze_mm_mlp_adapter = training_args.freeze_mm_mlp_adapter
+            if training_args.freeze_mm_mlp_adapter:
+                for p in model.get_model().mm_projector.parameters():
+                    p.requires_grad = False
 
-        model.config.freeze_mm_vision_resampler = training_args.freeze_mm_vision_resampler
-        if training_args.freeze_mm_vision_resampler:
-            for p in model.get_model().vision_resampler.parameters():
-                p.requires_grad = False
+            model.config.freeze_mm_vision_resampler = training_args.freeze_mm_vision_resampler
+            if training_args.freeze_mm_vision_resampler:
+                for p in model.get_model().vision_resampler.parameters():
+                    p.requires_grad = False
 
-        model.config.unfreeze_mm_vision_tower = model_args.unfreeze_mm_vision_tower
-        model.config.unfreeze_language_model = model_args.unfreeze_language_model
+            model.config.unfreeze_mm_vision_tower = model_args.unfreeze_mm_vision_tower
+            model.config.unfreeze_language_model = model_args.unfreeze_language_model
 
-        if model_args.unfreeze_language_model:
-            model.requires_grad_(True)
+            if model_args.unfreeze_language_model:
+                model.requires_grad_(True)
+            else:
+                model.requires_grad_(False)
+
+            if model_args.unfreeze_mm_vision_tower:
+                vision_tower.requires_grad_(True)
+            else:
+                vision_tower.requires_grad_(False)
+
         else:
+            rank0_print(f"Using mm_tunable_parts: {model_args.mm_tunable_parts}")
+            model.config.mm_tunable_parts = model_args.mm_tunable_parts
+            # Set the entire model to not require gradients by default
             model.requires_grad_(False)
-        
-        if model_args.unfreeze_mm_vision_tower:
-            vision_tower.requires_grad_(True)
-        else:
             vision_tower.requires_grad_(False)
+            model.get_model().mm_projector.requires_grad_(False)
+            model.get_model().vision_resampler.requires_grad_(False)
+            # Parse the mm_tunable_parts to decide which parts to unfreeze
+            tunable_parts = model_args.mm_tunable_parts.split(",")
+            if "mm_mlp_adapter" in tunable_parts:
+                for p in model.get_model().mm_projector.parameters():
+                    p.requires_grad = True
+            if "mm_vision_resampler" in tunable_parts:
+                for p in model.get_model().vision_resampler.parameters():
+                    p.requires_grad = True
+            if "mm_vision_tower" in tunable_parts:
+                vision_tower.requires_grad_(True)
+            if "mm_language_model" in tunable_parts:
+                model.requires_grad_(True)
 
-        total_params = sum(p.numel() for p in model.parameters())
-        total_params_b = total_params * torch.finfo(torch.float32).bits / 8
-        rank0_print(f"Total parameters: {total_params} (~{total_params_b/1e9:.2f}B)")
+        total_params = (
+            sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.parameters())
+            + sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in vision_tower.parameters())
+            + sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.get_model().mm_projector.parameters())
+            + sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.get_model().vision_resampler.parameters())
+        )
+        trainable_params = (
+            sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.parameters() if p.requires_grad)
+            + sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in vision_tower.parameters() if p.requires_grad)
+            + sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.get_model().mm_projector.parameters() if p.requires_grad)
+            + sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.get_model().vision_resampler.parameters() if p.requires_grad)
+        )
+        # total_params_b = total_params * torch.finfo(torch.float32).bits / 8
+        # trainable_params_b = trainable_params * torch.finfo(torch.float32).bits / 8
+        rank0_print(f"Total parameters: ~{total_params/1e6:.2f} MB)")
+        rank0_print(f"Trainable parameters: ~{trainable_params/1e6:.2f} MB)")
         if training_args.bits in [4, 8]:
             model.get_model().mm_projector.to(dtype=compute_dtype, device=training_args.device)
 
@@ -1027,8 +1079,7 @@ def train():
                         module = module.to(torch.bfloat16)
 
     data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args)
-    # trainer = LLaVATrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
-    trainer = LLaVAEvalTrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
+    trainer = LLaVATrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
 
     if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")):
         trainer.train(resume_from_checkpoint=True)
