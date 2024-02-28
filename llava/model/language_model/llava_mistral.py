@@ -49,11 +49,13 @@ class LlavaMistralForCausalLM(MistralForCausalLM, LlavaMetaForCausalLM):
         super(MistralForCausalLM, self).__init__(config)
 
         config.model_type = "llava_mistral"
-        config.temperature = 0.0
-        config.max_new_tokens = 1024
-        config.do_sample = False
-        config.top_p = None
         config.rope_scaling = None
+        self.generation_config = GenerationConfig(
+            temperature=0.0,
+            max_new_tokens=1024,
+            do_sample=False,
+            top_p=None,
+        )
         
         self.model = LlavaMistralModel(config)
 

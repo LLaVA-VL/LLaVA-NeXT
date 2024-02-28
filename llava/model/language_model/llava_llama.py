@@ -18,7 +18,7 @@ from typing import List, Optional, Tuple, Union
 import torch
 import torch.nn as nn
 
-from transformers import AutoConfig, AutoModelForCausalLM, LlamaConfig, LlamaModel, LlamaForCausalLM
+from transformers import AutoConfig, AutoModelForCausalLM, LlamaConfig, LlamaModel, LlamaForCausalLM, GenerationConfig
 
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.generation.utils import GenerateOutput
@@ -50,11 +50,13 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
 
         # configure default generation settings
         config.model_type = "llava_llama"
-        config.temperature = 0.0
-        config.max_new_tokens = 1024
-        config.do_sample = False
-        config.top_p = None
         config.rope_scaling = None
+        self.generation_config = GenerationConfig(
+            temperature=0.0,
+            max_new_tokens=1024,
+            do_sample=False,
+            top_p=None,
+        )
         
         self.model = LlavaLlamaModel(config)
 
