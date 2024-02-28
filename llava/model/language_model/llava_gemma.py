@@ -29,10 +29,6 @@ from ..llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
 
 class LlavaGemmaConfig(GemmaConfig):
     model_type = "llava_gemma"
-    temperature: float = 0.0 # reset to 0.0, previously 0.9 for Vicuna
-    max_new_tokens: int = 1024
-    do_sample: bool = False
-    top_p: Optional[float] = None
 
 
 class LlavaGemmaModel(LlavaMetaModel, GemmaModel):
@@ -49,11 +45,13 @@ class LlavaGemmaForCausalLM(LlavaMetaForCausalLM, GemmaForCausalLM):
         super(GemmaForCausalLM, self).__init__(config)
         
         config.model_type = "llava_gemma"
-        config.temperature = 0.0
-        config.max_new_tokens = 1024
-        config.do_sample = False
-        config.top_p = None
         config.rope_scaling = None
+        self.generation_config = GenerationConfig(
+            temperature=0.0,
+            max_new_tokens=1024,
+            do_sample=False,
+            top_p=None,
+        )
 
         self.model = GemmaForCausalLM(config)
 
