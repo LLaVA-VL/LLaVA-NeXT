@@ -56,7 +56,7 @@ def main(args):
     sgl.set_default_backend(backend)
 
     tic = time.time()
-    batch_size = 128
+    batch_size = 16
     for batch_start in tqdm.tqdm(range(0, len(shard_files), batch_size)):
         batch_end = min(batch_start + batch_size, len(shard_files))
         batch_arguments = [{"image_file": image_file} for image_file in shard_files[batch_start:batch_end]]
