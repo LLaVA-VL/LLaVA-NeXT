@@ -232,13 +232,15 @@ def find_all_linear_names(model):
 def safe_save_model_for_hf_trainer(trainer: transformers.Trainer, output_dir: str):
     """Collects the state dict and dump to disk."""
     if hasattr(trainer.args, "tune_mm_mlp_adapter") and trainer.args.tune_mm_mlp_adapter:
-        check_mm_adapter_tunnable = True
-    elif hasattr(trainer.args, "mm_tunable_parts") and "mm_mlp_adapter" in trainer.args.mm_tunable_parts:
-        check_mm_adapter_tunnable = True
+        check_only_save_mm_adapter_tunnable = True
+    # only has mm_mlp_adapter and mm_vision_resampler in the tuneable parts
+    elif hasattr(trainer.args, "mm_tunable_parts") and (len(trainer.args.mm_tunable_parts.split(",")) == 1 and ("mm_mlp_adapter" in trainer.args.mm_tunable_parts or "mm_vision_resampler" in trainer.args.mm_tunable_parts)):
+        check_only_save_mm_adapter_tunnable = True
     else:
-        check_mm_adapter_tunnable = False
+        check_only_save_mm_adapter_tunnable = False
 
-    if check_mm_adapter_tunnable:
+    rank0_print(f"Only save projectors: {check_only_save_mm_adapter_tunnable}")
+    if check_only_save_mm_adapter_tunnable:
         # Only save Adapter
         keys_to_match = ["mm_projector", "vision_resampler"]
         if getattr(trainer.args, "use_im_start_end", False):
@@ -256,8 +258,8 @@ def safe_save_model_for_hf_trainer(trainer: transformers.Trainer, output_dir: st
                 torch.save(weight_to_save, os.path.join(mm_projector_folder, f"{current_folder}.bin"))
             else:
                 torch.save(weight_to_save, os.path.join(output_dir, f"mm_projector.bin"))
-        # return
-
+        return
+    
     if trainer.deepspeed:
         torch.cuda.synchronize()
         trainer.save_model(output_dir)
