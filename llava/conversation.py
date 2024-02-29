@@ -417,6 +417,17 @@ Answer the questions.""",
     sep="<|im_end|>",
 )
 
+conv_chatml_direct = Conversation(
+    system="""<|im_start|>system
+Answer the questions.""",
+    roles=("<|im_start|>user\n", "<|im_start|>assistant\n"),
+    version="mpt",
+    messages=(),
+    offset=0,
+    sep_style=SeparatorStyle.MPT,
+    sep="<|im_end|>",
+)
+
 default_conversation = conv_vicuna_v0
 conv_templates = {
     "default": conv_vicuna_v0,
@@ -430,6 +441,7 @@ conv_templates = {
     "mistral_direct": conv_mistral_direct,
     "plain": conv_llava_plain,
     "v0_plain": conv_llava_plain,
+    "chatml_direct": conv_chatml_direct,
     "llava_v0": conv_llava_v0,
     "llava_v0_mmtag": conv_llava_v0_mmtag,
     "llava_v1": conv_llava_v1,
