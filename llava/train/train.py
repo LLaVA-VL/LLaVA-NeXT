@@ -1004,13 +1004,6 @@ def train():
                     p.requires_grad = False
 
             model.config.unfreeze_mm_vision_tower = model_args.unfreeze_mm_vision_tower
-            model.config.unfreeze_language_model = model_args.unfreeze_language_model
-
-            if model_args.unfreeze_language_model:
-                model.requires_grad_(True)
-            else:
-                model.requires_grad_(False)
-
             if model_args.unfreeze_mm_vision_tower:
                 vision_tower.requires_grad_(True)
             else:
