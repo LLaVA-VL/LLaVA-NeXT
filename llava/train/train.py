@@ -1036,16 +1036,10 @@ def train():
 
         total_params = (
             sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.parameters())
-            # + sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in vision_tower.parameters())
-            # + sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.get_model().mm_projector.parameters())
-            # + sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.get_model().vision_resampler.parameters())
         )
         trainable_params = (
             sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.parameters() if p.requires_grad)
-            # + sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in vision_tower.parameters() if p.requires_grad)
         )
-        # total_params_b = total_params * torch.finfo(torch.float32).bits / 8
-        # trainable_params_b = trainable_params * torch.finfo(torch.float32).bits / 8
         rank0_print(f"Total parameters: ~{total_params/1e6:.2f} MB)")
         rank0_print(f"Trainable parameters: ~{trainable_params/1e6:.2f} MB)")
         if training_args.bits in [4, 8]:
