@@ -378,7 +378,7 @@ def create_model(
                 checkpoint_path = download_pretrained(pretrained_cfg, cache_dir=cache_dir)
             elif os.path.exists(pretrained):
                 checkpoint_path = pretrained
-    
+
             if checkpoint_path:
                 logging.info(f"Loading pretrained {model_name} weights ({pretrained}).")
                 load_checkpoint(model, checkpoint_path, model_key="model|module|state_dict", strict=False)
