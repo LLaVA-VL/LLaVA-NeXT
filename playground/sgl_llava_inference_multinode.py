@@ -44,7 +44,7 @@ def main(args):
 
     base_dir = os.path.dirname(args.result_file)
     print(f"Create base directory {base_dir}")
-    progress_file = f"{base_dir}/progress_{dist_rank}.json"
+    progress_file = f"{base_dir}/progress_{dist_rank}_or_{dist_size}.json"
     progress_data = load_progress(progress_file) or {"last_index": -1, "last_chunk": -1, "results": [], "annotations": []}
 
     image_files = find_images_in_subfolders(args.image_folder)
@@ -68,7 +68,7 @@ def main(args):
         batch_end = min(batch_start + batch_size, len(shard_files))
         batch_arguments = [{"image_file": image_file} for image_file in shard_files[batch_start:batch_end]]
         # Run batch
-        batch_states = image_description.run_batch(batch_arguments, temperature=0, num_threads=args.parallel, progress_bar=False)  # Assuming tqdm is used for the outer loop, disable inner progress bar
+        batch_states = image_description.run_batch(batch_arguments, temperature=0, num_threads=args.parallel, progress_bar=True)  # Assuming tqdm is used for the outer loop, disable inner progress bar
 
         # Process and save batch results
         for i, ret in enumerate(batch_states):
@@ -94,7 +94,7 @@ def main(args):
         "results": progress_data["annotations"],
     }
 
-    result_file = args.result_file.replace(".json", f"_shard_{dist_rank}.json")
+    result_file = args.result_file.replace(".json", f"_shard_{dist_rank}_or_{dist_size}.json")
     print(f"Write output to {result_file}")
     with open(result_file, "w") as fout:
         json.dump(value, fout, indent=2)
