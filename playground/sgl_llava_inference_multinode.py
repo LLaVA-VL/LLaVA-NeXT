@@ -42,7 +42,9 @@ def main(args):
     dist_rank = args.dist
     dist_size = args.total_dist
 
-    progress_file = f"./progress_{dist_rank}.json"
+    base_dir = os.path.dirname(args.result_file)
+    print(f"Create base directory {base_dir}")
+    progress_file = f"{base_dir}/progress_{dist_rank}.json"
     progress_data = load_progress(progress_file) or {"last_index": -1, "last_chunk": -1, "results": [], "annotations": []}
 
     image_files = find_images_in_subfolders(args.image_folder)
@@ -61,7 +63,7 @@ def main(args):
     sgl.set_default_backend(backend)
 
     tic = time.time()
-    batch_size = 16
+    batch_size = args.parallel
     for batch_start in tqdm.tqdm(range(0, len(shard_files), batch_size)):
         batch_end = min(batch_start + batch_size, len(shard_files))
         batch_arguments = [{"image_file": image_file} for image_file in shard_files[batch_start:batch_end]]
