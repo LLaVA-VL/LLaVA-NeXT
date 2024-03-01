@@ -43,7 +43,7 @@ class LlavaMixtralForCausalLM(MixtralForCausalLM, LlavaMetaForCausalLM):
 
     def __init__(self, config):
         super(MixtralForCausalLM, self).__init__(config)
-        
+
         config.model_type = "llava_mixtral"
         config.rope_scaling = None
         self.model = LlavaMixtralModel(config)

@@ -30,12 +30,12 @@ class OpenCLIPVisionTower(nn.Module):
         rank0_print(f"Loading OpenCLIP model: {self.model_name}")
         rank0_print(f"Pretrained: {self.pretrained}")
         vision_tower, _, image_processor = open_clip.create_model_and_transforms(model_name=self.model_name, pretrained=self.pretrained, precision="bf16", device="cuda")
-        
+
         resize_transform = [t for t in image_processor.transforms if isinstance(t, torchvision.transforms.Resize)][0]
         normalize_transform = [t for t in image_processor.transforms if isinstance(t, torchvision.transforms.Normalize)][0]
-        self.resize_transform_size = resize_transform.size # 224 or 384
-        self.patch_size = vision_tower.visual.conv1.kernel_size[0] # 14 or 16
-        
+        self.resize_transform_size = resize_transform.size  # 224 or 384
+        self.patch_size = vision_tower.visual.conv1.kernel_size[0]  # 14 or 16
+
         self.image_processor = CLIPImageProcessor.from_pretrained(
             "openai/clip-vit-large-patch14",
             crop_size=resize_transform.size,
@@ -46,7 +46,7 @@ class OpenCLIPVisionTower(nn.Module):
         rank0_print(f"Loaded image processor: {self.image_processor}")
         self.vision_tower = vision_tower.visual
         self.vision_tower.requires_grad_(False)
-        
+
         self.is_loaded = True
 
     def feature_select(self, image_forward_outs):

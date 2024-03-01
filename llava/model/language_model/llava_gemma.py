@@ -43,7 +43,7 @@ class LlavaGemmaForCausalLM(LlavaMetaForCausalLM, GemmaForCausalLM):
 
     def __init__(self, config):
         super(GemmaForCausalLM, self).__init__(config)
-        
+
         config.model_type = "llava_gemma"
         config.rope_scaling = None
         self.generation_config = GenerationConfig(

@@ -259,7 +259,7 @@ def safe_save_model_for_hf_trainer(trainer: transformers.Trainer, output_dir: st
             else:
                 torch.save(weight_to_save, os.path.join(output_dir, f"mm_projector.bin"))
         return
-    
+
     if trainer.deepspeed:
         torch.cuda.synchronize()
         trainer.save_model(output_dir)
@@ -441,6 +441,57 @@ def preprocess_llama_2(sources, tokenizer: transformers.PreTrainedTokenizer, has
     return dict(
         input_ids=input_ids,
         labels=targets,
+    )
+
+
+def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_image: bool = False, max_len=2048, system_message: str = "You are a helpful assistant.") -> Dict:
+    roles = {"human": "<|im_start|>user", "gpt": "<|im_start|>assistant"}
+
+    im_start = tokenizer.im_start_id
+    im_end = tokenizer.im_end_id
+    nl_tokens = tokenizer("\n").input_ids
+    _system = tokenizer("system").input_ids + nl_tokens
+    _user = tokenizer("user").input_ids + nl_tokens
+    _assistant = tokenizer("assistant").input_ids + nl_tokens
+
+    # Apply prompt templates
+    input_ids, targets = [], []
+    for i, source in enumerate(sources):
+        if roles[source[0]["from"]] != roles["human"]:
+            source = source[1:]
+
+        input_id, target = [], []
+        system = [im_start] + _system + tokenizer(system_message).input_ids + [im_end] + nl_tokens
+        input_id += system
+        target += [im_start] + [IGNORE_INDEX] * (len(system) - 3) + [im_end] + nl_tokens
+        assert len(input_id) == len(target)
+        for j, sentence in enumerate(source):
+            role = roles[sentence["from"]]
+            if "<image>" in sentence["value"]:
+                assert sentence["value"].startswith("<image>")
+                _input_id = tokenizer(role).input_ids + nl_tokens + [IMAGE_TOKEN_INDEX] + nl_tokens + tokenizer(sentence["value"][6:]).input_ids + [im_end] + nl_tokens
+            else:
+                _input_id = tokenizer(role).input_ids + nl_tokens + tokenizer(sentence["value"]).input_ids + [im_end] + nl_tokens
+            input_id += _input_id
+            if role == "<|im_start|>user":
+                _target = [im_start] + [IGNORE_INDEX] * (len(_input_id) - 3) + [im_end] + nl_tokens
+            elif role == "<|im_start|>assistant":
+                _target = [im_start] + [IGNORE_INDEX] * len(tokenizer(role).input_ids) + _input_id[len(tokenizer(role).input_ids) + 1 : -2] + [im_end] + nl_tokens
+            else:
+                raise NotImplementedError
+            target += _target
+        assert len(input_id) == len(target)
+        # input_id += [tokenizer.pad_token_id] * (max_len - len(input_id))
+        # target += [IGNORE_INDEX] * (max_len - len(target))
+        input_ids.append(input_id)
+        targets.append(target)
+    input_ids = torch.tensor(input_ids, dtype=torch.int)
+    targets = torch.tensor(targets, dtype=torch.int)
+
+    return dict(
+        input_ids=input_ids,  # tensor(bs x seq_len)
+        labels=targets,  # tensor(bs x seq_len)
+        # attention_mask=input_ids.ne(tokenizer.pad_token_id), # tensor(bs x seq_len)
     )
 
 
@@ -639,7 +690,8 @@ def preprocess(sources: Sequence[str], tokenizer: transformers.PreTrainedTokeniz
     if conversation_lib.default_conversation.sep_style == conversation_lib.SeparatorStyle.LLAMA_2:
         return preprocess_llama_2(sources, tokenizer, has_image=has_image)
     if conversation_lib.default_conversation.version.startswith("v1"):
-        return preprocess_v1(sources, tokenizer, has_image=has_image)
+        return preprocess_qwen(sources, tokenizer, has_image=has_image)
+        # return preprocess_v1(sources, tokenizer, has_image=has_image)
     if conversation_lib.default_conversation.version == "mpt":
         return preprocess_mpt(sources, tokenizer, has_image=has_image)
     # add end signal and concatenate together
@@ -841,6 +893,10 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
             model = LlavaLlamaForCausalLM.from_pretrained(
                 model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
             )
+        elif "qwen" in model_args.model_name_or_path.lower():
+            model = LlavaQwenForCausalLM.from_pretrained(
+                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
+            )
         elif "gemma" in model_args.model_name_or_path.lower():
             model = LlavaGemmaForCausalLM.from_pretrained(
                 model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
@@ -857,14 +913,14 @@ def train():
 
     parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
-    
+
     if training_args.verbose_logging:
         rank0_print(f"\nInspecting experiment hyperparameters:\n")
         rank0_print(f"model_args = {vars(model_args)}\n\n")
         rank0_print(f"data_args = {vars(data_args)}\n\n")
         rank0_print(f"training_args = {vars(training_args)}\n\n")
         # rank0_print(f"evaluation_args = {vars(evaluation_args)}\n\n")
-        
+
     local_rank = training_args.local_rank
     compute_dtype = torch.float16 if training_args.fp16 else (torch.bfloat16 if training_args.bf16 else torch.float32)
 
@@ -939,6 +995,8 @@ def train():
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_args.model_name_or_path, cache_dir=training_args.cache_dir, model_max_length=training_args.model_max_length, padding_side="right")
     elif "mistral" in model_args.model_name_or_path.lower() or "mixtral" in model_args.model_name_or_path.lower() or "zephyr" in model_args.model_name_or_path.lower():
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_args.model_name_or_path, cache_dir=training_args.cache_dir, model_max_length=training_args.model_max_length, padding_side="left")
+    elif "qwen" in model_args.model_name_or_path.lower():
+        tokenizer = transformers.AutoTokenizer.from_pretrained(model_args.model_name_or_path, cache_dir=training_args.cache_dir, model_max_length=training_args.model_max_length)
     else:
         tokenizer = transformers.AutoTokenizer.from_pretrained(
             model_args.model_name_or_path,
@@ -948,6 +1006,7 @@ def train():
             use_fast=False,
         )
 
+    rank0_print(f"Prompt version: {model_args.version}")
     if model_args.version == "v0":
         if tokenizer.pad_token is None:
             smart_tokenizer_and_embedding_resize(
@@ -1036,12 +1095,8 @@ def train():
                     if "vision_tower" not in name and "mm_projector" not in name and "vision_resampler" not in name:
                         param.requires_grad_(True)
 
-        total_params = (
-            sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.parameters())
-        )
-        trainable_params = (
-            sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.parameters() if p.requires_grad)
-        )
+        total_params = sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.parameters())
+        trainable_params = sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.parameters() if p.requires_grad)
         rank0_print(f"Total parameters: ~{total_params/1e6:.2f} MB)")
         rank0_print(f"Trainable parameters: ~{trainable_params/1e6:.2f} MB)")
         if training_args.bits in [4, 8]:

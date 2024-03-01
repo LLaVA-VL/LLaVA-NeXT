@@ -2,7 +2,8 @@ import json
 import subprocess
 
 from llava.train.llava_trainer import LLaVATrainer
-    
+
+
 class LLaVAEvalTrainer(LLaVATrainer):
     def evaluate(self, evaluate_args):
         cmd = f"accelerate launch --num_processes {evaluate_args.eval_num_processes} -m lmms_eval \
@@ -41,12 +42,13 @@ class LLaVAEvalTrainer(LLaVATrainer):
         tasks_list = evaluate_args.task_names.split(",")
         for task in tasks_list:
             task_results = lmms_eval_results["results"][task]
-            for k,v in task_results.items():
+            for k, v in task_results.items():
                 if k != "alias" and "stderr" not in k:
                     metric = k.split(",")[0]
                     result_dict[f"{task}_{metric}"] = v
         return result_dict
-    '''def evaluate(self, evaluate_args):
+
+    """def evaluate(self, evaluate_args):
         initialize_tasks()
         tasks_list = evaluate_args.task_names.split(",")
         result_dict = {}
@@ -71,4 +73,4 @@ class LLaVAEvalTrainer(LLaVATrainer):
                     metric = k.split(",")[0]
                     result_dict[f"{task}_{metric}"] = v
             
-        return result_dict'''
+        return result_dict"""
