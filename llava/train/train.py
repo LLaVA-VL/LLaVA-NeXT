@@ -28,7 +28,7 @@ import torch
 import transformers
 import tokenizers
 
-from llava.constants import IGNORE_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
+from llava.constants import IGNORE_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN,IMAGE_TOKEN_INDEX
 from torch.utils.data import Dataset
 from llava.train.llava_trainer import LLaVATrainer
 
@@ -444,11 +444,40 @@ def preprocess_llama_2(sources, tokenizer: transformers.PreTrainedTokenizer, has
     )
 
 
+def preprocess_qwen1_5(
+    messages,
+    tokenizer: transformers.PreTrainedTokenizer,
+    max_len: int,
+) -> Dict:
+    """Preprocesses the data for supervised fine-tuning."""
+
+    texts = []
+    for i, msg in enumerate(messages):
+        texts.append(
+            tokenizer.apply_chat_template(
+                msg,
+                tokenize=True,
+                add_generation_prompt=False,
+                padding=False,
+                max_length=max_len,
+                truncation=False,
+            )
+        )
+        
+    input_ids = torch.tensor(texts, dtype=torch.int)
+    target_ids = input_ids.clone()
+    target_ids[target_ids == tokenizer.pad_token_id] = IGNORE_INDEX
+    attention_mask = input_ids.ne(tokenizer.pad_token_id)
+
+    return dict(
+        input_ids=input_ids, target_ids=target_ids, attention_mask=attention_mask
+    )
+
+
 def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_image: bool = False, max_len=2048, system_message: str = "You are a helpful assistant.") -> Dict:
     roles = {"human": "<|im_start|>user", "gpt": "<|im_start|>assistant"}
 
-    im_start = tokenizer.im_start_id
-    im_end = tokenizer.im_end_id
+    im_start,im_end=tokenizer.additional_special_tokens_ids
     nl_tokens = tokenizer("\n").input_ids
     _system = tokenizer("system").input_ids + nl_tokens
     _user = tokenizer("user").input_ids + nl_tokens
