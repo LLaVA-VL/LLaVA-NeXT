@@ -879,7 +879,7 @@ class DataCollatorForSupervisedDataset(object):
         labels = self.pad_sequence(labels, batch_first=True, padding_value=IGNORE_INDEX)
         batch = dict(
             input_ids=input_ids,
-            labels=labels,
+            labels=labels.long() if labels.dtype == torch.int32 else labels,
             attention_mask=input_ids.ne(self.tokenizer.pad_token_id),
         )
 
@@ -918,9 +918,6 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
             )
         elif "vicuna" in model_args.model_name_or_path.lower() or "llama" in model_args.model_name_or_path.lower():
-            # model = LlavaLlamaForCausalLM.from_pretrained(
-            #     model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
-            # )
             model = LlavaLlamaForCausalLM.from_pretrained(
                 model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
             )
@@ -1027,7 +1024,7 @@ def train():
     elif "mistral" in model_args.model_name_or_path.lower() or "mixtral" in model_args.model_name_or_path.lower() or "zephyr" in model_args.model_name_or_path.lower():
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_args.model_name_or_path, cache_dir=training_args.cache_dir, model_max_length=training_args.model_max_length, padding_side="left")
     elif "qwen" in model_args.model_name_or_path.lower():
-        tokenizer = transformers.AutoTokenizer.from_pretrained(model_args.model_name_or_path, cache_dir=training_args.cache_dir, model_max_length=training_args.model_max_length)
+        tokenizer = transformers.AutoTokenizer.from_pretrained(model_args.model_name_or_path, cache_dir=training_args.cache_dir, model_max_length=training_args.model_max_length, padding_side="right")
     else:
         tokenizer = transformers.AutoTokenizer.from_pretrained(
             model_args.model_name_or_path,
@@ -1048,7 +1045,8 @@ def train():
     elif model_args.version == "v0.5":
         tokenizer.pad_token = tokenizer.unk_token
     else:
-        tokenizer.pad_token = tokenizer.unk_token
+        if tokenizer.unk_token is not None:
+            tokenizer.pad_token = tokenizer.unk_token
         if model_args.version in conversation_lib.conv_templates:
             conversation_lib.default_conversation = conversation_lib.conv_templates[model_args.version]
         else:
