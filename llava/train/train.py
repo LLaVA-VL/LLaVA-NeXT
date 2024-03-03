@@ -498,6 +498,7 @@ def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_im
             role = roles[sentence["from"]]
             if "<image>" in sentence["value"]:
                 assert sentence["value"].startswith("<image>")
+                
                 _input_id = tokenizer(role).input_ids + nl_tokens + [IMAGE_TOKEN_INDEX] + nl_tokens + tokenizer(sentence["value"][6:]).input_ids + [im_end] + nl_tokens
             else:
                 _input_id = tokenizer(role).input_ids + nl_tokens + tokenizer(sentence["value"]).input_ids + [im_end] + nl_tokens
@@ -914,7 +915,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
             model = LlavaMistralForCausalLM.from_pretrained(
                 model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
             )
-        elif "vicuna" in model_args.model_name_or_path.lower() or "llama" in model_args.model_name_or_path.lower() or "yi" in model_args.model_name_or_path.lower() or "nous-hermes" in model_args.model_name_or_path.lower():
+        elif "vicuna" in model_args.model_name_or_path.lower() or "llama" in model_args.model_name_or_path.lower():
             # model = LlavaLlamaForCausalLM.from_pretrained(
             #     model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation="flash_attention_2", torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
             # )
