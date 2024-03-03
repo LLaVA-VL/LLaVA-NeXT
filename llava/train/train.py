@@ -943,7 +943,7 @@ def train():
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
 
     if training_args.verbose_logging:
-        rank0_print(f"\nInspecting experiment hyperparameters:\n")
+        rank0_print(f"Inspecting experiment hyperparameters:\n")
         rank0_print(f"model_args = {vars(model_args)}\n\n")
         rank0_print(f"data_args = {vars(data_args)}\n\n")
         rank0_print(f"training_args = {vars(training_args)}\n\n")
