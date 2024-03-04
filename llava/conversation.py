@@ -330,6 +330,17 @@ A conversation between a user and an LLM-based AI assistant. The assistant gives
     sep="<|im_end|>",
 )
 
+conv_qwen = Conversation(
+    system="""<|im_start|>system
+You are a helpful assistant.""",
+    roles=("<|im_start|>user\n", "<|im_start|>assistant\n"),
+    version="qwen",
+    messages=(),
+    offset=0,
+    sep_style=SeparatorStyle.MPT,
+    sep="<|im_end|>",
+)
+
 conv_llava_plain = Conversation(
     system="",
     roles=("", ""),
@@ -451,6 +462,7 @@ conv_templates = {
     "llava_llama_2_mmtag": conv_llava_llama_2_mmtag,
     "llava_mistral_instruct": conv_mistral_instruct,
     "mpt": conv_mpt,
+    "qwen_1_5":conv_qwen,
 }
 
 
