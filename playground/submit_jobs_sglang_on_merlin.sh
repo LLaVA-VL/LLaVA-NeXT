@@ -10,9 +10,23 @@ conda init bash;
 
 source ~/.bashrc;
 
-bash /mnt/bn/vl-research-cn-lf/workspace/projects/LLaVA_Next/playground/submit_jobs_sglang.sh &
+#!/bin/bash
+export AZCOPY_CONCURRENCY_VALUE="AUTO"
+export HF_HOME=/mnt/bn/vl-research-cn-lf/workspace/.cache/huggingface
+export HF_TOKEN="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"
+export HF_HUB_ENABLE_HF_TRANSFER="1"
 
-# Wait for a certain time, e.g., 10 seconds
-sleep 600;
-echo "Web service initialized";
-python /mnt/bn/vl-research-cn-lf/workspace/projects/LLaVA_Next/playground/sgl_llava_inference_multinode.py --image_folder=/mnt/bn/vl-research-cn-lf/data/llava_data/blip_558k/images --dist=0 --total_dist=8 --parallel=32 --port=30000
+cd /mnt/bn/vl-research-cn-lf/workspace/projects/sglang
+/home/tiger/miniconda3/bin/python3 -m pip install --upgrade pip
+/home/tiger/miniconda3/bin/python3 -m pip install -e "python[all]"
+
+/home/tiger/miniconda3/bin/python3 -m pip install git+https://github.com/Luodian/vllm.git
+/home/tiger/miniconda3/bin/python3 -m pip install hf_transfer
+
+nvidia-smi
+# python3 -m torch.utils.collect_env
+
+which python3
+
+cd /mnt/bn/vl-research-cn-lf/workspace/projects/sglang
+/home/tiger/miniconda3/bin/python3 -m sglang.launch_server --model-path liuhaotian/llava-v1.6-34b --tokenizer-path liuhaotian/llava-v1.6-34b-tokenizer --port=30000 --tp-size=8
