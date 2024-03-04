@@ -7,7 +7,8 @@ export HF_HUB_ENABLE_HF_TRANSFER="1"
 cd /mnt/bn/vl-research-cn-lf/workspace/projects/sglang
 /home/tiger/miniconda3/bin/python3 -m pip install --upgrade pip
 /home/tiger/miniconda3/bin/python3 -m pip install -e "python[all]"
-/home/tiger/miniconda3/bin/python3 -m pip install vllm==0.3.1
+
+/home/tiger/miniconda3/bin/python3 -m pip install --no-deps git+https://github.com/Luodian/vllm.git
 /home/tiger/miniconda3/bin/python3 -m pip install hf_transfer
 
 nvidia-smi
