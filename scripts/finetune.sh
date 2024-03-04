@@ -90,6 +90,6 @@ deepspeed --master_port 26000 \
     --tf32 True \
     --model_max_length 2048 \
     --gradient_checkpointing True \
-    --dataloader_num_workers 4 \
+    --dataloader_num_workers 16 \
     --lazy_preprocess True \
     --report_to wandb
