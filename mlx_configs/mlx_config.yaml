@@ -8,7 +8,7 @@ arnold:
         export http_proxy=http://sys-proxy-rd-relay.byted.org:8118;
         export https_proxy=http://sys-proxy-rd-relay.byted.org:8118;
 
-        export HF_HOME=/mnt/bn/vl-research-cn-lf/.cache/huggingface;
+        export HF_HOME=/mnt/bn/vl-research-cn-lq/.cache/huggingface;
         export HF_TOKEN="HF_Token";
         export HF_HUB_ENABLE_HF_TRANSFER="1";
 
@@ -19,7 +19,7 @@ arnold:
 
         pwd;
 
-        bash ./cn_scripts/internal_test_eval_finetune_llava1.6mix_7b_v0.2_unfreeze.sh;
+        bash ./scripts/cn_lq/Baseline_CLIP_ViT_L_vicuna1.5_7b_blip558k_finetune_freezeVIS.sh
     image:
         url: hub.byted.org/base/lab.pytorch2:4f035aea6ac458a0f71d88e0976de585 # 镜像url，可从MLX镜像中心或ICM上粘贴获取
         arnoldtaskid: null
