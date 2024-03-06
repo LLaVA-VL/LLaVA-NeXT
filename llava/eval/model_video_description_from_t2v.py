@@ -17,7 +17,7 @@ import numpy as np
 
 import pandas as pd
 
-
+import math
 
 
 
@@ -47,7 +47,6 @@ def parse_args():
     parser.add_argument("--conv-mode", type=str, default=None)
     parser.add_argument("--num-chunks", type=int, default=1)
     parser.add_argument("--chunk-idx", type=int, default=0)
-    parser.add_argument("--model-max-length", type=int, default=None)
     parser.add_argument("--mm_resampler_type", type=str, default="spatial_pool")
     parser.add_argument("--mm_spatial_pool_stride", type=int, default=4)
     parser.add_argument("--mm_spatial_pool_out_channels", type=int, default=1024)
@@ -102,20 +101,23 @@ def run_inference(args):
     # Initialize the model
     model_name = get_model_name_from_path(args.model_path)
     # Set model configuration parameters if they exist
-    args.model_max_length = None if args.model_max_length == 0 else args.model_max_length
     if args.overwrite == True:
         overwrite_config = {}
         overwrite_config["mm_resampler_type"] = args.mm_resampler_type
         overwrite_config["mm_spatial_pool_stride"] = args.mm_spatial_pool_stride
         overwrite_config["mm_spatial_pool_out_channels"] = args.mm_spatial_pool_out_channels
         overwrite_config["mm_spatial_pool_mode"] = args.mm_spatial_pool_mode
-        if args.model_max_length is not None:
-            overwrite_config["tokenizer_model_max_length"] = args.model_max_length
+        least_token_number = args.for_get_frames_num*(24//args.mm_spatial_pool_stride)**2
+        
+        scaling_factor = math.ceil(least_token_number/4096)
+        if scaling_factor >= 2:
+            overwrite_config["rope_scaling"] = {"factor": scaling_factor, "type": "linear"}
+            overwrite_config["max_sequence_length"] = 4096 * scaling_factor
+            overwrite_config["tokenizer_model_max_length"] = 4096 * scaling_factor
         tokenizer, model, image_processor, context_len = load_pretrained_model(args.model_path, args.model_base, model_name, load_8bit=args.load_8bit, overwrite_config=overwrite_config)
     else:
         tokenizer, model, image_processor, context_len = load_pretrained_model(args.model_path, args.model_base, model_name)
 
-    # import pdb;pdb.set_trace()
     # Load both ground truth file containing questions and answers
     with open(args.gt_file) as file:
         df = pd.read_csv(args.gt_file)

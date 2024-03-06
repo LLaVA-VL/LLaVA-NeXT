@@ -1,5 +1,5 @@
 #!/bin/bash
-ROOT_DIR="/mnt/bn/vl-research/workspace/yhzhang/llava_v1.5"
+ROOT_DIR="/mnt/bn/vl-research/workspace/yhzhang/llava-next-video"
 cd $ROOT_DIR
 
 export PYTHONWARNINGS=ignore
@@ -12,9 +12,8 @@ CONV_MODE=$2
 FRAMES=$3
 OVERWRITE=$4
 POOL_STRIDE=$5
-MODEL_MAX_LENGTH=${6:-0}
-CHUNKS=${7:-1}
-DO_CENTER_CROP=${8:-True}
+CHUNKS=${6:-1}
+DO_CENTER_CROP=${7:-True}
 
 echo "Using $CHUNKS GPUs"
 
@@ -25,14 +24,10 @@ if [ "$OVERWRITE" = False ]; then
     if [ "$MODEL_MAX_LENGTH" = 0 ]; then
         SAVE_DIR=$(basename $CKPT)_${CONV_MODE}_frames_${FRAMES}_overwrite_${OVERWRITE}
     else
-        SAVE_DIR=$(basename $CKPT)_${CONV_MODE}_frames_${FRAMES}_overwrite_${OVERWRITE}_length_${MODEL_MAX_LENGTH}
+        SAVE_DIR=$(basename $CKPT)_${CONV_MODE}_frames_${FRAMES}_overwrite_${OVERWRITE}
     fi
 else
-    if [ "$MODEL_MAX_LENGTH" = 0 ]; then
-        SAVE_DIR=$(basename $CKPT)_${CONV_MODE}_frames_${FRAMES}_stride_${POOL_STRIDE}_predefined_${PREDEFINED_CONFIGURE}
-    else
-        SAVE_DIR=$(basename $CKPT)_${CONV_MODE}_frames_${FRAMES}_stride_${POOL_STRIDE}_predefined_${PREDEFINED_CONFIGURE}_length_${MODEL_MAX_LENGTH}
-    fi
+    SAVE_DIR=$(basename $CKPT)_${CONV_MODE}_frames_${FRAMES}_stride_${POOL_STRIDE}
 fi
 
 SAVE_DIR=${SAVE_DIR}_do_center_crop_${DO_CENTER_CROP}
@@ -88,10 +83,9 @@ for IDX in $(seq 1 $CHUNKS); do
         --overwrite ${OVERWRITE} \
         --mm_spatial_pool_stride ${POOL_STRIDE:-4} \
         --for_get_frames_num $FRAMES \
-        --model-max-length ${MODEL_MAX_LENGTH:-0} \
         --load_8bit $LOAD_8BIT \
         --do_center_crop $DO_CENTER_CROP \
-        --conv-mode $CONV_MODE &
+        --conv-mode $CONV_MODE #&
 done
 
 wait
