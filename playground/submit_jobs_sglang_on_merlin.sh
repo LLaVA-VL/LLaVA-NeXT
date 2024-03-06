@@ -16,7 +16,11 @@ source ~/.bashrc;
 cd /mnt/bn/${NAS_REGION}/workspace/projects/sglang
 /home/tiger/miniconda3/bin/python3 -m pip install --upgrade pip
 /home/tiger/miniconda3/bin/python3 -m pip install -e "python[all]"
-/home/tiger/miniconda3/bin/python3 -m pip install vllm==0.3.2
+
+# installing vllm on cn machines is quite tricky since CN images filtered out certain packages. 
+cd /mnt/bn/${NAS_REGION}/workspace/projects/vllm
+/home/tiger/miniconda3/bin/python3 -m pip install -r requirements.txt
+/home/tiger/miniconda3/bin/python3 -m pip install --no-index --no-build-isolation -e .
 /home/tiger/miniconda3/bin/python3 -m pip install hf_transfer
 
 nvidia-smi
@@ -29,4 +33,4 @@ cd /mnt/bn/${NAS_REGION}/workspace/projects/sglang
 
 sleep 480;
 echo "Web service initialized";
-python /mnt/bn/${NAS_REGION}/workspace/projects/LLaVA_Next/playground/sgl_llava_inference_multinode.py --image_folder=/mnt/bn/${NAS_REGION}/data/llava_data/blip_558k/images --dist=${1} --total_dist=24 --parallel=32 --port=30000
+/home/tiger/miniconda3/bin/python3 /mnt/bn/${NAS_REGION}/workspace/projects/LLaVA_Next/playground/sgl_llava_inference_multinode.py --image_folder=/mnt/bn/${NAS_REGION}/data/llava_data/blip_558k/images --dist=${1} --total_dist=24 --parallel=32 --port=30000 --result_file=/mnt/bn/vl-research-cn-lf/workspace/projects/LLaVA_Next/playground/cc3m_llava34b_cap/cc3m_result_file.json
