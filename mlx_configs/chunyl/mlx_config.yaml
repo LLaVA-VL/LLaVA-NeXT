@@ -3,6 +3,7 @@ arnold:
     clusterid: 22 # arnold集群id，可以从arnold集群页面的网页链接中获取, https://arnold.byted.org/v2/cluster
     usergroupid: 609 # arnold用户组id, 可以从arnold用户组界面获取, https://arnold.byted.org/v2/group
     entrypoint: |- # 训练入口命令，例如python3 /path/to/your/python.py
+        nvidia-smi;
         pwd;
     image:
         url: hub.byted.org/base/lab.pytorch2:4f035aea6ac458a0f71d88e0976de585 # 镜像url，可从MLX镜像中心或ICM上粘贴获取
