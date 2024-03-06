@@ -138,6 +138,7 @@ class TrainingArguments(transformers.TrainingArguments):
     auto_find_batch_size: bool = field(default=False)
     gradient_checkpointing: bool = field(default=True)
     verbose_logging: bool = field(default=False)
+    enable_ring_attention: bool = field(default=False, metadata={"help": "Enable Ring Attention."})
 
 
 # @dataclass
