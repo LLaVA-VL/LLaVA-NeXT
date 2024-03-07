@@ -12,7 +12,6 @@ dist
 
 # Data
 !**/alpaca-data-conversation.json
-
 # Editor
 .idea
 *.swp
@@ -27,6 +26,7 @@ checkpoints
 project_checkpoints
 debug_checkpoints
 playground/data
+playground/cc3m_llava34b_cap
 ckpts*
 
 .ipynb_checkpoints
@@ -39,3 +39,8 @@ chunyl_scripts
 # Demo
 serve_images/
 notebooks/
+playground/cc3m_llava34b_cap/progress_0_or_24.json
+playground/cc3m_llava34b_cap/progress_1_or_24.json
+playground/cc3m_llava34b_cap/progress_3_or_24.json
+playground/cc3m_llava34b_cap/progress_5_or_24.json
+playground/cc3m_llava34b_cap/progress_6_or_24.json

@@ -2,7 +2,7 @@ import os
 import torch
 import torch.nn as nn
 
-from torch.utils.data import Dataset, Sampler
+from torch.utils.data import Dataset, Sampler, DataLoader
 
 from transformers import Trainer
 from transformers.trainer import (
@@ -12,8 +12,13 @@ from transformers.trainer import (
     ALL_LAYERNORM_LAYERS,
     logger,
 )
+from transformers.trainer_utils import seed_worker
+from transformers.trainer import is_datasets_available
 from transformers.trainer_pt_utils import get_length_grouped_indices as get_length_grouped_indices_hf
 from typing import List, Optional
+
+if is_datasets_available():
+    import datasets
 
 
 def maybe_zero_3(param, ignore_status=False, name=None):
@@ -272,6 +277,47 @@ class LLaVATrainer(Trainer):
             )
         else:
             return super()._get_train_sampler()
+
+    def get_train_dataloader(self) -> DataLoader:
+        """
+        Returns the training [`~torch.utils.data.DataLoader`].
+
+        Will use no sampler if `train_dataset` does not implement `__len__`, a random sampler (adapted to distributed
+        training if necessary) otherwise.
+
+        Subclass and override this method if you want to inject some custom behavior.
+        """
+        if self.train_dataset is None:
+            raise ValueError("Trainer: training requires a train_dataset.")
+
+        train_dataset = self.train_dataset
+        data_collator = self.data_collator
+        if is_datasets_available() and isinstance(train_dataset, datasets.Dataset):
+            train_dataset = self._remove_unused_columns(train_dataset, description="training")
+        else:
+            data_collator = self._get_collator_with_removed_columns(data_collator, description="training")
+
+        dataloader_params = {
+            "batch_size": self._train_batch_size,
+            "collate_fn": data_collator,
+            "num_workers": self.args.dataloader_num_workers,
+            "pin_memory": self.args.dataloader_pin_memory,
+            "persistent_workers": self.args.dataloader_persistent_workers,
+        }
+
+        if not isinstance(train_dataset, torch.utils.data.IterableDataset):
+            dataloader_params["sampler"] = self._get_train_sampler()
+            dataloader_params["drop_last"] = self.args.dataloader_drop_last
+            dataloader_params["worker_init_fn"] = seed_worker
+            dataloader_params["prefetch_factor"] = self.args.dataloader_num_workers * 2 if self.args.dataloader_num_workers != 0 else None
+
+        # For Ring Attention, we may need to keep each rank to read the same input_ids, and disable data parallel in this case.
+        if self.args.enable_ring_attention:
+            dataloader = self.accelerator.prepare(DataLoader(train_dataset, **dataloader_params))
+        else:
+            dataloader = DataLoader(train_dataset, **dataloader_params)
+
+        return dataloader
 
     def create_optimizer(self):
         """
