@@ -1155,6 +1155,10 @@ def train():
 
     data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args)
     trainer = LLaVATrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
+    dataloader = trainer.get_train_dataloader()
+    from tqdm import tqdm
+    for i, data in enumerate(tqdm(dataloader)):
+        continue
 
     if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")):
         trainer.train(resume_from_checkpoint=True)
