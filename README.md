@@ -18,19 +18,6 @@ pip install --upgrade pip  # enable PEP 660 support
 pip install -e .
 ```
 
-3. Install additional packages for training cases
-```
-pip install -e ".[train]"
-pip install flash-attn --no-build-isolation
-```
-
-### Upgrade to latest code base
-
-```Shell
-git pull
-pip install -e .
-```
-
 ## Quick Start With HuggingFace
 
 1. Example model: liuhaotian/llava-v1.6-vicuna-7b
