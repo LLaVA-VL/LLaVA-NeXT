@@ -118,7 +118,7 @@ class TrainingArguments(transformers.TrainingArguments):
     freeze_mm_vision_resampler: bool = field(default=False)
     mpt_attn_impl: Optional[str] = field(default="triton")
     model_max_length: int = field(
-        default=512,
+        default=4096,
         metadata={"help": "Maximum sequence length. Sequences will be right padded (and possibly truncated)."},
     )
     double_quant: bool = field(default=True, metadata={"help": "Compress the quantization statistics through double quantization."})
