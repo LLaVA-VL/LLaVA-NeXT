@@ -39,6 +39,7 @@ chunyl_scripts
 # Demo
 serve_images/
 notebooks/
+logs
 playground/cc3m_llava34b_cap/progress_0_or_24.json
 playground/cc3m_llava34b_cap/progress_1_or_24.json
 playground/cc3m_llava34b_cap/progress_3_or_24.json
