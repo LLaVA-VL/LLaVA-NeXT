@@ -19,6 +19,7 @@ import pandas as pd
 
 import math
 
+from transformers import AutoConfig
 
 
 def split_list(lst, n):
@@ -107,7 +108,15 @@ def run_inference(args):
         overwrite_config["mm_spatial_pool_stride"] = args.mm_spatial_pool_stride
         overwrite_config["mm_spatial_pool_out_channels"] = args.mm_spatial_pool_out_channels
         overwrite_config["mm_spatial_pool_mode"] = args.mm_spatial_pool_mode
-        least_token_number = args.for_get_frames_num*(24//args.mm_spatial_pool_stride)**2
+        overwrite_config["patchify_video_feature"] = False
+
+        cfg_pretrained = AutoConfig.from_pretrained(args.model_path)
+
+        if "224" in cfg_pretrained.mm_vision_tower:
+            # suppose the length of text tokens is around 1000, from bo's report
+            least_token_number = args.for_get_frames_num*(16//args.mm_spatial_pool_stride)**2 + 1000
+        else:
+            least_token_number = args.for_get_frames_num*(24//args.mm_spatial_pool_stride)**2 + 1000
         
         scaling_factor = math.ceil(least_token_number/4096)
         if scaling_factor >= 2:
