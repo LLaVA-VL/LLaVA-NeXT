@@ -849,6 +849,7 @@ class LazySupervisedDataset(Dataset):
         # image exist in the data
         if "image" in self.list_data_dict[i]:
             data_dict["image"] = image
+            # data_dict["image_file"] = self.list_data_dict[i]["image"]
         elif self.data_args.is_multimodal:
             # image does not exist in the data, but the model is multimodal
             crop_size = self.data_args.image_processor.crop_size
@@ -1156,9 +1157,10 @@ def train():
     data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args)
     trainer = LLaVATrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
     dataloader = trainer.get_train_dataloader()
-    from tqdm import tqdm
-    for i, data in enumerate(tqdm(dataloader)):
-        continue
+    # Debug code, don't include
+    # from tqdm import tqdm
+    # for i, data in enumerate(tqdm(dataloader)):
+    #    continue
 
     if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")):
         trainer.train(resume_from_checkpoint=True)
