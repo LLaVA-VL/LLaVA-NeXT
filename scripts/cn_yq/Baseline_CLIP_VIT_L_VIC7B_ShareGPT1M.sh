@@ -104,7 +104,7 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --gradient_checkpointing True \
     --dataloader_num_workers 16 \
     --lazy_preprocess True \
-    #--report_to wandb
+    --report_to wandb
 
 
 alias azcopy="/mnt/bn/vl-research-boli01-cn/software/azcopy"
