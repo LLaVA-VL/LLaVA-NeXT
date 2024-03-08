@@ -98,7 +98,8 @@ python3 -m pip install transformers --upgrade
 PROMPT_VERSION="qwen_1_5"
 MID_RUN_NAME="dist1_llavanext-${LLM_VERSION_CLEAN}-mlp2x_gelu-blip558k_pretrain-finetune_ShareGPT1M_direct32k"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
-torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
+#torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
+torchrun --nproc_per_node=1 --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
     llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
     --model_name_or_path $LLM_VERSION \
@@ -137,9 +138,9 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --gradient_checkpointing True \
     --dataloader_num_workers 16 \
     --lazy_preprocess True \
-    --report_to wandb
+    #--report_to wandb
 
-alias azcopy="/mnt/bn/${NAS_REGION}/software/azcopy"
+#alias azcopy="/mnt/bn/${NAS_REGION}/software/azcopy"
 
 function azcopy_upload() {
     # Assuming the first argument is SRC and the second is TGT
@@ -147,20 +148,20 @@ function azcopy_upload() {
     local TGT="$2"
     local SAS_TOKEN="?sv=2023-01-03&st=2023-12-23T13%3A48%3A31Z&se=2024-06-30T13%3A48%3A00Z&sr=c&sp=racwdxltf&sig=K77ocq6Ram1uYMenQJZJl%2BBayH%2Bg4e10Raci6wzQY3M%3D"
     # Executing the azcopy command with the provided SRC and TGT
-    azcopy copy "$SRC" "https://chunyldev.blob.core.windows.net/output/$TGT$SAS_TOKEN" --recursive --overwrite=ifSourceNewer
+    /mnt/bn/${NAS_REGION}/software/azcopy copy "$SRC" "https://chunyldev.blob.core.windows.net/output/$TGT$SAS_TOKEN" --recursive --overwrite=ifSourceNewer
 }
 
-azcopy_upload "./project_checkpoints/${MID_RUN_NAME}" "projects/llava_data/checkpoints/"
+#azcopy_upload "./project_checkpoints/${MID_RUN_NAME}" "projects/llava_data/checkpoints/"
 
 # Make sure the version is correct
-python3 -m pip install transformers==4.37.2
+#python3 -m pip install transformers==4.37.2
 
-accelerate launch --num_processes 8 --main_process_port 12345 -m lmms_eval \
-    --model llava \
-    --model_args pretrained="./project_checkpoints/${MID_RUN_NAME}" \
-    --tasks ai2d,chartqa,docvqa_val,coco2017_cap_val,mme,mmmu_val,textcaps_val,scienceqa_img,vizwiz_vqa_val,pope,ok_vqa\
-    --batch_size 1 \
-    --log_samples \
-    --log_samples_suffix one_stage \
-    --output_path ./logs/ \
-    --wandb_args 'project=llava_next_ShareGPT1M,job_type=eval';
+#accelerate launch --num_processes 8 --main_process_port 12345 -m lmms_eval \
+#    --model llava \
+#    --model_args pretrained="./project_checkpoints/${MID_RUN_NAME}" \
+#    --tasks ai2d,chartqa,docvqa_val,coco2017_cap_val,mme,mmmu_val,textcaps_val,scienceqa_img,vizwiz_vqa_val,pope,ok_vqa\
+#    --batch_size 1 \
+#    --log_samples \
+#    --log_samples_suffix one_stage \
+#    --output_path ./logs/ \
+#    --wandb_args 'project=llava_next_ShareGPT1M,job_type=eval';
