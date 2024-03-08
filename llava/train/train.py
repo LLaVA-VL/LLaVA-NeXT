@@ -497,8 +497,8 @@ def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_im
         assert len(input_id) == len(target)
         for j, sentence in enumerate(source):
             role = roles[sentence["from"]]
-            if "<image>" in sentence["value"]:
-                assert sentence["value"].startswith("<image>")
+            if has_image and "<image>" in sentence["value"]:
+                assert sentence["value"].startswith("<image>") , print(sentence["value"])
                 
                 _input_id = tokenizer(role).input_ids + nl_tokens + [IMAGE_TOKEN_INDEX] + nl_tokens + tokenizer(sentence["value"][6:]).input_ids + [im_end] + nl_tokens
             else:
@@ -849,6 +849,7 @@ class LazySupervisedDataset(Dataset):
         # image exist in the data
         if "image" in self.list_data_dict[i]:
             data_dict["image"] = image
+            # data_dict["image_file"] = self.list_data_dict[i]["image"]
         elif self.data_args.is_multimodal:
             # image does not exist in the data, but the model is multimodal
             crop_size = self.data_args.image_processor.crop_size
@@ -1155,6 +1156,11 @@ def train():
 
     data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args)
     trainer = LLaVATrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
+    dataloader = trainer.get_train_dataloader()
+    # Debug code, don't include
+    # from tqdm import tqdm
+    # for i, data in enumerate(tqdm(dataloader)):
+    #    continue
 
     if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")):
         trainer.train(resume_from_checkpoint=True)
