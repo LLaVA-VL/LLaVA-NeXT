@@ -63,8 +63,7 @@ python3 -m pip install transformers --upgrade
 PROMPT_VERSION="vicuna_v1"
 MID_RUN_NAME="ds_llava-${LLM_VERSION_CLEAN}-mlp2x_gelu-pretrain_blip558k_plain-finetune_ShareGPT1M"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
-#torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
-torchrun --nproc_per_node=1 --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
+torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
     llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
     --model_name_or_path $LLM_VERSION \
@@ -99,7 +98,9 @@ torchrun --nproc_per_node=1 --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOL
     --lr_scheduler_type "cosine" \
     --logging_steps 1 \
     --tf32 True \
-    --model_max_length 4096 \
+    --rope_scaling_factor 2 \
+    --rope_scaling_type "linear" \
+    --model_max_length 8192 \
     --gradient_checkpointing True \
     --dataloader_num_workers 16 \
     --lazy_preprocess True \
