@@ -311,7 +311,11 @@ class LLaVATrainer(Trainer):
             dataloader_params["worker_init_fn"] = seed_worker
             dataloader_params["prefetch_factor"] = self.args.dataloader_num_workers * 2 if self.args.dataloader_num_workers != 0 else None
 
-        dataloader = self.accelerator.prepare(DataLoader(train_dataset, **dataloader_params))
+        # For Ring Attention, we may need to keep each rank to read the same input_ids, and disable data parallel in this case.
+        if self.args.enable_ring_attention:
+            dataloader = self.accelerator.prepare(DataLoader(train_dataset, **dataloader_params))
+        else:
+            dataloader = DataLoader(train_dataset, **dataloader_params)
         return dataloader
 
     def create_optimizer(self):
