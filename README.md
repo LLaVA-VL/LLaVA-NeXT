@@ -35,4 +35,10 @@ bash scripts/eval/video_description_from_t2v.sh ${Example model} ${Prompt mode} 
 # bash scripts/eval/video_description_from_t2v.sh liuhaotian/llava-v1.6-vicuna-7b vicuna_v1 32 True 2 8 True ;
 ```
 
+## GPT Evaluation Example
 
+1. Assume you have a pred.json (model generated predictions) for model llava-v1.6-vicuna-7b at ./work_dirs/eval_video_detail_description/llava-v1.6-vicuna-7b_vicuna_v1_frames_32_stride_2
+
+```Shell
+bash /mnt/bn/vl-research/workspace/yhzhang/llava-next-video/scripts/eval/video_description_eval.sh llava-v1.6-vicuna-7b_vicuna_v1_frames_32_stride_2
+```
