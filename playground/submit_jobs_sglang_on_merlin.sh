@@ -30,6 +30,6 @@ which python3
 
 python3 -m sglang.launch_server --model-path liuhaotian/llava-v1.6-34b --tokenizer-path liuhaotian/llava-v1.6-34b-tokenizer --port=30000 --tp-size=8 &
 
-sleep 300;
+sleep 600;
 echo "Web service initialized";
 python3 /mnt/bn/${NAS_REGION}/workspace/projects/LLaVA_Next/playground/sgl_llava_inference_multinode.py --image_folder=/mnt/bn/${NAS_REGION}/data/cc3m/images --dist=${1} --total_dist=24 --parallel=16 --port=30000 --result_file=/mnt/bn/${NAS_REGION}/workspace/projects/LLaVA_Next/playground/cc3m_llava34b_cap/cc3m_result_file.json
