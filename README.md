@@ -22,9 +22,9 @@ pip install -e .
 
 2. Prompt mode: vicuna_v1
 
-3. Sampled frames: 32
+3. Sampled frames: 32 (how many frames to sample from the video)
 
-4. Spatial pooling stride: 2
+4. Spatial pooling stride: 2 (the original tokens for one frames is 24*24, if stride=2, then the tokens for one frame is 12*12)
 
 
 ```Shell
