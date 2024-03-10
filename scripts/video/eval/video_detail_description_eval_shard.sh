@@ -1,39 +1,39 @@
 #!/bin/bash
 ROOT_DIR="/mnt/bn/vl-research/workspace/yhzhang/llava-next-video"
+
+if [ ! -e $ROOT_DIR ]; then
+    echo "The root dir does not exist. Exiting the script."
+    exit 1
+fi
+
 cd $ROOT_DIR
 
 export PYTHONWARNINGS=ignore
 export TOKENIZERS_PARALLELISM=false
 
 
+# OPENAIKEY="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"
+# OPENAIKEY="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"
+OPENAIKEY="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"
 
 CKPT=$1
 CONV_MODE=$2
 FRAMES=$3
-OVERWRITE=$4
-POOL_STRIDE=$5
+POOL_STRIDE=$4
+OVERWRITE=$5
 CHUNKS=${6:-1}
-DO_CENTER_CROP=${7:-True}
 
 echo "Using $CHUNKS GPUs"
 
-LOAD_8BIT=False
-
-
 if [ "$OVERWRITE" = False ]; then
-    if [ "$MODEL_MAX_LENGTH" = 0 ]; then
-        SAVE_DIR=$(basename $CKPT)_${CONV_MODE}_frames_${FRAMES}_overwrite_${OVERWRITE}
-    else
-        SAVE_DIR=$(basename $CKPT)_${CONV_MODE}_frames_${FRAMES}_overwrite_${OVERWRITE}
-    fi
+    SAVE_DIR=$(basename $CKPT)_${CONV_MODE}_frames_${FRAMES}_stride_${POOL_STRIDE}_overwrite_${OVERWRITE}
+
 else
     SAVE_DIR=$(basename $CKPT)_${CONV_MODE}_frames_${FRAMES}_stride_${POOL_STRIDE}
 fi
 
-SAVE_DIR=${SAVE_DIR}_do_center_crop_${DO_CENTER_CROP}
 # Assuming GPULIST is a bash array containing your GPUs
 GPULIST=(0 1 2 3 4 5 6 7)
-# GPULIST=(0)
 
 # Get the number of GPUs
 NUM_GPUS=${#GPULIST[@]}
@@ -73,22 +73,26 @@ for IDX in $(seq 1 $CHUNKS); do
     # done
     
     echo "CUDA_VISIBLE_DEVICES=$CHUNK_GPUS_STR"
-    CUDA_VISIBLE_DEVICES=$CHUNK_GPUS_STR python3 llava/eval/model_video_description_from_t2v.py \
+    CUDA_VISIBLE_DEVICES=$CHUNK_GPUS_STR python3 llava/eval/model_video_detail_description.py \
         --model-path $CKPT \
-        --gt_file /mnt/bn/vl-research-1t/tuyen/webvid_hdvg_movie_pond5_for_captioning_evaluation/webvid_hdvg_movie_pond5_for_captioning_evaluation.processed.csv \
-        --output_dir ./work_dirs/eval_video_description_from_t2v/$SAVE_DIR \
+        --video_dir ./data/llava_video/video-chatgpt/evaluation/Test_Videos/ \
+        --output_dir ./work_dirs/eval_video_detail_description/$SAVE_DIR \
         --output_name pred \
         --num-chunks $CHUNKS \
         --chunk-idx $(($IDX - 1)) \
         --overwrite ${OVERWRITE} \
         --mm_spatial_pool_stride ${POOL_STRIDE:-4} \
         --for_get_frames_num $FRAMES \
-        --load_8bit $LOAD_8BIT \
-        --do_center_crop $DO_CENTER_CROP \
-        --conv-mode $CONV_MODE #&
+        --conv-mode $CONV_MODE &
 done
 
 wait
 
-cat ${ROOT_DIR}/work_dirs/eval_video_description_from_t2v/$SAVE_DIR/${CHUNKS}* > ${ROOT_DIR}/work_dirs/eval_video_description_from_t2v/$SAVE_DIR/pred.json
+python3 llava/eval/evaluate_benchmark_video_detail_description.py \
+    --pred_path ./work_dirs/eval_video_detail_description/$SAVE_DIR \
+    --output_dir ./work_dirs/eval_video_detail_description/$SAVE_DIR/detail_results \
+    --output_json ./work_dirs/eval_video_detail_description/$SAVE_DIR/detail_results.json \
+    --num_chunks $CHUNKS \
+    --num_tasks 16 \
+    --api_key $OPENAIKEY \
 

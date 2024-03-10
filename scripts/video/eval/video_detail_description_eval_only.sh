@@ -1,5 +1,11 @@
 #!/bin/bash
-ROOT_DIR="/mnt/bn/vl-research/workspace/yhzhang/llava-next-video"
+ROOT_DIR="root to LLaVA-NeXT-Video"
+
+if [ ! -e $ROOT_DIR ]; then
+    echo "The root dir does not exist. Exiting the script."
+    exit 1
+fi
+
 cd $ROOT_DIR
 
 export PYTHONWARNINGS=ignore

@@ -1,42 +1,92 @@
-# LLaVA-NeXT: A Strong Zero-shot Video Understanding Model 
+
+# LLaVA-NeXT: A Strong Zero-shot Video Understanding Model
+
+## Contents
+- [Install](#install)
+- [Demo](#demo)
+- [Evaluation](#evaluation)
 
 ## Install
 
-1. Clone this repository and navigate to LLaVA folder
+1. **Clone this repository and navigate to the LLaVA folder:**
 ```bash
 git clone https://code.byted.org/ic-research/llava-next-video.git
 cd llava-next-video
 ```
 
-2. Install Package
-```Shell
+2. **Install the package:**
+```bash
 conda create -n llava python=3.10 -y
 conda activate llava
-pip install --upgrade pip  # enable PEP 660 support
+pip install --upgrade pip  # Enable PEP 660 support.
 pip install -e .
 ```
 
-## Quick Start With HuggingFace
+## Demo
 
-1. Example model: liuhaotian/llava-v1.6-vicuna-7b
+1. **Example model:** `liuhaotian/llava-v1.6-vicuna-7b`
 
-2. Prompt mode: vicuna_v1
+2. **Prompt mode:** `vicuna_v1` (use `mistral_direct` for `liuhaotian/llava-v1.6-34b`)
 
-3. Sampled frames: 32 (how many frames to sample from the video)
+3. **Sampled frames:** `32` (Defines how many frames to sample from the video.)
 
-4. Spatial pooling stride: 2 (the original tokens for one frames is 24*24, if stride=2, then the tokens for one frame is 12*12)
+4. **Spatial pooling stride:** `2` (With original tokens for one frame at 24x24, if stride=2, then the tokens for one frame are 12x12.)
 
+5. **Local video path:** `./data/llava_video/video-chatgpt/evaluation/Test_Videos/v_Lf_7RurLgp0.mp4`
 
-```Shell
-bash scripts/eval/video_description_from_t2v.sh ${Example model} ${Prompt mode} ${Sampled frames} True ${Spatial pooling stride} 8 True ;
-
-# bash scripts/eval/video_description_from_t2v.sh liuhaotian/llava-v1.6-vicuna-7b vicuna_v1 32 True 2 8 True ;
+To run a demo, execute:
+```bash
+bash scripts/video/demo/video_demo.sh ${Example model} ${Prompt mode} ${Sampled frames} ${Spatial pooling stride} True ${Video path at local}
+```
+Example:
+```bash
+bash scripts/video/demo/video_demo.sh liuhaotian/llava-v1.6-vicuna-7b vicuna_v1 32 2 True ./data/llava_video/video-chatgpt/evaluation/Test_Videos/v_Lf_7RurLgp0.mp4
 ```
 
-## GPT Evaluation Example
+## Evaluation
 
-1. Assume you have a pred.json (model generated predictions) for model llava-v1.6-vicuna-7b at ./work_dirs/eval_video_detail_description/llava-v1.6-vicuna-7b_vicuna_v1_frames_32_stride_2
+### Preparation
 
-```Shell
-bash /mnt/bn/vl-research/workspace/yhzhang/llava-next-video/scripts/eval/video_description_eval.sh llava-v1.6-vicuna-7b_vicuna_v1_frames_32_stride_2
+Please download the evaluation data and its metadata from the following links:
+
+1. **video-chatgpt:** [here](https://github.com/mbzuai-oryx/Video-ChatGPT/blob/main/quantitative_evaluation/README.md#video-based-generative-performance-benchmarking).
+2. **video_detail_description:** [here](https://mbzuaiac-my.sharepoint.com/personal/hanoona_bangalath_mbzuai_ac_ae/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fhanoona%5Fbangalath%5Fmbzuai%5Fac%5Fae%2FDocuments%2FVideo%2DChatGPT%2FData%5FCode%5FModel%5FRelease%2FQuantitative%5FEvaluation%2Fbenchamarking%2FTest%5FHuman%5FAnnotated%5FCaptions%2Ezip&parent=%2Fpersonal%2Fhanoona%5Fbangalath%5Fmbzuai%5Fac%5Fae%2FDocuments%2FVideo%2DChatGPT%2FData%5FCode%5FModel%5FRelease%2FQuantitative%5FEvaluation%2Fbenchamarking&ga=1).
+3. **activity_qa:** [here](https://mbzuaiac-my.sharepoint.com/personal/hanoona_bangalath_mbzuai_ac_ae/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fhanoona%5Fbangalath%5Fmbzuai%5Fac%5Fae%2FDocuments%2FVideo%2DChatGPT%2FData%5FCode%5FModel%5FRelease%2FData%2FActivityNet%5FTest%2D1%2D3%5Fvideos%2Ezip&parent=%2Fpersonal%2Fhanoona%5Fbangalath%5Fmbzuai%5Fac%5Fae%2FDocuments%2FVideo%2DChatGPT%2FData%5FCode%5FModel%5FRelease%2FData&ga=1) and [here](https://github.com/MILVLG/activitynet-qa/tree/master/dataset).
+
+Organize the downloaded data into the following structure:
+```
+LLaVA-NeXT-Video
+├── llava
+├── scripts
+└── data
+    └── llava_video
+        ├── video-chatgpt
+        │   ├── Test_Videos
+        │   ├── consistency_qa.json
+        │   ├── consistency_qa_test.json
+        │   ├── consistency_qa_train.json
+        ├── video_detail_description
+        │   └── Test_Human_Annotated_Captions
+        └── ActivityNet-QA
+            ├── all_test
+            ├── test_a.json
+            └── test_b.json
+```
+
+### Inference and Evaluation
+
+Example for video detail description evaluation (additional scripts are available in `scripts/eval`):
+```bash
+bash scripts/video/eval/video_detail_description_eval_shard.sh ${Example model} ${Prompt mode} ${Sampled frames} True ${Spatial pooling stride} 8 True
+```
+Example:
+```bash
+bash scripts/eval/video_detail_description_eval_shard.sh liuhaotian/llava-v1.6-vicuna-7b vicuna_v1 32 True 2 8 True
+```
+
+### GPT Evaluation Example (Optional if the above step is completed)
+
+Assuming you have `pred.json` (model-generated predictions) for model `llava-v1.6-vicuna-7b` at `./work_dirs/eval_video_detail_description/llava-v1.6-vicuna-7b_vicuna_v1_frames_32_stride_2`:
+```bash
+bash scripts/video/eval/video_description_eval_only.sh llava-v1.6-vicuna-7b_vicuna_v1_frames_32_stride_2
 ```
