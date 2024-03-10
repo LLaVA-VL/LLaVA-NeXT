@@ -24,12 +24,7 @@ POOL_STRIDE=$4
 OVERWRITE=$5
 CHUNKS=${6:-1}
 
-# OPENAIKEY="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"
-
-# OPENAIKEY="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"
-
-OPENAIKEY="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"
-
+OPENAIKEY="INPUT YOUR OPENAI API"
 
 if [ "$OVERWRITE" = False ]; then
     SAVE_DIR=$(basename $CKPT)_${CONV_MODE}_frames_${FRAMES}_stride_${POOL_STRIDE}_overwrite_${OVERWRITE}

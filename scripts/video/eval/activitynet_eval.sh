@@ -35,7 +35,7 @@ CHUNKS=${6:-1}
 PATCHIFY=False
 
 
-OPENAIKEY="XXX"
+OPENAIKEY="INPUT YOUR OPENAI API"
 
 
 if [ "$OVERWRITE" = False ]; then
