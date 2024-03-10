@@ -77,11 +77,11 @@ LLaVA-NeXT-Video
 
 Example for video detail description evaluation (additional scripts are available in `scripts/eval`):
 ```bash
-bash scripts/video/eval/video_detail_description_eval_shard.sh ${Example model} ${Prompt mode} ${Sampled frames} True ${Spatial pooling stride} 8 True
+bash scripts/video/eval/video_detail_description_eval_shard.sh ${Example model} ${Prompt mode} ${Sampled frames} ${Spatial pooling stride} True 8
 ```
 Example:
 ```bash
-bash scripts/eval/video_detail_description_eval_shard.sh liuhaotian/llava-v1.6-vicuna-7b vicuna_v1 32 True 2 8 True
+bash scripts/eval/video_detail_description_eval_shard.sh liuhaotian/llava-v1.6-vicuna-7b vicuna_v1 32 2 True 8 
 ```
 
 ### GPT Evaluation Example (Optional if the above step is completed)
