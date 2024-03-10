@@ -28,7 +28,7 @@ dependencies = [
 
 [project.urls]
 "Homepage" = "https://llava-vl.github.io"
-"Bug Tracker" = "https://github.com/haotian-liu/LLaVA/issues"
+"Bug Tracker" = "https://github.com/LLaVA-VL/LLaVA-NeXT-Video/issues"
 
 [tool.setuptools.packages.find]
 exclude = [
