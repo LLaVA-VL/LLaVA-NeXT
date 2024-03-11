@@ -96,15 +96,15 @@ python3 -m pip install transformers==4.37.2
 # Stage 1.5
 # Experiment go in one stage
 PROMPT_VERSION="qwen_1_5"
-MID_RUN_NAME="dist1_llavanext-${LLM_VERSION_CLEAN}-mlp2x_gelu-blip558k_pretrain-finetune_ShareGPT1M_direct32k"
+MID_RUN_NAME="dist1_llavanext-${LLM_VERSION_CLEAN}-mlp2x_gelu-pretrain_one_stage"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
     llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
     --model_name_or_path $LLM_VERSION \
     --version $PROMPT_VERSION \
-    --data_path /mnt/bn/${NAS_REGION}/data/llava_instruct/ShareGPT1M/allava_laion_vflan_text.json \
-    --image_folder /mnt/bn/${NAS_REGION}/data/llava_data/ShareGPT1M \
+    --data_path /mnt/bn/${NAS_REGION}/workspace/zzz/projects/zzz/LLaVA_Next/llava_instruct_json/combined_staged_instruct.json \
+    --image_folder /mnt/bn/${NAS_REGION}/data/llava_data \
     --pretrain_mm_mlp_adapter="/mnt/bn/${NAS_REGION}/checkpoints/projectors/${BASE_RUN_NAME}/mm_projector.bin" \
     --mm_tunable_parts="mm_mlp_adapter,mm_language_model" \
     --vision_tower ${VISION_MODEL_VERSION} \
@@ -121,12 +121,12 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --run_name $MID_RUN_NAME \
     --output_dir ./project_checkpoints/$MID_RUN_NAME \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 1 \
+    --per_device_train_batch_size 2 \
     --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 4 \
+    --gradient_accumulation_steps 2 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
-    --save_steps 5000 \
+    --save_steps 50000 \
     --save_total_limit 1 \
     --learning_rate 2e-5 \
     --weight_decay 0. \
@@ -134,6 +134,7 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --lr_scheduler_type "cosine" \
     --logging_steps 1 \
     --tf32 True \
+    --model_max_length 32768 \
     --gradient_checkpointing True \
     --dataloader_num_workers 16 \
     --lazy_preprocess True \
@@ -160,4 +161,4 @@ accelerate launch --num_processes 8 --main_process_port 12345 -m lmms_eval \
     --log_samples \
     --log_samples_suffix one_stage \
     --output_path ./logs/ \
-    --wandb_args 'project=llava_next_ShareGPT1M,job_type=eval';
+    --wandb_args 'project=llava_next_one_stage,job_type=eval';
