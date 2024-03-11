@@ -21,7 +21,7 @@ from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig, BitsAn
 import torch
 from llava.model import *
 from llava.constants import DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
-
+from llava.utils import rank0_print
 
 def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map="auto", use_flash_attention_2=True, **kwargs):
     kwargs = {"device_map": device_map}
@@ -79,7 +79,7 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
             print("Model is loaded...")
         elif model_base is not None:
             # this may be mm projector only
-            print("Loading LLaVA from base model...")
+            rank0_print(f"Loading LLaVA from base model {model_base}...")
             if "mpt" in model_name.lower().replace("prompt", ""):
                 if not os.path.isfile(os.path.join(model_path, "configuration_mpt.py")):
                     shutil.copyfile(os.path.join(model_base, "configuration_mpt.py"), os.path.join(model_path, "configuration_mpt.py"))
@@ -94,21 +94,21 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
             mm_projector_weights = torch.load(os.path.join(model_path, "mm_projector.bin"), map_location="cpu")
             mm_projector_weights = {k: v.to(torch.float16) for k, v in mm_projector_weights.items()}
             model.load_state_dict(mm_projector_weights, strict=False)
-            # print(f"Loaded mm projector weights, incompatible keys: {incompatible_keys}")
         else:
-            # import pdb; pdb.set_trace()
-            if "mpt" in model_name.lower().replace("prompt", ""):
-                tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=True)
-                model = LlavaMptForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
-            elif "mixtral" in model_name.lower() and "vicuna" not in model_name.lower() and "mistral" not in model_name.lower():
+            if "mixtral" in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_path)
                 model = LlavaMixtralForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, use_flash_attention_2=False, **kwargs)
             elif "mistral" in model_name.lower() or "zephyr" in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_path)
                 model = LlavaMistralForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, use_flash_attention_2=False, **kwargs)
-            else:
+            elif "vicuna" in model_name.lower() or "llama" in model_name.lower() or "yi" in model_name.lower() or "nous-hermes" in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
                 model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
+            elif "qwen" in model_name.lower():
+                tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+                model = LlavaQwenForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
+            rank0_print(f"Loaded LLaVA model: {model_path}")
+            rank0_print(f"Model Class: {model.__class__.__name__}")
     else:
         # Load language model
         if model_base is not None:
