@@ -879,34 +879,39 @@ class LazySupervisedDataset(Dataset):
         return image, image_size
 
     def __getitem__(self, i) -> Dict[str, torch.Tensor]:
-        sources = self.list_data_dict[i]
-        if isinstance(i, int):
-            sources = [sources]
-        assert len(sources) == 1, "Don't know why it is wrapped to a list"  # FIXME
-        if "image" in sources[0]:
-            image_file = self.list_data_dict[i]["image"]
-            if type(image_file) is list:
-                image = [self.process_image(f) for f in image_file]
+        try:
+            sources = self.list_data_dict[i]
+            if isinstance(i, int):
+                sources = [sources]
+            assert len(sources) == 1, "Don't know why it is wrapped to a list"  # FIXME
+            if "image" in sources[0]:
+                image_file = self.list_data_dict[i]["image"]
+                if type(image_file) is list:
+                    image = [self.process_image(f) for f in image_file]
+                else:
+                    image = [self.process_image(image_file)]
+                sources = preprocess_multimodal(copy.deepcopy([e["conversations"] for e in sources]), self.data_args)
             else:
-                image = [self.process_image(image_file)]
-            sources = preprocess_multimodal(copy.deepcopy([e["conversations"] for e in sources]), self.data_args)
-        else:
-            sources = copy.deepcopy([e["conversations"] for e in sources])
-        data_dict = preprocess(sources, self.tokenizer, has_image=("image" in self.list_data_dict[i]))
-        if isinstance(i, int):
-            data_dict = dict(input_ids=data_dict["input_ids"][0], labels=data_dict["labels"][0])
+                sources = copy.deepcopy([e["conversations"] for e in sources])
+            data_dict = preprocess(sources, self.tokenizer, has_image=("image" in self.list_data_dict[i]))
+            if isinstance(i, int):
+                data_dict = dict(input_ids=data_dict["input_ids"][0], labels=data_dict["labels"][0])
 
-        # image exist in the data
-        if "image" in self.list_data_dict[i]:
-            data_dict["image"] = image
-            # data_dict["image_file"] = self.list_data_dict[i]["image"]
-        elif self.data_args.is_multimodal:
-            # image does not exist in the data, but the model is multimodal
-            crop_size = self.data_args.image_processor.crop_size
-            data_dict["image"] = [
-                (torch.zeros(1, 3, crop_size["height"], crop_size["width"]), (crop_size["width"], crop_size["height"])),
-            ]
-        return data_dict
+            # image exist in the data
+            if "image" in self.list_data_dict[i]:
+                data_dict["image"] = image
+                # data_dict["image_file"] = self.list_data_dict[i]["image"]
+            elif self.data_args.is_multimodal:
+                # image does not exist in the data, but the model is multimodal
+                crop_size = self.data_args.image_processor.crop_size
+                data_dict["image"] = [
+                    (torch.zeros(1, 3, crop_size["height"], crop_size["width"]), (crop_size["width"], crop_size["height"])),
+                ]
+            return data_dict
+        except Exception as e:
+            print(f"Error in __getitem__ {i}: {e}. Jumping to the next one.")
+            next_index = min(i + 1, len(self.list_data_dict) - 1)
+            return self.__getitem__(next_index)
 
 
 @dataclass
