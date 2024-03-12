@@ -1217,7 +1217,7 @@ def train(attn_implementation=None):
 
     data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args)
     trainer = LLaVATrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
-    dataloader = trainer.get_train_dataloader()
+    # dataloader = trainer.get_train_dataloader()
     # Debug code, don't include
     # from tqdm import tqdm
     # for i, data in enumerate(tqdm(dataloader)):
