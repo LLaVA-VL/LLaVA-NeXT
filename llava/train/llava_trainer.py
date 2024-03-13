@@ -1,7 +1,10 @@
 import os
 import torch
 import torch.nn as nn
+import datetime
 
+from accelerate import Accelerator
+from accelerate.utils import InitProcessGroupKwargs, GradientAccumulationPlugin
 from torch.utils.data import Dataset, Sampler, DataLoader
 
 from transformers import Trainer
@@ -17,6 +20,7 @@ from transformers.trainer import (
 )
 from transformers.trainer_utils import seed_worker
 from transformers.trainer_pt_utils import get_length_grouped_indices as get_length_grouped_indices_hf
+from transformers.trainer_pt_utils import AcceleratorConfig
 from typing import List, Optional
 from datetime import timedelta
 
@@ -362,11 +366,7 @@ class LLaVATrainer(Trainer):
             dataloader_params["worker_init_fn"] = seed_worker
             dataloader_params["prefetch_factor"] = self.args.dataloader_num_workers * 2 if self.args.dataloader_num_workers != 0 else None
 
-        # For Ring Attention, we may need to keep each rank to read the same input_ids, and disable data parallel in this case.
-        if self.args.enable_ring_attention:
-            dataloader = self.accelerator.prepare(DataLoader(train_dataset, **dataloader_params))
-        else:
-            dataloader = DataLoader(train_dataset, **dataloader_params)
+        dataloader = self.accelerator.prepare(DataLoader(train_dataset, **dataloader_params))
 
         return dataloader
 
@@ -450,7 +450,9 @@ class LLaVATrainer(Trainer):
         return self.optimizer
 
     def _save_checkpoint(self, model, trial, metrics=None):
-        if getattr(self.args, "tune_mm_mlp_adapter", False):
+        if getattr(self.args, "tune_mm_mlp_adapter", False) or (
+            hasattr(self.args, "mm_tunable_parts") and (len(self.args.mm_tunable_parts.split(",")) == 1 and ("mm_mlp_adapter" in self.args.mm_tunable_parts or "mm_vision_resampler" in self.args.mm_tunable_parts))
+        ):
             from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 
             checkpoint_folder = f"{PREFIX_CHECKPOINT_DIR}-{self.state.global_step}"
