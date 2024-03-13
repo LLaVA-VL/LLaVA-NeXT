@@ -62,6 +62,10 @@ exclude = [
     "tests*",
     "checkpoints*",
     "project_checkpoints*",
+    "debug_checkpoints*",
+    "mlx_configs*",
+    "wandb*",
+    "notebooks*",
 ]
 
 [tool.wheel]
@@ -75,4 +79,8 @@ exclude = [
     "tests*",
     "checkpoints*",
     "project_checkpoints*",
+    "debug_checkpoints*",
+    "mlx_configs*",
+    "wandb*",
+    "notebooks*",
 ]
