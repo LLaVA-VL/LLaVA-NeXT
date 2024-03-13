@@ -28,6 +28,7 @@ from transformers.modeling_outputs import BaseModelOutput, BaseModelOutputWithPo
 from transformers.modeling_utils import PreTrainedModel
 from transformers import PretrainedConfig
 from transformers.utils import ModelOutput
+from llava.utils import rank0_print
 
 
 class SigLipImageProcessor:
@@ -545,6 +546,14 @@ class SigLipVisionTower(nn.Module):
         self.image_processor = SigLipImageProcessor()
 
         if not delay_load:
+            rank0_print(f"Loading vision tower: {vision_tower}")
+            self.load_model()
+        elif getattr(vision_tower_cfg, "unfreeze_mm_vision_tower", False):
+            # TODO: better detector is needed.
+            rank0_print(f"The checkpoint seems to contain `vision_tower` weights: `unfreeze_mm_vision_tower`: True.")
+            self.load_model()
+        elif hasattr(vision_tower_cfg, "mm_tunable_parts") and "mm_vision_tower" in vision_tower_cfg.mm_tunable_parts:
+            rank0_print(f"The checkpoint seems to contain `vision_tower` weights: `mm_tunable_parts` contains `mm_vision_tower`.")
             self.load_model()
         else:
             self.cfg_only = self.config

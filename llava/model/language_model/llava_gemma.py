@@ -1,4 +1,4 @@
-#    Copyright 2023 Haotian Liu
+#    Copyright 2024 Duc Q. Nguyen, Haotian Liu and Bo Li
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import torch
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 
-from transformers import AutoConfig, AutoModelForCausalLM, GemmaModel, GemmaForCausalLM, GemmaConfig, GenerationConfig
+from transformers import AutoConfig, AutoModelForCausalLM, GemmaConfig, GemmaModel, GemmaForCausalLM
 
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.generation.utils import GenerateOutput
@@ -34,26 +34,16 @@ class LlavaGemmaConfig(GemmaConfig):
 class LlavaGemmaModel(LlavaMetaModel, GemmaModel):
     config_class = LlavaGemmaConfig
 
-    def __init__(self, config: LlavaGemmaConfig):
+    def __init__(self, config: GemmaConfig):
         super(LlavaGemmaModel, self).__init__(config)
 
 
-class LlavaGemmaForCausalLM(LlavaMetaForCausalLM, GemmaForCausalLM):
+class LlavaGemmaForCausalLM(GemmaForCausalLM, LlavaMetaForCausalLM):
     config_class = LlavaGemmaConfig
 
     def __init__(self, config):
         super(GemmaForCausalLM, self).__init__(config)
-
-        config.model_type = "llava_gemma"
-        config.rope_scaling = None
-        self.generation_config = GenerationConfig(
-            temperature=0.0,
-            max_new_tokens=1024,
-            do_sample=False,
-            top_p=None,
-        )
-
-        self.model = GemmaForCausalLM(config)
+        self.model = LlavaGemmaModel(config)
 
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
@@ -77,6 +67,7 @@ class LlavaGemmaForCausalLM(LlavaMetaForCausalLM, GemmaForCausalLM):
         images: Optional[torch.FloatTensor] = None,
         image_sizes: Optional[List[List[int]]] = None,
         return_dict: Optional[bool] = None,
+        cache_position: Optional[torch.LongTensor] = None,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
 
         if inputs_embeds is None:
@@ -93,6 +84,7 @@ class LlavaGemmaForCausalLM(LlavaMetaForCausalLM, GemmaForCausalLM):
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
+            cache_position=cache_position,
         )
 
     @torch.no_grad()

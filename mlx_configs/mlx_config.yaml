@@ -2,24 +2,7 @@ resourcetype: arnold # 资源类型，平台限定为arnold，请勿更改
 arnold:
     clusterid: 17 # arnold集群id，可以从arnold集群页面的网页链接中获取, https://arnold.byted.org/v2/cluster
     usergroupid: 477 # arnold用户组id, 可以从arnold用户组界面获取, https://arnold.byted.org/v2/group
-    entrypoint: |- # 训练入口命令，例如python3 /path/to/your/python.py
-        python3 -m pip install --upgrade pip;
-
-        export http_proxy=http://sys-proxy-rd-relay.byted.org:8118;
-        export https_proxy=http://sys-proxy-rd-relay.byted.org:8118;
-
-        export HF_HOME=/mnt/bn/vl-research-cn-lq/.cache/huggingface;
-        export HF_TOKEN="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";
-        export HF_HUB_ENABLE_HF_TRANSFER="1";
-
-        pip install -e .;
-
-        python3 -m pip install ninja;
-        python3 -m pip install flash-attn --no-build-isolation;
-
-        pwd;
-
-        bash ./scripts/cn_lq/Baseline_CLIP_ViT_L_vicuna1.5_7b_blip558k_finetune_freezeVIS.sh
+    entrypoint: pwd # 训练入口命令，例如python3 /path/to/your/python.py
     image:
         url: hub.byted.org/base/lab.pytorch2:4f035aea6ac458a0f71d88e0976de585 # 镜像url，可从MLX镜像中心或ICM上粘贴获取
         arnoldtaskid: null
@@ -30,11 +13,21 @@ arnold:
           gpu: 8
           gpuv: A100_SXM_80GB # Tesla-V100-SXM2-32GB  A100-SXM-80GB A100-SXM4-40GB Tesla-T4, 任意GPU空字符串即可,建议从arnold用户组中复制, 否则如果用户组中不存在相应卡，则会一直排队
           mem: 901120
-          num: 1
+          num: 4
           numelastic: null
           ports: 1 # 需要预留端口数，后续预留端口从环境变量中获取
-          role: worker
+          role: executor
+        - cpu: 8
+          gpu: 0
+          gpuv: CPU_ONLY # Tesla-V100-SXM2-32GB  A100-SXM-80GB A100-SXM4-40GB Tesla-T4, 任意GPU空字符串即可,建议从arnold用户组中复制, 否则如果用户组中不存在相应卡，则会一直排队
+          mem: 32768
+          num: 1
+          numelastic: null
+          ports: 0 # 需要预留端口数，后续预留端口从环境变量中获取
+          role: driver
     gpuv: null # Tesla-V100-SXM2-32GB  A100-SXM-80GB A100-SXM4-40GB Tesla-T4, 任意GPU空字符串即可,建议从arnold用户组中复制, 否则如果用户组中不存在相应卡，则会一直排队
+    env:
+        ENV_EXAMPLE: THIS_IS_ENV1
     isdebug: null # 是否为debug模式
     keepmins: 15 # 训练失败后保留时间长度，默认15mins
     maskhosts: []
@@ -54,8 +47,7 @@ arnold:
         - name: vl-research-cn-lq
           subpath: null
           readonly: false
-          role:
-            - worker
+          role: []
           arnoldvolumeid: null
           nasvolumeid: null
     packages: []

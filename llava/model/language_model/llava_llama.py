@@ -21,8 +21,8 @@ import torch.nn as nn
 from transformers import AutoConfig, AutoModelForCausalLM, LlamaConfig
 
 # , LlamaModel, LlamaForCausalLM, GenerationConfig
-# from transformers import LlamaModel, LlamaForCausalLM
-from .modeling_llama import LlamaModel, LlamaForCausalLM
+# from .modeling_llama import LlamaModel, LlamaForCausalLM
+from transformers import LlamaModel, LlamaForCausalLM
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.generation.utils import GenerateOutput
 
@@ -76,6 +76,7 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
         images: Optional[torch.FloatTensor] = None,
         image_sizes: Optional[List[List[int]]] = None,
         return_dict: Optional[bool] = None,
+        cache_position=None,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
 
         if inputs_embeds is None:
