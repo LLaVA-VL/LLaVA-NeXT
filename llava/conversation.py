@@ -15,6 +15,8 @@ class SeparatorStyle(Enum):
     MPT = auto()
     PLAIN = auto()
     LLAMA_2 = auto()
+    QWEN = auto()
+    GEMMA = auto()
 
 
 @dataclasses.dataclass
@@ -71,6 +73,16 @@ class Conversation:
         elif self.sep_style == SeparatorStyle.MPT:
             ret = self.system + self.sep
             for role, message in messages:
+                if message:
+                    if type(message) is tuple:
+                        message, _, _ = message
+                    ret += role + message + self.sep
+                else:
+                    ret += role
+        elif self.sep_style == SeparatorStyle.GEMMA:
+            ret = ""
+            for i, (role, message) in enumerate(messages):
+                assert role == self.roles[i % 2], "Conversation should alternate user/assistant/user/assistant/..."
                 if message:
                     if type(message) is tuple:
                         message, _, _ = message
@@ -341,6 +353,8 @@ You are a helpful assistant.""",
     sep="<|im_end|>",
 )
 
+conv_gemma_instruct = Conversation(system="", roles=("<start_of_turn>user\n", "<start_of_turn>model\n"), version="gemma", messages=(), offset=0, sep_style=SeparatorStyle.GEMMA, sep="<end_of_turn>\n")
+
 conv_llava_plain = Conversation(
     system="",
     roles=("", ""),
@@ -462,7 +476,8 @@ conv_templates = {
     "llava_llama_2_mmtag": conv_llava_llama_2_mmtag,
     "llava_mistral_instruct": conv_mistral_instruct,
     "mpt": conv_mpt,
-    "qwen_1_5":conv_qwen,
+    "qwen_1_5": conv_qwen,
+    "gemma_instruct": conv_gemma_instruct,
 }
 
 
