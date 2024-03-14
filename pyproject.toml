@@ -45,7 +45,6 @@ dependencies = [
     "open_clip_torch",
     "timm",
     "hf_transfer",
-    # "xformers==0.0.24",
 ]
 
 [project.optional-dependencies]
