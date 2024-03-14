@@ -138,7 +138,7 @@ class TrainingArguments(transformers.TrainingArguments):
     auto_find_batch_size: bool = field(default=False)
     gradient_checkpointing: bool = field(default=True)
     verbose_logging: bool = field(default=False)
-    attn_implementation: str = field(default="sdpa", metadata={"help": "Use transformers attention implementation."})
+    attn_implementation: str = field(default="flash_attention_2", metadata={"help": "Use transformers attention implementation."})
 
 # @dataclass
 # class EvaluationArguments:
