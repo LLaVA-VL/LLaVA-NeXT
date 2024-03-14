@@ -15,6 +15,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: Apache Software License",
 ]
+
 dependencies = [
     "einops",
     "fastapi",
@@ -23,29 +24,32 @@ dependencies = [
     "numpy",
     "requests",
     "sentencepiece",
-    "torch==2.2.0",
-    "torchvision~=0.17.0",
+    "torch==2.1.2",
+    "torchvision==0.16.2",
     "uvicorn",
     "wandb",
     "shortuuid",
     "httpx==0.23.3",
-    "deepspeed==0.13.4",
+    "deepspeed",
     "peft==0.4.0",
     "transformers@git+https://github.com/huggingface/transformers.git@b382a09e28c7e59129246ccdf4b00f2cac4547a4",
-    "tokenizers==0.15.2",
-    "accelerate==0.27.2",
+    "tokenizers~=0.15.2",
+    "accelerate~=0.27.2",
     "bitsandbytes==0.41.0",
     "scikit-learn==1.2.2",
-    "sentencepiece==0.1.99",
+    "sentencepiece~=0.1.99",
     "einops==0.6.1",
     "einops-exts==0.0.4",
     "gradio_client==0.2.9",
-    "pydantic==1.10.9",
+    "pydantic",
     "open_clip_torch",
     "timm",
     "hf_transfer",
-    "xformers==0.0.24",
 ]
+
+[project.optional-dependencies]
+train = ["deepspeed==0.12.6", "ninja", "wandb"]
+build = ["build", "twine"]
 
 [project.urls]
 "Homepage" = "https://llava-vl.github.io"
