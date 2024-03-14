@@ -678,9 +678,11 @@ class EVAVisionTransformer(nn.Module):
         if os.getenv("RoPE") == "1":
             if self.training and not isinstance(self.patch_dropout, nn.Identity):
                 x, patch_indices_keep = self.patch_dropout(x)
-                self.rope.forward = partial(self.rope.forward, patch_indices_keep=patch_indices_keep)
+                # Directly pass patch_indices_keep to self.rope.forward
+                x = self.rope.forward(x, patch_indices_keep=patch_indices_keep)
             else:
-                self.rope.forward = partial(self.rope.forward, patch_indices_keep=None)
+                # Pass None or omit the patch_indices_keep argument for default behavior
+                x = self.rope.forward(x, patch_indices_keep=None)
                 x = self.patch_dropout(x)
         else:
             x = self.patch_dropout(x)
@@ -791,6 +793,9 @@ class CLIPVisionCfg:
     naiveswiglu: bool = False
     subln: bool = False
 
+def create_norm_layer_factory(use_fused_ln, eps=1e-6):
+    # Otherwise, use the standard LayerNorm
+    return lambda num_features: nn.LayerNorm(num_features, eps=eps)
 
 def _build_vision_tower(vision_tower_path: str, embed_dim: int, vision_cfg: CLIPVisionCfg, **kwargs):
     if isinstance(vision_cfg, dict):
@@ -798,7 +803,8 @@ def _build_vision_tower(vision_tower_path: str, embed_dim: int, vision_cfg: CLIP
 
     if vision_cfg.eva_model_name:
         vision_heads = vision_cfg.width // vision_cfg.head_width
-        norm_layer = LayerNorm
+        # Determine the appropriate norm layer factory based on the configuration
+        norm_layer_factory = create_norm_layer_factory(vision_cfg.fusedLN, eps=1e-6)
 
         visual = EVAVisionTransformer(
             img_size=vision_cfg.image_size,
@@ -813,7 +819,7 @@ def _build_vision_tower(vision_tower_path: str, embed_dim: int, vision_cfg: CLIP
             mlp_ratio=vision_cfg.mlp_ratio,
             qkv_bias=vision_cfg.qkv_bias,
             drop_path_rate=vision_cfg.drop_path_rate,
-            norm_layer=partial(FusedLayerNorm, eps=1e-6) if vision_cfg.fusedLN else partial(norm_layer, eps=1e-6),
+            norm_layer=norm_layer_factory,
             xattn=vision_cfg.xattn,
             rope=vision_cfg.rope,
             postnorm=vision_cfg.postnorm,
