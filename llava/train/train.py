@@ -261,6 +261,7 @@ def safe_save_model_for_hf_trainer(trainer: transformers.Trainer, output_dir: st
         return
 
     if trainer.deepspeed:
+        trainer.accelerator.wait_for_everyone()
         torch.cuda.synchronize()
         trainer.save_model(output_dir)
         return
