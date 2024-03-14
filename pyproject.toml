@@ -48,7 +48,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-train = ["deepspeed==0.12.6", "ninja", "wandb"]
+train = ["deepspeed==0.12.3", "ninja", "wandb"]
 build = ["build", "twine"]
 
 [project.urls]
