@@ -57,7 +57,8 @@ PRETRAIN_DATA_VERSION="allava"
 BASE_RUN_NAME="allava_vicuna_ShareGPT1M"
 echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
-python3 -m pip install transformers --upgrade
+python3 -m pip install git+https://github.com/huggingface/transformers.git@main;
+cd /mnt/bn/${NAS_REGION}/workspace/zzz/projects/zzz/LLaVA_Next;
 
 PROMPT_VERSION="vicuna_v1"
 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
