@@ -30,7 +30,7 @@ dependencies = [
     "wandb",
     "shortuuid",
     "httpx==0.23.3",
-    "deepspeed==0.12.3",
+    "deepspeed==0.12.2",
     "peft==0.4.0",
     "transformers@git+https://github.com/huggingface/transformers.git@f738ab3b5d30e30c43a4c3d00ca8939f8a4d4427",
     "tokenizers~=0.15.2",
@@ -48,7 +48,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-train = ["deepspeed==0.12.3", "ninja", "wandb==0.16.3"]
+train = ["deepspeed==0.12.2", "ninja", "wandb==0.16.3"]
 build = ["build", "twine"]
 
 [project.urls]
