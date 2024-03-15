@@ -969,27 +969,27 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
         actual_model_class_name = f"{model_args.model_class_name}ForCausalLM"
         model_class = getattr(transformers, actual_model_class_name)
         rank0_print(f"Using model class {model_class} from {model_args.model_class_name}")
-        model = model_class.from_pretrained(model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None))
+        model = model_class.from_pretrained(model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), low_cpu_mem_usage=False, **bnb_model_from_pretrained_args)
     elif model_args.vision_tower is not None:
         if "mixtral" in model_args.model_name_or_path.lower():
             model = LlavaMixtralForCausalLM.from_pretrained(
-                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
+                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), low_cpu_mem_usage=False, **bnb_model_from_pretrained_args
             )
         elif "mistral" in model_args.model_name_or_path.lower() or "zephyr" in model_args.model_name_or_path.lower():
             model = LlavaMistralForCausalLM.from_pretrained(
-                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
+                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), low_cpu_mem_usage=False, **bnb_model_from_pretrained_args
             )
         elif "vicuna" in model_args.model_name_or_path.lower() or "llama" in model_args.model_name_or_path.lower() or "yi" in model_args.model_name_or_path.lower() or "nous-hermes" in model_args.model_name_or_path.lower():
             model = LlavaLlamaForCausalLM.from_pretrained(
-                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
+                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), low_cpu_mem_usage=False, **bnb_model_from_pretrained_args
             )
         elif "qwen" in model_args.model_name_or_path.lower():
             model = LlavaQwenForCausalLM.from_pretrained(
-                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
+                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), low_cpu_mem_usage=False, **bnb_model_from_pretrained_args
             )
         elif "gemma" in model_args.model_name_or_path.lower():
             model = LlavaGemmaForCausalLM.from_pretrained(
-                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
+                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), low_cpu_mem_usage=False, **bnb_model_from_pretrained_args
             )
         else:
             raise ValueError(f"Unknown model class {model_args}")
