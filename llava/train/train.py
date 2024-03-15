@@ -23,6 +23,8 @@ import pathlib
 from typing import Dict, Optional, Sequence, List
 import ast
 
+import glob
+import re
 import torch
 
 import transformers
@@ -99,7 +101,7 @@ class ModelArguments:
 
 @dataclass
 class DataArguments:
-    data_path: str = field(default=None, metadata={"help": "Path to the training data, in llava's instruction.json format."})
+    data_path: str = field(default=None, metadata={"help": "Path to the training data, in llava's instruction.json format. Supporting multiple json files via /path/to/{a,b,c}.json"})
     lazy_preprocess: bool = False
     is_multimodal: bool = False
     image_folder: Optional[str] = field(default=None)
@@ -807,16 +809,29 @@ def preprocess(sources: Sequence[str], tokenizer: transformers.PreTrainedTokeniz
 
 
 class LazySupervisedDataset(Dataset):
-    """Dataset for supervised fine-tuning."""
-
     def __init__(self, data_path: str, tokenizer: transformers.PreTrainedTokenizer, data_args: DataArguments):
         super(LazySupervisedDataset, self).__init__()
-        # print(f"\n\nThe current folder is {os.getcwd()}\n\n, loading {data_path}\n\n")
-        list_data_dict = json.load(open(data_path, "r"))
+        self.tokenizer = tokenizer
+        self.list_data_dict = []
+
+        # Handle multiple JSON files specified in the data_path
+        if "{" in data_path and "}" in data_path:
+            base_path, file_pattern = re.match(r"^(.*)\{(.*)\}\.json$", data_path).groups()
+            file_names = file_pattern.split(',')
+            rank0_print(f"Loading {file_names} from {base_path}")
+            for file_name in file_names:
+                full_path = f"{base_path}{file_name}.json"
+                rank0_print(f"Loading {full_path}")
+                with open(full_path, "r") as file:
+                    self.list_data_dict.extend(json.load(file))
+        else:
+            # Single file scenario
+            rank0_print(f"Loading {data_path}")
+            with open(data_path, "r") as file:
+                self.list_data_dict.extend(json.load(file))
 
         rank0_print("Formatting inputs...Skip in lazy mode")
         self.tokenizer = tokenizer
-        self.list_data_dict = list_data_dict
         self.data_args = data_args
 
     def __len__(self):
