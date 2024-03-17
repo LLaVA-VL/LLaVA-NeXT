@@ -569,8 +569,8 @@ def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_im
         # target += [IGNORE_INDEX] * (max_len - len(target))
         input_ids.append(input_id)
         targets.append(target)
-    input_ids = torch.tensor(input_ids, dtype=torch.int)
-    targets = torch.tensor(targets, dtype=torch.int)
+    input_ids = torch.tensor(input_ids, dtype=torch.long)
+    targets = torch.tensor(targets, dtype=torch.long)
 
     return dict(
         input_ids=input_ids,  # tensor(bs x seq_len)
@@ -987,7 +987,7 @@ class DataCollatorForSupervisedDataset(object):
         labels = self.pad_sequence(labels, batch_first=True, padding_value=IGNORE_INDEX)
         batch = dict(
             input_ids=input_ids,
-            labels=labels,
+            labels=labels.long() if labels.dtype == torch.int32 else labels,
             attention_mask=input_ids.ne(self.tokenizer.pad_token_id),
         )
 
