@@ -793,9 +793,11 @@ class CLIPVisionCfg:
     naiveswiglu: bool = False
     subln: bool = False
 
+
 def create_norm_layer_factory(use_fused_ln, eps=1e-6):
     # Otherwise, use the standard LayerNorm
     return lambda num_features: nn.LayerNorm(num_features, eps=eps)
+
 
 def _build_vision_tower(vision_tower_path: str, embed_dim: int, vision_cfg: CLIPVisionCfg, **kwargs):
     if isinstance(vision_cfg, dict):

@@ -23,7 +23,8 @@ import pathlib
 from typing import Dict, Optional, Sequence, List
 import ast
 
-import glob
+import time
+import random
 import re
 import torch
 
@@ -141,6 +142,7 @@ class TrainingArguments(transformers.TrainingArguments):
     gradient_checkpointing: bool = field(default=True)
     verbose_logging: bool = field(default=False)
     attn_implementation: str = field(default="flash_attention_2", metadata={"help": "Use transformers attention implementation."})
+
 
 # @dataclass
 # class EvaluationArguments:
@@ -817,7 +819,7 @@ class LazySupervisedDataset(Dataset):
         # Handle multiple JSON files specified in the data_path
         if "{" in data_path and "}" in data_path:
             base_path, file_pattern = re.match(r"^(.*)\{(.*)\}\.json$", data_path).groups()
-            file_names = file_pattern.split(',')
+            file_names = file_pattern.split(",")
             rank0_print(f"Loading {file_names} from {base_path}")
             for file_name in file_names:
                 full_path = f"{base_path}{file_name}.json"
@@ -895,39 +897,72 @@ class LazySupervisedDataset(Dataset):
         return image, image_size
 
     def __getitem__(self, i) -> Dict[str, torch.Tensor]:
-        try:
-            sources = self.list_data_dict[i]
-            if isinstance(i, int):
-                sources = [sources]
-            assert len(sources) == 1, "Don't know why it is wrapped to a list"  # FIXME
-            if "image" in sources[0]:
-                image_file = self.list_data_dict[i]["image"]
-                if type(image_file) is list:
-                    image = [self.process_image(f) for f in image_file]
-                else:
-                    image = [self.process_image(image_file)]
-                sources = preprocess_multimodal(copy.deepcopy([e["conversations"] for e in sources]), self.data_args)
-            else:
-                sources = copy.deepcopy([e["conversations"] for e in sources])
-            data_dict = preprocess(sources, self.tokenizer, has_image=("image" in self.list_data_dict[i]))
-            if isinstance(i, int):
-                data_dict = dict(input_ids=data_dict["input_ids"][0], labels=data_dict["labels"][0])
+        # TODO: define number of retries somewhere else
+        num_base_retries = 3
+        num_final_retries = 300
 
-            # image exist in the data
-            if "image" in self.list_data_dict[i]:
-                data_dict["image"] = image
-                # data_dict["image_file"] = self.list_data_dict[i]["image"]
-            elif self.data_args.is_multimodal:
-                # image does not exist in the data, but the model is multimodal
-                crop_size = self.data_args.image_processor.crop_size
-                data_dict["image"] = [
-                    (torch.zeros(1, 3, crop_size["height"], crop_size["width"]), (crop_size["width"], crop_size["height"])),
-                ]
-            return data_dict
-        except Exception as e:
-            print(f"Error in __getitem__ {i}: {e}. Jumping to the next one.")
-            next_index = min(i + 1, len(self.list_data_dict) - 1)
-            return self.__getitem__(next_index)
+        # try the current sample first
+        for attempt_idx in range(num_base_retries):
+            try:
+                sample = self._get_item(i)
+                return sample
+            except Exception as e:
+                # sleep 1s in case it is a cloud disk issue
+                print(f"[try #{attempt_idx}] Failed to fetch sample {i}. Exception:", e)
+                time.sleep(1)
+
+        # try other samples, in case it is file corruption issue
+        for attempt_idx in range(num_base_retries):
+            try:
+                sample_idx = random.choice(range(len(self)))
+                sample = self._get_item(sample_idx)
+                return sample
+            except Exception as e:
+                # no need to sleep
+                print(f"[try other #{attempt_idx}] Failed to fetch sample {sample_idx}. Exception:", e)
+                pass
+
+        # still fail, most likely to be path issue or cloud disk issue, retry the same sample for longer
+        for attempt_idx in range(num_final_retries):
+            try:
+                sample = self._get_item(i)
+                return sample
+            except Exception as e:
+                # sleep 1s in case it is a cloud disk issue
+                print(f"[final try #{attempt_idx}] Failed to fetch sample {i}. Exception:", e)
+                time.sleep(1)
+
+        # Finally raise exception on failing.
+        assert False, "Failed to fetch sample."
+
+    def _get_item(self, i) -> Dict[str, torch.Tensor]:
+        sources = self.list_data_dict[i]
+        if isinstance(i, int):
+            sources = [sources]
+        assert len(sources) == 1, "Don't know why it is wrapped to a list"  # FIXME
+        if "image" in sources[0]:
+            image_file = self.list_data_dict[i]["image"]
+            if type(image_file) is list:
+                image = [self.process_image(f) for f in image_file]
+            else:
+                image = [self.process_image(image_file)]
+            sources = preprocess_multimodal(copy.deepcopy([e["conversations"] for e in sources]), self.data_args)
+        else:
+            sources = copy.deepcopy([e["conversations"] for e in sources])
+        data_dict = preprocess(sources, self.tokenizer, has_image=("image" in self.list_data_dict[i]))
+        if isinstance(i, int):
+            data_dict = dict(input_ids=data_dict["input_ids"][0], labels=data_dict["labels"][0])
+
+        # image exist in the data
+        if "image" in self.list_data_dict[i]:
+            data_dict["image"] = image
+        elif self.data_args.is_multimodal:
+            # image does not exist in the data, but the model is multimodal
+            crop_size = self.data_args.image_processor.crop_size
+            data_dict["image"] = [
+                (torch.zeros(1, 3, crop_size["height"], crop_size["width"]), (crop_size["width"], crop_size["height"])),
+            ]
+        return data_dict
 
 
 @dataclass
@@ -952,7 +987,7 @@ class DataCollatorForSupervisedDataset(object):
         labels = self.pad_sequence(labels, batch_first=True, padding_value=IGNORE_INDEX)
         batch = dict(
             input_ids=input_ids,
-            labels=labels.long() if labels.dtype == torch.int32 else labels,
+            labels=labels,
             attention_mask=input_ids.ne(self.tokenizer.pad_token_id),
         )
 
@@ -984,27 +1019,59 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
         actual_model_class_name = f"{model_args.model_class_name}ForCausalLM"
         model_class = getattr(transformers, actual_model_class_name)
         rank0_print(f"Using model class {model_class} from {model_args.model_class_name}")
-        model = model_class.from_pretrained(model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), low_cpu_mem_usage=False, **bnb_model_from_pretrained_args)
+        model = model_class.from_pretrained(
+            model_args.model_name_or_path,
+            cache_dir=training_args.cache_dir,
+            attn_implementation=training_args.attn_implementation,
+            torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
+            low_cpu_mem_usage=False,
+            **bnb_model_from_pretrained_args,
+        )
     elif model_args.vision_tower is not None:
         if "mixtral" in model_args.model_name_or_path.lower():
             model = LlavaMixtralForCausalLM.from_pretrained(
-                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), low_cpu_mem_usage=False, **bnb_model_from_pretrained_args
+                model_args.model_name_or_path,
+                cache_dir=training_args.cache_dir,
+                attn_implementation=training_args.attn_implementation,
+                torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
+                low_cpu_mem_usage=False,
+                **bnb_model_from_pretrained_args,
             )
         elif "mistral" in model_args.model_name_or_path.lower() or "zephyr" in model_args.model_name_or_path.lower():
             model = LlavaMistralForCausalLM.from_pretrained(
-                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), low_cpu_mem_usage=False, **bnb_model_from_pretrained_args
+                model_args.model_name_or_path,
+                cache_dir=training_args.cache_dir,
+                attn_implementation=training_args.attn_implementation,
+                torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
+                low_cpu_mem_usage=False,
+                **bnb_model_from_pretrained_args,
             )
         elif "vicuna" in model_args.model_name_or_path.lower() or "llama" in model_args.model_name_or_path.lower() or "yi" in model_args.model_name_or_path.lower() or "nous-hermes" in model_args.model_name_or_path.lower():
             model = LlavaLlamaForCausalLM.from_pretrained(
-                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), low_cpu_mem_usage=False, **bnb_model_from_pretrained_args
+                model_args.model_name_or_path,
+                cache_dir=training_args.cache_dir,
+                attn_implementation=training_args.attn_implementation,
+                torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
+                low_cpu_mem_usage=False,
+                **bnb_model_from_pretrained_args,
             )
         elif "qwen" in model_args.model_name_or_path.lower():
             model = LlavaQwenForCausalLM.from_pretrained(
-                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), low_cpu_mem_usage=False, **bnb_model_from_pretrained_args
+                model_args.model_name_or_path,
+                cache_dir=training_args.cache_dir,
+                attn_implementation=training_args.attn_implementation,
+                torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
+                low_cpu_mem_usage=False,
+                **bnb_model_from_pretrained_args,
             )
         elif "gemma" in model_args.model_name_or_path.lower():
             model = LlavaGemmaForCausalLM.from_pretrained(
-                model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), low_cpu_mem_usage=False, **bnb_model_from_pretrained_args
+                model_args.model_name_or_path,
+                cache_dir=training_args.cache_dir,
+                attn_implementation=training_args.attn_implementation,
+                torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
+                low_cpu_mem_usage=False,
+                **bnb_model_from_pretrained_args,
             )
         else:
             raise ValueError(f"Unknown model class {model_args}")
@@ -1104,7 +1171,7 @@ def train(attn_implementation=None):
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_args.model_name_or_path, cache_dir=training_args.cache_dir, model_max_length=training_args.model_max_length, padding_side="left")
     elif "qwen" in model_args.model_name_or_path.lower():
         tokenizer = transformers.AutoTokenizer.from_pretrained(model_args.model_name_or_path, cache_dir=training_args.cache_dir, model_max_length=training_args.model_max_length, padding_side="right")
-    else: # for all other models
+    else:  # for all other models
         tokenizer = transformers.AutoTokenizer.from_pretrained(
             model_args.model_name_or_path,
             cache_dir=training_args.cache_dir,
