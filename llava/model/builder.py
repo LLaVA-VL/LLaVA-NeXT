@@ -114,7 +114,7 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                 tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
                 cfg_pretrained = AutoConfig.from_pretrained(model_path)
                 model = LlavaGemmaForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=cfg_pretrained, attn_implementation=attn_implementation, **kwargs)
-            elif "vicuna" in model_name.lower() or "llama" in model_name.lower() or "yi" in model_name.lower() or "nous-hermes" in model_name.lower():
+            elif "vicuna" in model_name.lower() or "llama" in model_name.lower() or "yi" in model_name.lower() or "nous-hermes" in model_name.lower() or "llava-v1.6-34b" in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
                 cfg_pretrained = AutoConfig.from_pretrained(model_path)
                 model = LlavaLlamaForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=cfg_pretrained, **kwargs)
@@ -125,13 +125,14 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
             mm_projector_weights = {k: v.to(torch.float16) for k, v in mm_projector_weights.items()}
             model.load_state_dict(mm_projector_weights, strict=False)
         else:
+            rank0_print(f"Loaded LLaVA model: {model_path}")
             if "mixtral" in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_path)
                 model = LlavaMixtralForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, **kwargs)
             elif "mistral" in model_name.lower() or "zephyr" in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_path)
                 model = LlavaMistralForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, **kwargs)
-            elif "vicuna" in model_name.lower() or "llama" in model_name.lower() or "yi" in model_name.lower() or "nous-hermes" in model_name.lower():
+            elif "vicuna" in model_name.lower() or "llama" in model_name.lower() or "yi" in model_name.lower() or "nous-hermes" in model_name.lower() or "llava-v1.6-34b" in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
                 model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, **kwargs)
             elif "qwen" in model_name.lower():
@@ -143,8 +144,6 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                 model = LlavaGemmaForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=cfg_pretrained, attn_implementation=attn_implementation, **kwargs)
             else:
                 raise ValueError(f"Model {model_name} not supported")
-
-            rank0_print(f"Loaded LLaVA model: {model_path}")
 
     else:
         # Load language model
