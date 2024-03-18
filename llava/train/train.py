@@ -863,10 +863,8 @@ class LazySupervisedDataset(Dataset):
         try:
             image = Image.open(os.path.join(image_folder, image_file)).convert("RGB")
         except Exception as exn:
-            print(exn)
-            import random
-
-            return random.choice(self)
+            print(f"Failed to open image {image_file}. Exception:", exn)
+            raise exn
 
         image_size = image.size
         if self.data_args.image_aspect_ratio == "highres":
@@ -908,18 +906,19 @@ class LazySupervisedDataset(Dataset):
                 return sample
             except Exception as e:
                 # sleep 1s in case it is a cloud disk issue
-                print(f"[try #{attempt_idx}] Failed to fetch sample {i}. Exception:", e)
+                print(f"[Try #{attempt_idx}] Failed to fetch sample {i}. Exception:", e)
                 time.sleep(1)
 
         # try other samples, in case it is file corruption issue
         for attempt_idx in range(num_base_retries):
             try:
-                sample_idx = random.choice(range(len(self)))
-                sample = self._get_item(sample_idx)
+                next_index = min(i + 1, len(self.list_data_dict) - 1)
+                # sample_idx = random.choice(range(len(self)))
+                sample = self._get_item(next_index)
                 return sample
             except Exception as e:
                 # no need to sleep
-                print(f"[try other #{attempt_idx}] Failed to fetch sample {sample_idx}. Exception:", e)
+                print(f"[Try other #{attempt_idx}] Failed to fetch sample {next_index}. Exception:", e)
                 pass
 
         # still fail, most likely to be path issue or cloud disk issue, retry the same sample for longer
@@ -929,7 +928,7 @@ class LazySupervisedDataset(Dataset):
                 return sample
             except Exception as e:
                 # sleep 1s in case it is a cloud disk issue
-                print(f"[final try #{attempt_idx}] Failed to fetch sample {i}. Exception:", e)
+                print(f"[Final try #{attempt_idx}] Failed to fetch sample {i}. Exception:", e)
                 time.sleep(1)
 
         # Finally raise exception on failing.
@@ -992,7 +991,7 @@ class DataCollatorForSupervisedDataset(object):
         )
 
         try:
-            if "image" in instances[0]:
+            if all("image" in instance for instance in instances):
                 images = [instance["image"] for instance in instances]
                 batch["image_sizes"] = [im[1] for im_list in images for im in im_list]
                 images = [im[0] for im_list in images for im in im_list]
@@ -1001,7 +1000,9 @@ class DataCollatorForSupervisedDataset(object):
                 else:
                     batch["images"] = images
         except Exception as e:
-            print(batch)
+            print(instances)
+            print(images)
+            print(f"Failed to process images. Exception: {e}")
 
         return batch
 
