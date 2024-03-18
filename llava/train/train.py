@@ -991,14 +991,17 @@ class DataCollatorForSupervisedDataset(object):
             attention_mask=input_ids.ne(self.tokenizer.pad_token_id),
         )
 
-        if "image" in instances[0]:
-            images = [instance["image"] for instance in instances]
-            batch["image_sizes"] = [im[1] for im_list in images for im in im_list]
-            images = [im[0] for im_list in images for im in im_list]
-            if all(x is not None and x.shape == images[0].shape for x in images):
-                batch["images"] = torch.stack(images)
-            else:
-                batch["images"] = images
+        try:
+            if "image" in instances[0]:
+                images = [instance["image"] for instance in instances]
+                batch["image_sizes"] = [im[1] for im_list in images for im in im_list]
+                images = [im[0] for im_list in images for im in im_list]
+                if all(x is not None and x.shape == images[0].shape for x in images):
+                    batch["images"] = torch.stack(images)
+                else:
+                    batch["images"] = images
+        except Exception as e:
+            print(batch)
 
         return batch
 
