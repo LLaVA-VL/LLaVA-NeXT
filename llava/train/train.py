@@ -825,12 +825,15 @@ class LazySupervisedDataset(Dataset):
                 full_path = f"{base_path}{file_name}.json"
                 rank0_print(f"Loading {full_path}")
                 with open(full_path, "r") as file:
-                    self.list_data_dict.extend(json.load(file))
+                    cur_data_dict = json.load(file)
+                    rank0_print(f"Loaded {len(cur_data_dict)} samples from {full_path}")
+                    self.list_data_dict.extend(cur_data_dict)
         else:
-            # Single file scenario
             rank0_print(f"Loading {data_path}")
             with open(data_path, "r") as file:
-                self.list_data_dict.extend(json.load(file))
+                cur_data_dict = json.load(file)
+                rank0_print(f"Loaded {len(cur_data_dict)} samples from {full_path}")
+                self.list_data_dict.extend(cur_data_dict)
 
         rank0_print("Formatting inputs...Skip in lazy mode")
         self.tokenizer = tokenizer
