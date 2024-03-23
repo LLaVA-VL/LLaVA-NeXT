@@ -44,13 +44,14 @@ def plot_histogram(data, title, xlabel, ylabel, bins_width=10):
     bins = np.arange(0, max(data) + 10, 10)  # Adjust the bin width as needed
     plt.figure(figsize=(10, 6))
     plt.bar(bin_edges[:-1], hist, width=bins_width - 1, edgecolor="black", log=True)
-    plt.xticks(np.arange(min(bins), max(bins)+1, bins_width))
+    plt.xticks(np.arange(min(bins), max(bins) + 1, bins_width))
     plt.xlim(min(bin_edges), max(bin_edges))
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
     plt.savefig(f"./{title}.png")
     # plt.show()
+
 
 def plot_2d_histogram(widths, heights, title, xlabel, ylabel, bins_size=(500, 500)):  # Increased bin size
     plt.figure(figsize=(10, 10))
@@ -60,6 +61,7 @@ def plot_2d_histogram(widths, heights, title, xlabel, ylabel, bins_size=(500, 50
     plt.ylabel(ylabel)
     plt.title(title + "\n" + f"Max width: {max(widths)}, Max height: {max(heights)}")
     plt.savefig(f"./{title}.png")
+
 
 def tokenize(text):
     return text.split()
@@ -74,10 +76,18 @@ def calculate_tokenized_lengths(data):
     return lengths
 
 
+import argparse
 def main():
-    llava_instruct_name = "instruct_scene_ch_100K_4prompts"
-    json_path = f"/mnt/bn/vl-research-cn-lq/data/llava_instruct/in-house-ocr/{llava_instruct_name}.json"
-    images_folder = "/mnt/bn/vl-research-cn-lq/data/llava_data"
+    parser = argparse.ArgumentParser(description="Process data for LLaVA_Next project.")
+    parser.add_argument("--json_path", type=str, help="Path to the JSON file containing data.")
+    args = parser.parse_args()
+
+    llava_instruct_name = args.json_path.split('/')[-1].replace('.json', '')
+    json_path = args.json_path
+    # llava_instruct_name = "textcaps_train"
+    # json_path = f"/mnt/bn/vl-research/data/llava_instruct/{llava_instruct_name}.json"
+    llava_instruct_name = os.path.basename(json_path).replace(".json", "")
+    images_folder = "/mnt/bn/vl-research/data/llava_data"
 
     data = load_data(json_path)
     filtered_data = filter_data(data)
@@ -90,7 +100,7 @@ def main():
     plot_2d_histogram(widths, heights, f"{llava_instruct_name}_dist2d", "Width", "Height", bins_size=(300, 300))
 
     tokenized_lengths = calculate_tokenized_lengths(filtered_data)
-    plot_histogram(tokenized_lengths, f"{llava_instruct_name}_tokens", "Tokenized Length", "Count (log scale)", bins_width=2)
+    plot_histogram(tokenized_lengths, f"dist_{llava_instruct_name}_tokenized_length", "Tokenized Length", "Count (log scale)", bins_width=10)
 
 
 if __name__ == "__main__":
