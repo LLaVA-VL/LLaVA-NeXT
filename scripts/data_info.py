@@ -80,6 +80,7 @@ import argparse
 def main():
     parser = argparse.ArgumentParser(description="Process data for LLaVA_Next project.")
     parser.add_argument("--json_path", type=str, help="Path to the JSON file containing data.")
+    parser.add_argument("--images_folder", type=str, help="Path to the folder containing images.")
     args = parser.parse_args()
 
     llava_instruct_name = args.json_path.split('/')[-1].replace('.json', '')
@@ -87,7 +88,8 @@ def main():
     # llava_instruct_name = "textcaps_train"
     # json_path = f"/mnt/bn/vl-research/data/llava_instruct/{llava_instruct_name}.json"
     llava_instruct_name = os.path.basename(json_path).replace(".json", "")
-    images_folder = "/mnt/bn/vl-research/data/llava_data"
+    # images_folder = "/mnt/bn/vl-research/data/llava_data"
+    images_folder = args.images_folder
 
     data = load_data(json_path)
     filtered_data = filter_data(data)
