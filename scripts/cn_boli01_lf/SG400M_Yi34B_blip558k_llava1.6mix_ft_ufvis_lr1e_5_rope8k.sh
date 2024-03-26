@@ -112,13 +112,13 @@ llava/train/train_mem.py \
     --gradient_checkpointing True \
     --dataloader_num_workers 8 \
     --lazy_preprocess True \
-    --report_to wand \
+    --report_to wandb \
     --torch_compile True \
-    --torch_compile_backend "inductor"b
+    --torch_compile_backend "inductor"
 
 # Stage 1.5
 PROMPT_VERSION="mistral_direct"
-FINAL_RUN_NAME="dist4_llavanext-${MODEL_VERSION}-pretrain_blip558k_plain-finetune_la1_6mix_lr1e_5_fvis"
+FINAL_RUN_NAME="dist4_llavanext-${VISION_MODEL_VERSION_CLEAN}-${MODEL_VERSION}-pretrain_blip558k_plain-finetune_la1_6mix_lr1e_5_ufvis"
 echo "RUN_NAME: ${FINAL_RUN_NAME}"
 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
     llava/train/train_mem.py \
@@ -162,9 +162,9 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --gradient_checkpointing True \
     --dataloader_num_workers 8 \
     --lazy_preprocess True \
-    --report_to wand \
+    --report_to wandb \
     --torch_compile True \
-    --torch_compile_backend "inductor"b
+    --torch_compile_backend "inductor"
 
 function azcopy_upload() {
     # Assuming the first argument is SRC and the second is TGT
