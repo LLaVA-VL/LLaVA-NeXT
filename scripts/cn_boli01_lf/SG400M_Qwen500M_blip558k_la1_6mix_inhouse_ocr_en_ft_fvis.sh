@@ -14,6 +14,9 @@ export HF_HOME=/mnt/bn/${NAS_REGION}/workspace/.cache/huggingface
 export HF_TOKEN="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"
 export HF_HUB_ENABLE_HF_TRANSFER="1"
 
+export http_proxy=http://sys-proxy-rd-relay.byted.org:8118;
+export https_proxy=http://sys-proxy-rd-relay.byted.org:8118;
+
 # set up llava dev env
 if [ -n "$USER_PROJECT" ]; then
     cd /mnt/bn/${NAS_REGION}/workspace/${USER_PROJECT}/projects/LLaVA_Next

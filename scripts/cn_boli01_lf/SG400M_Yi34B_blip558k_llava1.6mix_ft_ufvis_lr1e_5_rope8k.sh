@@ -1,5 +1,6 @@
 #!/bin/bash
-
+NAS_REGION="vl-research-cn-boli01-lf";
+USER_PROJECT="boli01"
 # set up wandb
 export WANDB_API_KEY=a651c244635bc6f913ab654af3f0eebaecdc9381
 export WANDB_ENTITY=llava-vl
@@ -16,8 +17,6 @@ export http_proxy=http://sys-proxy-rd-relay.byted.org:8118;
 export https_proxy=http://sys-proxy-rd-relay.byted.org:8118;
 
 ############### Prepare Envs #################
-NAS_REGION="vl-research-cn-boli01-lf";
-USER_PROJECT="boli01"
 
 if [ -n "$USER_PROJECT" ]; then
     cd /mnt/bn/${NAS_REGION}/workspace/${USER_PROJECT}/projects/LLaVA_Next
