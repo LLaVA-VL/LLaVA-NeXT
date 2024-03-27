@@ -16,7 +16,18 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
 ]
 
-dependencies = [
+[project.optional-dependencies]
+standalone = [
+    "shortuuid",
+    "httpx==0.24.0",
+    "accelerate~=0.27.2",
+    "tokenizers~=0.15.2",
+    "ftfy",
+    "open_clip_torch"
+]
+
+all = [
+    "llava[standalone]",
     "einops",
     "fastapi",
     "gradio==3.35.2",
@@ -33,8 +44,6 @@ dependencies = [
     "deepspeed==0.12.2",
     "peft==0.4.0",
     "transformers@git+https://github.com/huggingface/transformers.git@56b64bf1a51e29046bb3f8ca15839ff4d6a92c74",
-    "tokenizers~=0.15.2",
-    "accelerate~=0.27.2",
     "bitsandbytes==0.41.0",
     "scikit-learn==1.2.2",
     "sentencepiece~=0.1.99",
@@ -42,14 +51,9 @@ dependencies = [
     "einops-exts==0.0.4",
     "gradio_client==0.2.9",
     "pydantic",
-    "open_clip_torch",
     "timm",
     "hf_transfer",
 ]
-
-[project.optional-dependencies]
-train = ["deepspeed==0.12.2", "ninja", "wandb==0.16.3"]
-build = ["build", "twine"]
 
 [project.urls]
 "Homepage" = "https://llava-vl.github.io"
