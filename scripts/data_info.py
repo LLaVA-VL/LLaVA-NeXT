@@ -55,7 +55,19 @@ def plot_histogram(data, title, xlabel, ylabel, bins_width=10):
 
 def plot_2d_histogram(widths, heights, title, xlabel, ylabel, bins_size=(500, 500)):  # Increased bin size
     plt.figure(figsize=(12, 12))
-    h, xedges, yedges, image = plt.hist2d(widths, heights, bins=[np.arange(min(widths), max(widths) + bins_size[0], bins_size[0]), np.arange(min(heights), max(heights) + bins_size[1], bins_size[1])], cmap=plt.cm.jet, density=True)
+    
+    # Handle the case when min and max values are the same
+    if min(widths) == max(widths):
+        widths_bins = [min(widths), max(widths) + 1]
+    else:
+        widths_bins = np.arange(min(widths), max(widths) + bins_size[0], bins_size[0])
+    
+    if min(heights) == max(heights):
+        heights_bins = [min(heights), max(heights) + 1]
+    else:
+        heights_bins = np.arange(min(heights), max(heights) + bins_size[1], bins_size[1])
+    
+    h, xedges, yedges, image = plt.hist2d(widths, heights, bins=[widths_bins, heights_bins], cmap=plt.cm.jet, density=True)
     plt.colorbar()
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
@@ -80,15 +92,12 @@ import argparse
 def main():
     parser = argparse.ArgumentParser(description="Process data for LLaVA_Next project.")
     parser.add_argument("--json_path", type=str, help="Path to the JSON file containing data.")
-    parser.add_argument("--images_folder", type=str, help="Path to the folder containing images.")
+    parser.add_argument("--images_folder", type=str, default="/mnt/bn/vl-research/data/llava_data", help="Path to the folder containing images.")
     args = parser.parse_args()
 
     llava_instruct_name = args.json_path.split('/')[-1].replace('.json', '')
     json_path = args.json_path
-    # llava_instruct_name = "textcaps_train"
-    # json_path = f"/mnt/bn/vl-research/data/llava_instruct/{llava_instruct_name}.json"
     llava_instruct_name = os.path.basename(json_path).replace(".json", "")
-    # images_folder = "/mnt/bn/vl-research/data/llava_data"
     images_folder = args.images_folder
 
     data = load_data(json_path)
@@ -96,14 +105,22 @@ def main():
 
     print(f"Total data items: {len(data)}, Filtered data items: {len(filtered_data)}")
     widths, heights = calculate_image_dimensions_multiprocess(filtered_data, images_folder)
-    max_diwth = max(widths)
+    max_width = max(widths)
     max_height = max(heights)
-    print(f"Max width: {max_diwth}, Max height: {max_height}")
-    plot_2d_histogram(widths, heights, f"dist_{llava_instruct_name}_2d_w_h", "Width", "Height", bins_size=(100, 100))
-
+    print(f"Max width: {max_width}, Max height: {max_height}")
+    
     tokenized_lengths = calculate_tokenized_lengths(filtered_data)
-    plot_histogram(tokenized_lengths, f"dist_{llava_instruct_name}_tokenized_length", "Tokenized Length", "Count (log scale)", bins_width=10)
 
+    plt.figure(figsize=(16, 8))
+    
+    plt.subplot(1, 2, 1)
+    plot_2d_histogram(widths, heights, f"dist_{llava_instruct_name}_2d_w_h", "Width", "Height", bins_size=(100, 100))
+    
+    plt.subplot(1, 2, 2)
+    plot_histogram(tokenized_lengths, f"dist_{llava_instruct_name}_tokenized_length", "Tokenized Length", "Count (log scale)", bins_width=10)
+    
+    plt.tight_layout()
+    plt.savefig(f"./dist_{llava_instruct_name}_combined.png")
 
 if __name__ == "__main__":
     main()
