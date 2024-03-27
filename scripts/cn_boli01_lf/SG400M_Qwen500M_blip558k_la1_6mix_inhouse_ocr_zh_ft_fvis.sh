@@ -132,9 +132,9 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --run_name $MID_RUN_NAME \
     --output_dir /mnt/bn/${NAS_REGION}/checkpoints/$MID_RUN_NAME \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 8 \
+    --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 1 \
+    --gradient_accumulation_steps 2 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
     --save_steps 20000 \
@@ -183,10 +183,12 @@ python3 -m pip install torch==2.2.0
 python3 -m pip uninstall flash-attn -y
 
 which python3
-accelerate launch --num_processes 8 --main_process_port 12345 -m lmms_eval \
+python3 -m accelerate.commands.launch \
+    --main_process_port=12340 \
+    --num_processes=8 lmms_eval \
     --model llava \
-    --model_args pretrained="/mnt/bn/${NAS_REGION}/checkpoints/$MID_RUN_NAME" \
-    --tasks ai2d,chartqa,docvqa_val,mme,mmmu_val,textcaps_val,scienceqa_img,vizwiz_vqa_val,pope,ok_vqa \
+    --model_args pretrained=/mnt/bn/${NAS_REGION}/checkpoints/${MID_RUN_NAME},conv_template=qwen_1_5 \
+    --tasks ai2d,chartqa,docvqa_val,mme,mmmu_val,cmmmu_val,mathvista_testmini,textcaps_val,scienceqa_img,vizwiz_vqa_val,pope,ok_vqa \
     --batch_size 1 \
     --log_samples \
     --log_samples_suffix ${MID_RUN_NAME} \

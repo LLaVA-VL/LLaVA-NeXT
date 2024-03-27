@@ -177,18 +177,20 @@ export WANDB_API_KEY=a651c244635bc6f913ab654af3f0eebaecdc9381
 export WANDB_ENTITY=libo0013
 export WANDB_MODE=online
 
+cd /mnt/bn/vl-research-cn-boli01-lf/workspace/boli01/projects/LLaVA_Next
+python3 -m pip install -e ".[standalone]"
+
 cd /mnt/bn/vl-research-cn-boli01-lf/workspace/boli01/projects/lmms-eval-internal
-python3 -m pip install -e .
-
 python3 -m pip install transformers==4.37.2
-python3 -m pip install torch==2.2.0
+python3 -m pip install torch==2.2.0 # keep torch version fixed for reporting comparable numbers
+python3 -m pip install -e .
+python3 -m pip uninstall flash-attn -y # make sure no undefined symbols interruption
 
-python3 -m pip uninstall flash-attn -y
-
-which python3
-accelerate launch --num_processes 8 --main_process_port 12345 -m lmms_eval \
+python3 -m accelerate.commands.launch \
+    --main_process_port=12340 \
+    --num_processes=8 lmms_eval \
     --model llava \
-    --model_args pretrained="/mnt/bn/${NAS_REGION}/checkpoints/$MID_RUN_NAME" \
+    --model_args pretrained=/mnt/bn/vl-research-cn-boli01-lf/checkpoints/llavanext-google_siglip-so400m-patch14-384_Qwen_Qwen1.5-0.5B-Chat-blip558k_pretrain_plain-la1_6mix_inhouse_ocr_en_ft-fvis_anyres_d32k,conv_template=qwen_1_5 \
     --tasks ai2d,chartqa,docvqa_val,mme,mmmu_val,textcaps_val,scienceqa_img,vizwiz_vqa_val,pope,ok_vqa \
     --batch_size 1 \
     --log_samples \
