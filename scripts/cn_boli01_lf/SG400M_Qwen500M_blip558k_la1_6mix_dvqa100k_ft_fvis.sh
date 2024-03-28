@@ -186,10 +186,12 @@ python3 -m pip install torch==2.2.0
 python3 -m pip uninstall flash-attn -y
 
 which python3
-accelerate launch --num_processes 8 --main_process_port 12345 -m lmms_eval \
+python3 -m accelerate.commands.launch \
+    --main_process_port=12340 \
+    --num_processes=8 lmms_eval \
     --model llava \
     --model_args pretrained="/mnt/bn/${NAS_REGION}/checkpoints/$MID_RUN_NAME" \
-    --tasks ai2d,chartqa,docvqa_val,mme,mmmu_val,cmmmu_val,mathvista_testmini,textcaps_val,scienceqa_img,vizwiz_vqa_val,pope,ok_vqa \
+    --tasks ai2d,chartqa,docvqa_val,mme,mmmu_val,cmmmu_val,textcaps_val,scienceqa_img,vizwiz_vqa_val,pope,ok_vqa \
     --batch_size 1 \
     --log_samples \
     --log_samples_suffix ${MID_RUN_NAME} \
