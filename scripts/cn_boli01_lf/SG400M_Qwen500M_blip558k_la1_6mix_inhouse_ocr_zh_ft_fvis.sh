@@ -115,7 +115,7 @@ echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
     llava/train/train_mem.py \
-    --deepspeed scripts/zero3.json \
+    --deepspeed scripts/zero3_offload.json \
     --model_name_or_path $LLM_VERSION \
     --version $PROMPT_VERSION \
     --data_path="/mnt/bn/${NAS_REGION}/data/llava_instruct/{llava_158k_detailv3_reinstall_gpt4v24k_wild15k_mixdocvqa_dca45k_synden40k_cococaps20k_sg40kt2k_ori,in-house-ocr/instruct_scene_ch_100K_4prompts}.json" \
@@ -135,9 +135,9 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --run_name $MID_RUN_NAME \
     --output_dir /mnt/bn/${NAS_REGION}/checkpoints/$MID_RUN_NAME \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 4 \
+    --per_device_train_batch_size 2 \
     --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 2 \
+    --gradient_accumulation_steps 4 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
     --save_steps 20000 \
