@@ -121,34 +121,34 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --torch_compile True \
     --torch_compile_backend "inductor"
 
-# function azcopy_upload() {
-#     # Assuming the first argument is SRC and the second is TGT
-#     local SRC="$1"
-#     local TGT="$2"
-#     local SAS_TOKEN="?sv=2023-01-03&st=2023-12-23T13%3A48%3A31Z&se=2024-06-30T13%3A48%3A00Z&sr=c&sp=racwdxltf&sig=K77ocq6Ram1uYMenQJZJl%2BBayH%2Bg4e10Raci6wzQY3M%3D"
-#     # Executing the azcopy command with the provided SRC and TGT
-#     /mnt/bn/${NAS_REGION}/software/azcopy copy "$SRC" "https://chunyldev.blob.core.windows.net/output/$TGT$SAS_TOKEN" --recursive --overwrite=ifSourceNewer
-# }
+function azcopy_upload() {
+    # Assuming the first argument is SRC and the second is TGT
+    local SRC="$1"
+    local TGT="$2"
+    local SAS_TOKEN="?sv=2023-01-03&st=2023-12-23T13%3A48%3A31Z&se=2024-06-30T13%3A48%3A00Z&sr=c&sp=racwdxltf&sig=K77ocq6Ram1uYMenQJZJl%2BBayH%2Bg4e10Raci6wzQY3M%3D"
+    # Executing the azcopy command with the provided SRC and TGT
+    /mnt/bn/${NAS_REGION}/software/azcopy copy "$SRC" "https://chunyldev.blob.core.windows.net/output/$TGT$SAS_TOKEN" --recursive --overwrite=ifSourceNewer
+}
 
-# azcopy_upload "./project_checkpoints/${MID_RUN_NAME}" "projects/llava_data/checkpoints/"
+azcopy_upload "./project_checkpoints/${MID_RUN_NAME}" "projects/llava_data/checkpoints/"
 
-
+exit 0;
 ############################# Eval ################################
-cd /mnt/bn/vl-research/workspace/boli01/projects/lmms-eval
-export OPENAI_API_KEY="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"
-export PYTHONWARNINGS=ignore
-export TOKENIZERS_PARALLELISM=false
-export WANDB_REPORT_API_ENABLE_V2=True
-export WANDB_API_KEY=a651c244635bc6f913ab654af3f0eebaecdc9381
-export WANDB_ENTITY=libo0013
-export WANDB_MODE=online
+# cd /mnt/bn/vl-research/workspace/boli01/projects/lmms-eval
+# export OPENAI_API_KEY="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"
+# export PYTHONWARNINGS=ignore
+# export TOKENIZERS_PARALLELISM=false
+# export WANDB_REPORT_API_ENABLE_V2=True
+# export WANDB_API_KEY=a651c244635bc6f913ab654af3f0eebaecdc9381
+# export WANDB_ENTITY=libo0013
+# export WANDB_MODE=online
 
-accelerate launch --num_processes 8 --main_process_port 12345 -m lmms_eval \
-    --model llava \
-    --model_args pretrained="/mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/project_checkpoints/${MID_RUN_NAME}" \
-    --tasks ai2d,chartqa,docvqa_val,coco2017_cap_val,mme,mmmu_val,textcaps_val,scienceqa_img,vizwiz_vqa_val,pope,ok_vqa,dc100_en,mmvet,llava_in_the_wild \
-    --batch_size 1 \
-    --log_samples \
-    --log_samples_suffix ${MID_RUN_NAME} \
-    --output_path ./logs/ \
-    --wandb_args 'project=lmms-eval,job_type=eval,entity=libo0013';
+# accelerate launch --num_processes 8 --main_process_port 12345 -m lmms_eval \
+#     --model llava \
+#     --model_args pretrained="/mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/project_checkpoints/${MID_RUN_NAME}" \
+#     --tasks ai2d,chartqa,docvqa_val,coco2017_cap_val,mme,mmmu_val,textcaps_val,scienceqa_img,vizwiz_vqa_val,pope,ok_vqa,dc100_en,mmvet,llava_in_the_wild \
+#     --batch_size 1 \
+#     --log_samples \
+#     --log_samples_suffix ${MID_RUN_NAME} \
+#     --output_path ./logs/ \
+#     --wandb_args 'project=lmms-eval,job_type=eval,entity=libo0013';
