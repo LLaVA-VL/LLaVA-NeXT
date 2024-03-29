@@ -115,7 +115,7 @@ echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
     llava/train/train_mem.py \
-    --deepspeed scripts/zero3.json \
+    --deepspeed scripts/zero3_offload.json \
     --model_name_or_path $LLM_VERSION \
     --version $PROMPT_VERSION \
     --data_path="/mnt/bn/${NAS_REGION}/data/llava_instruct/{llava_158k_detailv3_reinstall_gpt4v24k_wild15k_mixdocvqa_dca45k_synden40k_cococaps20k_sg40kt2k_ori,dvqa/dvqa_train_100k}.json" \
@@ -135,9 +135,9 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --run_name $MID_RUN_NAME \
     --output_dir /mnt/bn/${NAS_REGION}/checkpoints/$MID_RUN_NAME \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 2 \
+    --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 4 \
+    --gradient_accumulation_steps 2 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
     --save_steps 20000 \
@@ -186,10 +186,12 @@ python3 -m pip install torch==2.2.0
 python3 -m pip uninstall flash-attn -y
 
 which python3
-accelerate launch --num_processes 8 --main_process_port 12345 -m lmms_eval \
+python3 -m accelerate.commands.launch \
+    --main_process_port=12340 \
+    --num_processes=8 lmms_eval \
     --model llava \
     --model_args pretrained="/mnt/bn/${NAS_REGION}/checkpoints/$MID_RUN_NAME" \
-    --tasks ai2d,chartqa,docvqa_val,mme,mmmu_val,cmmmu_val,mathvista_testmini,textcaps_val,scienceqa_img,vizwiz_vqa_val,pope,ok_vqa \
+    --tasks ai2d,chartqa,docvqa_val,mme,mmmu_val,cmmmu_val,textcaps_val,scienceqa_img,vizwiz_vqa_val,pope,ok_vqa \
     --batch_size 1 \
     --log_samples \
     --log_samples_suffix ${MID_RUN_NAME} \
