@@ -112,7 +112,7 @@ PROMPT_VERSION="qwen_1_5"
 MID_RUN_NAME="llavanext-google_siglip-so400m-patch14-384_Qwen_Qwen1.5-0.5B-Chat-blip558k_pretrain_plain-la1_6mix_nongpt_ft-fvis_anyres_d32k"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
-FINAL_RUN_NAME="llavanext-google_siglip-so400m-patch14-384_Qwen_Qwen1.5-0.5B-Chat-blip558k_pretrain_plain-la1_6mix_stage3_1pct_gptdata_ft-fvis_anyres_d32k"
+FINAL_RUN_NAME="llavanext-google_siglip-so400m-patch14-384_Qwen_Qwen1.5-0.5B-Chat-blip558k_pretrain_plain-la1_6mix_stage3_5pct_gptdata_ft-fvis_anyres_d32k"
 echo "FINAL_RUN_NAME: ${FINAL_RUN_NAME}"
 
 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${PORT}" \
@@ -120,7 +120,7 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --deepspeed scripts/zero3_offload.json \
     --model_name_or_path /mnt/bn/vl-research-cn-boli01-lf/checkpoints/$MID_RUN_NAME \
     --version $PROMPT_VERSION \
-    --data_path="/mnt/bn/${NAS_REGION}/data/llava_instruct/{llava_instruct_158k/llava_gpt4_single77k_1pct,llava_instruct_158k/llava_gpt4_multi56k_1pct,llava_instruct_158k/llava_gpt4_detail24k_1pct}.json" \
+    --data_path="/mnt/bn/${NAS_REGION}/data/llava_instruct/{llava_instruct_158k/llava_gpt4_single77k_5pct,llava_instruct_158k/llava_gpt4_multi56k_5pct,llava_instruct_158k/llava_gpt4_detail24k_5pct}.json" \
     --image_folder /mnt/bn/${NAS_REGION}/data/llava_data \
     --mm_tunable_parts="mm_mlp_adapter,mm_language_model" \
     --vision_tower ${VISION_MODEL_VERSION} \
