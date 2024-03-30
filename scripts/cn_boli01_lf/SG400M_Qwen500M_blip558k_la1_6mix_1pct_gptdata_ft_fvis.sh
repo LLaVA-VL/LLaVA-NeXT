@@ -113,12 +113,12 @@ ABLATION_DATA="dvqa100k"
 MID_RUN_NAME="llavanext-google_siglip-so400m-patch14-384_Qwen_Qwen1.5-0.5B-Chat-blip558k_pretrain_plain-la1_6mix_${ABLATION_DATA}_ft-fvis_anyres_d32k"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
-torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
+torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${PORT}" \
     llava/train/train_mem.py \
     --deepspeed scripts/zero3_offload.json \
     --model_name_or_path $LLM_VERSION \
     --version $PROMPT_VERSION \
-    --data_path="/mnt/bn/${NAS_REGION}/data/llava_instruct/{llava_158k_detailv3_reinstall_gpt4v24k_wild15k_mixdocvqa_dca45k_synden40k_cococaps20k_sg40kt2k_ori,dvqa/dvqa_train_100k}.json" \
+    --data_path="/mnt/bn/${NAS_REGION}/data/llava_instruct/{llava1.6mix_minus_gpt4data_570k,llava_instruct_158k/llava_gpt4_single77k_1pct,llava_instruct_158k/llava_gpt4_multi56k_1pct,llava_instruct_158k/llava_gpt4_detail24k_1pct}.json" \
     --image_folder /mnt/bn/${NAS_REGION}/data/llava_data \
     --pretrain_mm_mlp_adapter="/mnt/bn/${NAS_REGION}/checkpoints/projectors/${BASE_RUN_NAME}/mm_projector.bin" \
     --mm_tunable_parts="mm_mlp_adapter,mm_language_model" \
