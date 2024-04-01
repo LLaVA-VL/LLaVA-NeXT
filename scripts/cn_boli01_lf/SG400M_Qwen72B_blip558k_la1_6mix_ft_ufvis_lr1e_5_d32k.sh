@@ -76,11 +76,7 @@ BASE_RUN_NAME="llavanext-Qwen_Qwen1.5-72B-Chat-google_siglip-so400m-patch14-384-
 echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
 PROMPT_VERSION="qwen_1_5"
-MID_RUN_NAME="llavanext-${LLM_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-pretrain_blip558k_plain-finetune_la1_6mix_lr1e_5_ufvis"
-echo "MID_RUN_NAME: ${MID_RUN_NAME}"
-
-PROMPT_VERSION="qwen_1_5"
-FINAL_RUN_NAME="llavanext-${LLM_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-pretrain_blip558k_plain-finetune_la1_6mix_lr1e_5_ufvis_anyres_d32k"
+FINAL_RUN_NAME="llavanext-${LLM_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-pretrain_blip558k_plain-finetune_la1_6mix_lr1e_5_ufvis_anyres_d32k_fix"
 echo "FINAL_RUN_NAME: ${FINAL_RUN_NAME}"
 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
     llava/train/train_mem.py \
