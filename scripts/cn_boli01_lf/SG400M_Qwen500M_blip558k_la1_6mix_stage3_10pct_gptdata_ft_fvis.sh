@@ -109,19 +109,16 @@ echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
 # Stage 2
 PROMPT_VERSION="qwen_1_5"
-MID_RUN_NAME="llavanext-google_siglip-so400m-patch14-384_Qwen_Qwen1.5-0.5B-Chat-blip558k_pretrain_plain-la1_6mix_nongpt_ft-fvis_anyres_d32k"
-echo "MID_RUN_NAME: ${MID_RUN_NAME}"
-
-FINAL_RUN_NAME="llavanext-google_siglip-so400m-patch14-384_Qwen_Qwen1.5-0.5B-Chat-blip558k_pretrain_plain-la1_6mix_stage3_10pct_gptdata_ft-fvis_anyres_d32k"
+FINAL_RUN_NAME="llavanext-google_siglip-so400m-patch14-384_Qwen_Qwen1.5-0.5B-Chat-blip558k_pretrain_plain-la1_6_nongpt_w_10pct_gptdata_ft-fvis_anyres_d32k"
 echo "FINAL_RUN_NAME: ${FINAL_RUN_NAME}"
-
 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${PORT}" \
     llava/train/train_mem.py \
     --deepspeed scripts/zero3_offload.json \
-    --model_name_or_path /mnt/bn/vl-research-cn-boli01-lf/checkpoints/$MID_RUN_NAME \
+    --model_name_or_path ${LLM_VERSION} \
     --version $PROMPT_VERSION \
-    --data_path="/mnt/bn/${NAS_REGION}/data/llava_instruct/{llava_instruct_158k/llava_gpt4_single77k_10pct,llava_instruct_158k/llava_gpt4_multi56k_10pct,llava_instruct_158k/llava_gpt4_detail24k_10pct}.json" \
+    --data_path="/mnt/bn/${NAS_REGION}/data/llava_instruct/{llava_158k_detailv3_reinstall_gpt4v24k_wild15k_mixdocvqa_dca45k_synden40k_cococaps20k_sg40kt2k_ori,llava_instruct_158k/llava_gpt4_single77k_10pct,llava_instruct_158k/llava_gpt4_multi56k_10pct,llava_instruct_158k/llava_gpt4_detail24k_10pct}.json" \
     --image_folder /mnt/bn/${NAS_REGION}/data/llava_data \
+    --pretrain_mm_mlp_adapter="/mnt/bn/${NAS_REGION}/checkpoints/projectors/${BASE_RUN_NAME}/mm_projector.bin" \
     --mm_tunable_parts="mm_mlp_adapter,mm_language_model" \
     --vision_tower ${VISION_MODEL_VERSION} \
     --mm_projector_type mlp2x_gelu \
@@ -133,9 +130,9 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --image_grid_pinpoints "[(384, 768), (768, 384), (768, 768), (1152, 384), (384, 1152)]" \
     --mm_patch_merge_type spatial_unpad \
     --bf16 True \
-    --run_name $MID_RUN_NAME \
-    --output_dir /mnt/bn/${NAS_REGION}/checkpoints/$MID_RUN_NAME \
-    --num_train_epochs 3 \
+    --run_name $FINAL_RUN_NAME \
+    --output_dir /mnt/bn/${NAS_REGION}/checkpoints/$FINAL_RUN_NAME \
+    --num_train_epochs 1 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 2 \
@@ -145,7 +142,7 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --save_total_limit 1 \
     --learning_rate 2e-5 \
     --weight_decay 0. \
-    --warmup_ratio 0.05 \
+    --warmup_ratio 0.03 \
     --lr_scheduler_type "cosine" \
     --logging_steps 1 \
     --tf32 True \
@@ -153,7 +150,6 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --gradient_checkpointing True \
     --dataloader_num_workers 16 \
     --lazy_preprocess True \
-    --report_to wandb \
     --torch_compile True \
     --torch_compile_backend "inductor"
 
@@ -181,20 +177,14 @@ export WANDB_MODE=online
 cd /mnt/bn/vl-research-cn-boli01-lf/workspace/boli01/projects/lmms-eval-internal
 python3 -m pip install -e .
 
-python3 -m pip install transformers==4.37.2
-python3 -m pip install torch==2.2.0
-
-python3 -m pip uninstall flash-attn -y
-
 which python3
 python3 -m accelerate.commands.launch \
     --main_process_port=12340 \
     --num_processes=8 lmms_eval \
     --model llava \
-    --model_args pretrained="/mnt/bn/${NAS_REGION}/checkpoints/$MID_RUN_NAME" \
+    --model_args pretrained="/mnt/bn/${NAS_REGION}/checkpoints/$FINAL_RUN_NAME",conv_template=qwen_1_5 \
     --tasks ai2d,chartqa,docvqa_val,mme,mmmu_val,cmmmu_val,textcaps_val,scienceqa_img,vizwiz_vqa_val,pope,ok_vqa \
     --batch_size 1 \
     --log_samples \
-    --log_samples_suffix ${MID_RUN_NAME} \
-    --output_path ./logs/ \
-    --wandb_args 'project=lmms-eval,job_type=eval,entity=llava-vl';
+    --log_samples_suffix ${FINAL_RUN_NAME} \
+    --output_path ./logs/

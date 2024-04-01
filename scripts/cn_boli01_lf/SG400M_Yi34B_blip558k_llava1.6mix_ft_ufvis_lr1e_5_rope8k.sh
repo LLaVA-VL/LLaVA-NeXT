@@ -74,46 +74,46 @@ MODEL_VERSION="Nous-Hermes-2-Yi-34B"
 PROMPT_VERSION="plain"
 BASE_RUN_NAME="dist4_llavanext-${VISION_MODEL_VERSION_CLEAN}-${MODEL_VERSION}-mlp2x_gelu-pretrain_blip558k_${PROMPT_VERSION}"
 echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
-torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
-llava/train/train_mem.py \
-    --deepspeed scripts/zero3.json \
-    --model_name_or_path "NousResearch/$MODEL_VERSION" \
-    --version $PROMPT_VERSION \
-    --data_path /mnt/bn/${NAS_REGION}/data/llava_data/blip_558k/blip_558k_plain.json \
-    --image_folder /mnt/bn/${NAS_REGION}/data/llava_data/blip_558k/images \
-    --vision_tower ${VISION_MODEL_VERSION} \
-    --mm_tunable_parts="mm_mlp_adapter" \
-    --mm_projector_type mlp2x_gelu \
-    --mm_vision_select_layer -2 \
-    --mm_use_im_start_end False \
-    --mm_use_im_patch_token False \
-    --group_by_modality_length True \
-    --bf16 True \
-    --run_name $BASE_RUN_NAME \
-    --output_dir /mnt/bn/${NAS_REGION}/checkpoints/projectors/${BASE_RUN_NAME} \
-    --num_train_epochs 1 \
-    --per_device_train_batch_size 16 \
-    --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 1 \
-    --evaluation_strategy "no" \
-    --save_strategy "steps" \
-    --save_steps 50000 \
-    --save_total_limit 1 \
-    --learning_rate 1e-3 \
-    --weight_decay 0. \
-    --warmup_ratio 0.03 \
-    --lr_scheduler_type "cosine" \
-    --logging_steps 1 \
-    --tf32 True \
-    --rope_scaling_factor 2 \
-    --rope_scaling_type "linear" \
-    --model_max_length 8192 \
-    --gradient_checkpointing True \
-    --dataloader_num_workers 8 \
-    --lazy_preprocess True \
-    --report_to wandb \
-    --torch_compile True \
-    --torch_compile_backend "inductor"
+# torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
+# llava/train/train_mem.py \
+#     --deepspeed scripts/zero3.json \
+#     --model_name_or_path "NousResearch/$MODEL_VERSION" \
+#     --version $PROMPT_VERSION \
+#     --data_path /mnt/bn/${NAS_REGION}/data/llava_data/blip_558k/blip_558k_plain.json \
+#     --image_folder /mnt/bn/${NAS_REGION}/data/llava_data/blip_558k/images \
+#     --vision_tower ${VISION_MODEL_VERSION} \
+#     --mm_tunable_parts="mm_mlp_adapter" \
+#     --mm_projector_type mlp2x_gelu \
+#     --mm_vision_select_layer -2 \
+#     --mm_use_im_start_end False \
+#     --mm_use_im_patch_token False \
+#     --group_by_modality_length True \
+#     --bf16 True \
+#     --run_name $BASE_RUN_NAME \
+#     --output_dir /mnt/bn/${NAS_REGION}/checkpoints/projectors/${BASE_RUN_NAME} \
+#     --num_train_epochs 1 \
+#     --per_device_train_batch_size 16 \
+#     --per_device_eval_batch_size 4 \
+#     --gradient_accumulation_steps 1 \
+#     --evaluation_strategy "no" \
+#     --save_strategy "steps" \
+#     --save_steps 50000 \
+#     --save_total_limit 1 \
+#     --learning_rate 1e-3 \
+#     --weight_decay 0. \
+#     --warmup_ratio 0.03 \
+#     --lr_scheduler_type "cosine" \
+#     --logging_steps 1 \
+#     --tf32 True \
+#     --rope_scaling_factor 2 \
+#     --rope_scaling_type "linear" \
+#     --model_max_length 8192 \
+#     --gradient_checkpointing True \
+#     --dataloader_num_workers 8 \
+#     --lazy_preprocess True \
+#     --report_to wandb \
+#     --torch_compile True \
+#     --torch_compile_backend "inductor"
 
 # Stage 1.5
 PROMPT_VERSION="mistral_direct"
@@ -122,7 +122,7 @@ echo "RUN_NAME: ${FINAL_RUN_NAME}"
 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
     llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
-    --model_name_or_path "NousResearch/$MODEL_VERSION" \
+    --model_name_or_path "./checkpoints/$MODEL_VERSION" \
     --version $PROMPT_VERSION \
     --data_path /mnt/bn/${NAS_REGION}/data/llava_instruct/llava_158k_detailv3_reinstall_gpt4v24k_wild15k_mixdocvqa_dca45k_synden40k_cococaps20k_sg40kt2k_ori.json \
     --image_folder /mnt/bn/${NAS_REGION}/data/llava_data \
