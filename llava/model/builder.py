@@ -115,9 +115,11 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                 cfg_pretrained = AutoConfig.from_pretrained(model_path)
                 model = LlavaGemmaForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=cfg_pretrained, attn_implementation=attn_implementation, **kwargs)
             elif "vicuna" in model_name.lower() or "llama" in model_name.lower() or "yi" in model_name.lower() or "nous-hermes" in model_name.lower() or "llava-v1.6-34b" in model_name.lower() or "llava-v1.5" in model_name.lower():
+                from llava.model.language_model.llava_llama import LlavaConfig
+
                 tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
-                cfg_pretrained = AutoConfig.from_pretrained(model_path)
-                model = LlavaLlamaForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=cfg_pretrained, **kwargs)
+                llava_cfg = LlavaConfig.from_pretrained(model_path)
+                model = LlavaLlamaForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=llava_cfg, **kwargs)
             else:
                 raise ValueError(f"Model {model_name} not supported")
 
@@ -133,8 +135,13 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                 tokenizer = AutoTokenizer.from_pretrained(model_path)
                 model = LlavaMistralForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, **kwargs)
             elif "vicuna" in model_name.lower() or "llama" in model_name.lower() or "yi" in model_name.lower() or "nous-hermes" in model_name.lower() or "llava-v1.6-34b" in model_name.lower() or "llava-v1.5" in model_name.lower():
+                from llava.model.language_model.llava_llama import LlavaConfig
+
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
-                model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, **kwargs)
+                llava_cfg = LlavaConfig.from_pretrained(model_path)
+                if "v1.5" in model_name.lower():
+                    llava_cfg.delay_load = True # a workaround for correctly loading v1.5 models
+                model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, config=llava_cfg, **kwargs)
             elif "qwen" in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
                 model = LlavaQwenForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, **kwargs)
@@ -189,6 +196,10 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
 
     if hasattr(model.config, "max_sequence_length"):
         context_len = model.config.max_sequence_length
+    elif hasattr(model.config, "max_position_embeddings"):
+        context_len = model.config.max_position_embeddings
+    elif hasattr(model.config, "tokenizer_model_max_length"):
+        context_len = model.config.tokenizer_model_max_length
     else:
         context_len = 2048
 
