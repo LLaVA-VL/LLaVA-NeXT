@@ -24,7 +24,7 @@ from llava.constants import DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, D
 from llava.utils import rank0_print
 
 
-def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map="auto", attn_implementation="flash_attention_2"):
+def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map="auto", attn_implementation="flash_attention_2", customized_config=None):
     kwargs = {"device_map": device_map}
 
     if load_8bit:
@@ -34,6 +34,9 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         kwargs["quantization_config"] = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.float16, bnb_4bit_use_double_quant=True, bnb_4bit_quant_type="nf4")
     else:
         kwargs["torch_dtype"] = torch.float16
+
+    if customized_config is not None:
+        kwargs["config"] = customized_config
 
     if "llava" in model_name.lower():
         # Load LLaVA model
@@ -116,6 +119,13 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                 model = LlavaGemmaForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=cfg_pretrained, attn_implementation=attn_implementation, **kwargs)
             elif "vicuna" in model_name.lower() or "llama" in model_name.lower() or "yi" in model_name.lower() or "nous-hermes" in model_name.lower() or "llava-v1.6-34b" in model_name.lower() or "llava-v1.5" in model_name.lower():
                 from llava.model.language_model.llava_llama import LlavaConfig
+                tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+                if customized_config is None:
+                    llava_cfg = LlavaConfig.from_pretrained(model_path)
+                    if "v1.5" in model_name.lower():
+                        llava_cfg.delay_load = True # a workaround for correctly loading v1.5 models
+                else:
+                    llava_cfg = customized_config
 
                 tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
                 llava_cfg = LlavaConfig.from_pretrained(model_path)
@@ -136,11 +146,14 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                 model = LlavaMistralForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, **kwargs)
             elif "vicuna" in model_name.lower() or "llama" in model_name.lower() or "yi" in model_name.lower() or "nous-hermes" in model_name.lower() or "llava-v1.6-34b" in model_name.lower() or "llava-v1.5" in model_name.lower():
                 from llava.model.language_model.llava_llama import LlavaConfig
-
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
-                llava_cfg = LlavaConfig.from_pretrained(model_path)
-                if "v1.5" in model_name.lower():
-                    llava_cfg.delay_load = True # a workaround for correctly loading v1.5 models
+                if customized_config is None:
+                    llava_cfg = LlavaConfig.from_pretrained(model_path)
+                    if "v1.5" in model_name.lower():
+                        llava_cfg.delay_load = True # a workaround for correctly loading v1.5 models
+                else:
+                    llava_cfg = customized_config
+                    
                 model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, config=llava_cfg, **kwargs)
             elif "qwen" in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
