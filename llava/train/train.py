@@ -100,6 +100,9 @@ class ModelArguments:
     rope_scaling_factor: Optional[float] = field(default=None)
     rope_scaling_type: Optional[str] = field(default=None)
 
+    s2: Optional[bool] = field(default=False)
+    s2_scales: Optional[str] = field(default="336,672,1008")
+
 
 @dataclass
 class DataArguments:
