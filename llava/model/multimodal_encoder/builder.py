@@ -6,7 +6,7 @@ from .eva_clip.eva_clip_encoder import EvaClipVisionTower
 from .dev_eva_clip.eva_vit import EvaViTWrapper
 from .hf_vision import HFVisionTower
 from .siglip_encoder import SigLipVisionTower
-
+from .clip_encoder import CLIPVisionTower, CLIPVisionTowerS2
 
 def build_vision_tower(vision_tower_cfg, **kwargs):
     vision_tower = getattr(vision_tower_cfg, 'mm_vision_tower', getattr(vision_tower_cfg, 'vision_tower', None))
