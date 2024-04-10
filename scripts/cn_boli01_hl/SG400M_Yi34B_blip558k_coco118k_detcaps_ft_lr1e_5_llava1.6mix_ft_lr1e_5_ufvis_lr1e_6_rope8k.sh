@@ -119,51 +119,51 @@ echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 PROMPT_VERSION="mistral_direct"
 MID_RUN_NAME="dist4_llavanext-${VISION_MODEL_VERSION_CLEAN}-${MODEL_VERSION}-pretrain_blip558k_plain-ft_coco118k_detcaps1e_6_ufvis1e_6"
 echo "RUN_NAME: ${MID_RUN_NAME}"
-torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
-    llava/train/train_mem.py \
-    --deepspeed scripts/zero3.json \
-    --model_name_or_path "/mnt/bn/${NAS_REGION}/checkpoints/$MODEL_VERSION" \
-    --version $PROMPT_VERSION \
-    --data_path /mnt/bn/${NAS_REGION}/data/llava_instruct/coco118k_stage1.5_finetune.json \
-    --image_folder /mnt/bn/${NAS_REGION}/data/llava_data/coco \
-    --pretrain_mm_mlp_adapter="/mnt/bn/${NAS_REGION}/checkpoints/projectors/${BASE_RUN_NAME}/mm_projector.bin" \
-    --mm_tunable_parts="mm_vision_tower,mm_mlp_adapter,mm_language_model" \
-    --mm_vision_tower_lr=1e-6 \
-    --vision_tower ${VISION_MODEL_VERSION} \
-    --mm_projector_type mlp2x_gelu \
-    --mm_vision_select_layer -2 \
-    --mm_use_im_start_end False \
-    --mm_use_im_patch_token False \
-    --group_by_modality_length True \
-    --image_aspect_ratio anyres \
-    --image_grid_pinpoints "[(384, 768), (768, 384), (768, 768), (1152, 384), (384, 1152)]" \
-    --mm_patch_merge_type spatial_unpad \
-    --bf16 True \
-    --run_name $MID_RUN_NAME \
-    --output_dir /mnt/bn/${NAS_REGION}/checkpoints/$MID_RUN_NAME \
-    --num_train_epochs 1 \
-    --per_device_train_batch_size 2 \
-    --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 2 \
-    --evaluation_strategy "no" \
-    --save_strategy "steps" \
-    --save_steps 3000 \
-    --save_total_limit 1 \
-    --learning_rate 1e-5 \
-    --weight_decay 0. \
-    --warmup_ratio 0.03 \
-    --lr_scheduler_type "cosine" \
-    --logging_steps 1 \
-    --tf32 True \
-    --rope_scaling_factor 2 \
-    --rope_scaling_type "linear" \
-    --model_max_length 8192 \
-    --gradient_checkpointing True \
-    --dataloader_num_workers 8 \
-    --lazy_preprocess True \
-    --report_to wandb \
-    --torch_compile True \
-    --torch_compile_backend "inductor"
+# torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
+#     llava/train/train_mem.py \
+#     --deepspeed scripts/zero3.json \
+#     --model_name_or_path "/mnt/bn/${NAS_REGION}/checkpoints/$MODEL_VERSION" \
+#     --version $PROMPT_VERSION \
+#     --data_path /mnt/bn/${NAS_REGION}/data/llava_instruct/coco118k_stage1.5_finetune.json \
+#     --image_folder /mnt/bn/${NAS_REGION}/data/llava_data/coco \
+#     --pretrain_mm_mlp_adapter="/mnt/bn/${NAS_REGION}/checkpoints/projectors/${BASE_RUN_NAME}/mm_projector.bin" \
+#     --mm_tunable_parts="mm_vision_tower,mm_mlp_adapter,mm_language_model" \
+#     --mm_vision_tower_lr=1e-6 \
+#     --vision_tower ${VISION_MODEL_VERSION} \
+#     --mm_projector_type mlp2x_gelu \
+#     --mm_vision_select_layer -2 \
+#     --mm_use_im_start_end False \
+#     --mm_use_im_patch_token False \
+#     --group_by_modality_length True \
+#     --image_aspect_ratio anyres \
+#     --image_grid_pinpoints "[(384, 768), (768, 384), (768, 768), (1152, 384), (384, 1152)]" \
+#     --mm_patch_merge_type spatial_unpad \
+#     --bf16 True \
+#     --run_name $MID_RUN_NAME \
+#     --output_dir /mnt/bn/${NAS_REGION}/checkpoints/$MID_RUN_NAME \
+#     --num_train_epochs 1 \
+#     --per_device_train_batch_size 2 \
+#     --per_device_eval_batch_size 4 \
+#     --gradient_accumulation_steps 2 \
+#     --evaluation_strategy "no" \
+#     --save_strategy "steps" \
+#     --save_steps 3000 \
+#     --save_total_limit 1 \
+#     --learning_rate 1e-5 \
+#     --weight_decay 0. \
+#     --warmup_ratio 0.03 \
+#     --lr_scheduler_type "cosine" \
+#     --logging_steps 1 \
+#     --tf32 True \
+#     --rope_scaling_factor 2 \
+#     --rope_scaling_type "linear" \
+#     --model_max_length 8192 \
+#     --gradient_checkpointing True \
+#     --dataloader_num_workers 8 \
+#     --lazy_preprocess True \
+#     --report_to wandb \
+#     --torch_compile True \
+#     --torch_compile_backend "inductor"
 
 # Stage 2
 PROMPT_VERSION="mistral_direct"
@@ -176,7 +176,6 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --version $PROMPT_VERSION \
     --data_path /mnt/bn/${NAS_REGION}/data/llava_instruct/llava_158k_detailv3_reinstall_gpt4v24k_wild15k_mixdocvqa_dca45k_synden40k_cococaps20k_sg40kt2k_ori.json \
     --image_folder /mnt/bn/${NAS_REGION}/data/llava_data \
-    --pretrain_mm_mlp_adapter="/mnt/bn/${NAS_REGION}/checkpoints/projectors/${BASE_RUN_NAME}/mm_projector.bin" \
     --mm_tunable_parts="mm_vision_tower,mm_mlp_adapter,mm_language_model" \
     --mm_vision_tower_lr=1e-6 \
     --vision_tower ${VISION_MODEL_VERSION} \
