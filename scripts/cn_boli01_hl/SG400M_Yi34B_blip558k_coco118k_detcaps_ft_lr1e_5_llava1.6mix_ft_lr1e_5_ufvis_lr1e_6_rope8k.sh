@@ -172,7 +172,7 @@ echo "RUN_NAME: ${FINAL_RUN_NAME}"
 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
     llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
-    --model_name_or_path "${MID_RUN_NAME}" \
+    --model_name_or_path /mnt/bn/${NAS_REGION}/checkpoints/$MID_RUN_NAME \
     --version $PROMPT_VERSION \
     --data_path /mnt/bn/${NAS_REGION}/data/llava_instruct/llava_158k_detailv3_reinstall_gpt4v24k_wild15k_mixdocvqa_dca45k_synden40k_cococaps20k_sg40kt2k_ori.json \
     --image_folder /mnt/bn/${NAS_REGION}/data/llava_data \
