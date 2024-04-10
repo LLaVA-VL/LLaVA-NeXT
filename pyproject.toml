@@ -20,7 +20,7 @@ classifiers = [
 standalone = [
     "shortuuid",
     "httpx==0.24.0",
-    "accelerate~=0.27.2",
+    "accelerate>=0.29.1",
     "tokenizers~=0.15.2",
     "ftfy",
     "open_clip_torch"
