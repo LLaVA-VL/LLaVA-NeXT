@@ -58,13 +58,14 @@ export NCCL_DEBUG=WARN
 
 PORT=26000
 GPUS="0,1,2,3,4,5,6,7"
+ACCELERATE_CPU_AFFINITY=1
 
 wandb login a651c244635bc6f913ab654af3f0eebaecdc9381
 wandb online
 
 ################ Arnold Jobs ################
 
-LLM_VERSION="Qwen/Qwen1.5-32B-Chat"
+LLM_VERSION="Qwen/Qwen1.5-72B-Chat"
 LLM_VERSION_CLEAN="${LLM_VERSION//\//_}"
 VISION_MODEL_VERSION="google/siglip-so400m-patch14-384"
 VISION_MODEL_VERSION_CLEAN="${VISION_MODEL_VERSION//\//_}"
@@ -72,43 +73,32 @@ VISION_MODEL_VERSION_CLEAN="${VISION_MODEL_VERSION//\//_}"
 ############### Pretrain ################
 
 PROMPT_VERSION="plain"
-BASE_RUN_NAME="llavanext-${LLM_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_blip558k_plain"
+BASE_RUN_NAME="llavanext-Qwen_Qwen1.5-72B-Chat-google_siglip-so400m-patch14-384-mlp2x_gelu-pretrain_blip558k_plain_bs256"
 echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
-PROMPT_VERSION="qwen_1_5"
-FINAL_RUN_NAME="llavanext-${LLM_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-pretrain_blip558k_plain-finetune_la1_6mix_lr1e_5_ufvis_anyres_d32k_fix"
-echo "FINAL_RUN_NAME: ${FINAL_RUN_NAME}"
 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
     llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
     --model_name_or_path ${LLM_VERSION} \
     --version ${PROMPT_VERSION} \
-    --data_path="/mnt/bn/${NAS_REGION}/data/llava_instruct/llava_158k_detailv3_reinstall_gpt4v24k_wild15k_mixdocvqa_dca45k_synden40k_cococaps20k_sg40kt2k_ori.json" \
-    --image_folder /mnt/bn/${NAS_REGION}/data/llava_data \
-    --mm_tunable_parts="mm_vision_tower,mm_mlp_adapter,mm_language_model" \
-    --pretrain_mm_mlp_adapter="/mnt/bn/${NAS_REGION}/checkpoints/projectors/${BASE_RUN_NAME}/mm_projector.bin" \
-    --mm_vision_tower_lr=2e-6 \
+    --data_path /mnt/bn/${NAS_REGION}/data/llava_data/blip_558k/blip_558k_plain.json \
+    --image_folder /mnt/bn/${NAS_REGION}/data/llava_data/blip_558k/images \
     --vision_tower ${VISION_MODEL_VERSION} \
-    --mm_projector_type mlp2x_gelu \
+    --tune_mm_mlp_adapter True \
     --mm_vision_select_layer -2 \
+    --mm_projector_type mlp2x_gelu \
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
-    --group_by_modality_length True \
-    --image_aspect_ratio anyres \
-    --image_grid_pinpoints "[(384, 384), (384, 768), (768, 384), (768, 768), (1152, 384), (384, 1152), ()]" \
-    --mm_patch_merge_type spatial_unpad \
     --bf16 True \
-    --run_name $FINAL_RUN_NAME \
-    --output_dir /mnt/bn/${NAS_REGION}/checkpoints/$FINAL_RUN_NAME \
+    --output_dir /mnt/bn/${NAS_REGION}/checkpoints/projectors/${BASE_RUN_NAME} \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 2 \
+    --per_device_train_batch_size 16 \
     --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 2 \
+    --gradient_accumulation_steps 1 \
     --evaluation_strategy "no" \
-    --save_strategy "steps" \
-    --save_steps 2000 \
-    --save_total_limit 1 \
-    --learning_rate 1e-5 \
+    --save_strategy "no" \
+    --save_steps 24000 \
+    --learning_rate 1e-3 \
     --weight_decay 0. \
     --warmup_ratio 0.03 \
     --lr_scheduler_type "cosine" \
@@ -119,6 +109,7 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --dataloader_num_workers 16 \
     --lazy_preprocess True \
     --report_to wandb \
+    --run_name $BASE_RUN_NAME \
     --torch_compile True \
     --torch_compile_backend "inductor"
 
