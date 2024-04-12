@@ -832,6 +832,33 @@ class LazySupervisedDataset(Dataset):
                     cur_data_dict = json.load(file)
                     rank0_print(f"Loaded {len(cur_data_dict)} samples from {full_path}")
                     self.list_data_dict.extend(cur_data_dict)
+        elif data_path.endswith(".yaml"):
+            with open(data_path, "r") as file:
+                yaml_data = yaml.safe_load(file)
+                datasets = yaml_data.get("datasets")
+                # file should be in the format of:
+                # datasets:
+                #   - json_path: xxxx1.json
+                #     sampling_strategy: first
+                #   - json_path: xxxx2.json
+                #     sampling_strategy: end
+                #   - json_path: xxxx3.json
+                #     sampling_strategy: random
+                for dataset in datasets:
+                    json_path = dataset.get("json_path")
+                    sampling_strategy = dataset.get("sampling_strategy")
+                    rank0_print(f"Loading {json_path} with {sampling_strategy} sampling strategy")
+                    with open(json_path, "r") as json_file:
+                        cur_data_dict = json.load(json_file)
+                        if sampling_strategy == "first":
+                            cur_data_dict = cur_data_dict[:x]  # replace x with the number of items you want
+                        elif sampling_strategy == "end":
+                            cur_data_dict = cur_data_dict[-x:]  # replace x with the number of items you want
+                        elif sampling_strategy == "random":
+                            random.shuffle(cur_data_dict)
+                            cur_data_dict = cur_data_dict[:x]  # replace x with the number of items you want
+                        rank0_print(f"Loaded {len(cur_data_dict)} samples from {json_path}")
+                        self.list_data_dict.extend(cur_data_dict)
         else:
             rank0_print(f"Loading {data_path}")
             with open(data_path, "r") as file:
@@ -1068,7 +1095,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 low_cpu_mem_usage=False,
                 **bnb_model_from_pretrained_args,
             )
-        elif "qwen" in model_args.model_name_or_path.lower():
+        elif "qwen" in model_args.model_name_or_path.lower() or "quyen" in model_args.model_name_or_path.lower():
             if "moe" in model_args.model_name_or_path.lower():
                 model = LlavaQwenMoeForCausalLM.from_pretrained(
                     model_args.model_name_or_path,
