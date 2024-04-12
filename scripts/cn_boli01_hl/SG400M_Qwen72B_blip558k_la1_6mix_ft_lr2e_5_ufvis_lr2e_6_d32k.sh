@@ -64,7 +64,7 @@ wandb online
 
 ################ Arnold Jobs ################
 
-LLM_VERSION="Qwen/Qwen1.5-32B-Chat"
+LLM_VERSION="Qwen/Qwen1.5-72B-Chat"
 LLM_VERSION_CLEAN="${LLM_VERSION//\//_}"
 VISION_MODEL_VERSION="google/siglip-so400m-patch14-384"
 VISION_MODEL_VERSION_CLEAN="${VISION_MODEL_VERSION//\//_}"
@@ -72,11 +72,11 @@ VISION_MODEL_VERSION_CLEAN="${VISION_MODEL_VERSION//\//_}"
 ############### Pretrain ################
 
 PROMPT_VERSION="plain"
-BASE_RUN_NAME="llavanext-${LLM_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-mlp2x_gelu-pretrain_blip558k_plain"
+BASE_RUN_NAME="llavanext-Qwen_Qwen1.5-72B-Chat-google_siglip-so400m-patch14-384-mlp2x_gelu-pretrain_blip558k_plain"
 echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
 PROMPT_VERSION="qwen_1_5"
-FINAL_RUN_NAME="llavanext-${LLM_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-pretrain_blip558k_plain-finetune_la1_6mix_lr1e_5_ufvis_anyres_d32k_fix"
+FINAL_RUN_NAME="llavanext-${LLM_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-pretrain_blip558k_plain-finetune_la1_6mix_lr2e_5_ufvis2e_6_anyres_d32k"
 echo "FINAL_RUN_NAME: ${FINAL_RUN_NAME}"
 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
     llava/train/train_mem.py \
@@ -95,20 +95,20 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --mm_use_im_patch_token False \
     --group_by_modality_length True \
     --image_aspect_ratio anyres \
-    --image_grid_pinpoints "[(384, 384), (384, 768), (768, 384), (768, 768), (1152, 384), (384, 1152), ()]" \
+    --image_grid_pinpoints "[(384, 768), (768, 384), (768, 768), (1152, 384), (384, 1152)]" \
     --mm_patch_merge_type spatial_unpad \
     --bf16 True \
     --run_name $FINAL_RUN_NAME \
     --output_dir /mnt/bn/${NAS_REGION}/checkpoints/$FINAL_RUN_NAME \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 2 \
+    --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 4 \
     --gradient_accumulation_steps 2 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
     --save_steps 2000 \
     --save_total_limit 1 \
-    --learning_rate 1e-5 \
+    --learning_rate 2e-5 \
     --weight_decay 0. \
     --warmup_ratio 0.03 \
     --lr_scheduler_type "cosine" \
