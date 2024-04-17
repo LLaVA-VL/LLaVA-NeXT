@@ -22,6 +22,8 @@ python3 -m pip install -e ".[train]"
 python3 -m pip install ninja
 python3 -m pip install flash-attn --no-build-isolation
 
+python3 -m pip install deepspeed==0.14.0
+
 alias python=python3
 ############### Show Envs ####################
 
@@ -64,42 +66,6 @@ PRETRAIN_DATA_VERSION="blip558k"
 
 BASE_RUN_NAME="llavanext-${LLM_VERSION_CLEAN}-${VISION_MODEL_VERSION_CLEAN}-pretrain_${PRETRAIN_DATA_VERSION}_plain"
 echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
-ACCELERATE_CPU_AFFINITY=1 deepspeed --include=localhost:$GPUS --master_port $PORT \
-    llava/train/train_mem.py \
-    --deepspeed scripts/zero3.json \
-    --model_name_or_path ${LLM_VERSION} \
-    --version ${PROMPT_VERSION} \
-    --data_path /mnt/bn/${NAS_REGION}/data/llava_data/blip_558k/blip_558k_plain.json \
-    --image_folder /mnt/bn/${NAS_REGION}/data/llava_data/blip_558k/images \
-    --vision_tower ${VISION_MODEL_VERSION} \
-    --tune_mm_mlp_adapter True \
-    --mm_vision_select_layer -2 \
-    --mm_projector_type mlp2x_gelu \
-    --mm_use_im_start_end False \
-    --mm_use_im_patch_token False \
-    --bf16 True \
-    --output_dir /mnt/bn/${NAS_REGION}/checkpoints/projectors/${BASE_RUN_NAME} \
-    --num_train_epochs 1 \
-    --per_device_train_batch_size 32 \
-    --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 1 \
-    --evaluation_strategy "no" \
-    --save_strategy "no" \
-    --save_steps 24000 \
-    --learning_rate 1e-3 \
-    --weight_decay 0. \
-    --warmup_ratio 0.03 \
-    --lr_scheduler_type "cosine" \
-    --logging_steps 1 \
-    --tf32 True \
-    --model_max_length 32768 \
-    --gradient_checkpointing True \
-    --dataloader_num_workers 16 \
-    --lazy_preprocess True \
-    --report_to wandb \
-    --run_name $BASE_RUN_NAME  \
-    --torch_compile True \
-    --torch_compile_backend "inductor"
 
 # Stage 2
 PROMPT_VERSION="qwen_1_5"
@@ -126,7 +92,7 @@ ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nno
     --mm_patch_merge_type spatial_unpad \
     --bf16 True \
     --run_name $MID_RUN_NAME \
-    --output_dir /mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/project_checkpoints/$MID_RUN_NAME \
+    --output_dir /mnt/bn/${NAS_REGION}/workspace/boli01/projects/LLaVA_Next/project_checkpoints/$MID_RUN_NAME \
     --num_train_epochs 1 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
@@ -163,14 +129,14 @@ ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nno
 # azcopy_upload "/mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/project_checkpoints/${MID_RUN_NAME}" "projects/llava_data/checkpoints/"
 
 ################ Evaluation ################
-sh /mnt/bn/vl-research/workspace/boli01/projects/lmms-eval/scripts/configure_envs.sh
+sh /mnt/bn/${NAS_REGION}/workspace/boli01/projects/lmms-eval/scripts/configure_envs.sh
 
-cd /mnt/bn/vl-research/workspace/boli01/projects/lmms-eval
+cd /mnt/bn/${NAS_REGION}/workspace/boli01/projects/lmms-eval
 which python3
 
 accelerate launch --num_processes 8 --main_process_port 12345 -m lmms_eval \
     --model llava \
-    --model_args pretrained="/mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/project_checkpoints/${MID_RUN_NAME},conv_template=qwen_1_5" \
+    --model_args pretrained="/mnt/bn/${NAS_REGION}/workspace/boli01/projects/LLaVA_Next/project_checkpoints/${MID_RUN_NAME},conv_template=qwen_1_5" \
     --tasks ai2d,chartqa,docvqa_val,mme,mmmu_val,textcaps_val \
     --batch_size 1 \
     --log_samples \
