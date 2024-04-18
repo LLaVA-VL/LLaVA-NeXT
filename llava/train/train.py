@@ -26,6 +26,8 @@ import ast
 
 import time
 import random
+import yaml
+import math
 import re
 import torch
 
@@ -839,26 +841,38 @@ class LazySupervisedDataset(Dataset):
                 # file should be in the format of:
                 # datasets:
                 #   - json_path: xxxx1.json
-                #     sampling_strategy: first
+                #     sampling_strategy: first:1000
                 #   - json_path: xxxx2.json
-                #     sampling_strategy: end
+                #     sampling_strategy: end:3000
                 #   - json_path: xxxx3.json
-                #     sampling_strategy: random
+                #     sampling_strategy: random:999
                 for dataset in datasets:
                     json_path = dataset.get("json_path")
-                    sampling_strategy = dataset.get("sampling_strategy")
+                    sampling_strategy = dataset.get("sampling_strategy", "all")
+                    sampling_number = None
+
                     rank0_print(f"Loading {json_path} with {sampling_strategy} sampling strategy")
                     with open(json_path, "r") as json_file:
                         cur_data_dict = json.load(json_file)
-                        if sampling_strategy == "first":
-                            cur_data_dict = cur_data_dict[:x]  # replace x with the number of items you want
-                        elif sampling_strategy == "end":
-                            cur_data_dict = cur_data_dict[-x:]  # replace x with the number of items you want
-                        elif sampling_strategy == "random":
-                            random.shuffle(cur_data_dict)
-                            cur_data_dict = cur_data_dict[:x]  # replace x with the number of items you want
-                        rank0_print(f"Loaded {len(cur_data_dict)} samples from {json_path}")
-                        self.list_data_dict.extend(cur_data_dict)
+
+                    if ":" in sampling_strategy:
+                        sampling_strategy, sampling_number = sampling_strategy.split(":")
+                        if "%" in sampling_number:
+                            sampling_number = math.ceil(int(sampling_number.split("%")[0]) * len(cur_data_dict) / 100)
+                        else:
+                            sampling_number = int(sampling_number)
+
+                    # Apply the sampling strategy
+                    if sampling_strategy == "first" and sampling_number is not None:
+                        cur_data_dict = cur_data_dict[:sampling_number]
+                    elif sampling_strategy == "end" and sampling_number is not None:
+                        cur_data_dict = cur_data_dict[-sampling_number:]
+                    elif sampling_strategy == "random" and sampling_number is not None:
+                        random.shuffle(cur_data_dict)
+                        cur_data_dict = cur_data_dict[:sampling_number]
+
+                    rank0_print(f"Loaded {len(cur_data_dict)} samples from {json_path}")
+                    self.list_data_dict.extend(cur_data_dict)
         else:
             rank0_print(f"Loading {data_path}")
             with open(data_path, "r") as file:
