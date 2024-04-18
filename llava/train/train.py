@@ -1090,6 +1090,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 **bnb_model_from_pretrained_args,
             )
             from transformers.models.mixtral.modeling_mixtral import MixtralSparseMoeBlock
+
             deepspeed.utils.set_z3_leaf_modules(model, [MixtralSparseMoeBlock])
         elif "mistral" in model_args.model_name_or_path.lower() or "zephyr" in model_args.model_name_or_path.lower():
             model = LlavaMistralForCausalLM.from_pretrained(
@@ -1100,7 +1101,14 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 low_cpu_mem_usage=False,
                 **bnb_model_from_pretrained_args,
             )
-        elif "wizardlm-2" in model_args.model_name_or_path.lower() or "vicuna" in model_args.model_name_or_path.lower() or "llama" in model_args.model_name_or_path.lower() or "yi" in model_args.model_name_or_path.lower() or "nous-hermes" in model_args.model_name_or_path.lower() and "wizard-2" in model_args.model_name_or_path.lower():
+        elif (
+            "wizardlm-2" in model_args.model_name_or_path.lower()
+            or "vicuna" in model_args.model_name_or_path.lower()
+            or "llama" in model_args.model_name_or_path.lower()
+            or "yi" in model_args.model_name_or_path.lower()
+            or "nous-hermes" in model_args.model_name_or_path.lower()
+            and "wizard-2" in model_args.model_name_or_path.lower()
+        ):
             model = LlavaLlamaForCausalLM.from_pretrained(
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
@@ -1120,6 +1128,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                     **bnb_model_from_pretrained_args,
                 )
                 from transformers.models.qwen2_moe.modeling_qwen2_moe import Qwen2MoeSparseMoeBlock
+
                 deepspeed.utils.set_z3_leaf_modules(model, [Qwen2MoeSparseMoeBlock])
             else:
                 model = LlavaQwenForCausalLM.from_pretrained(

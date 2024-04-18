@@ -2,10 +2,12 @@ import torch
 import torch.nn as nn
 from llava.utils import rank0_print
 from transformers import CLIPVisionModel, CLIPImageProcessor, CLIPVisionConfig
+
 try:
     from s2wrapper import forward as multiscale_forward
 except:
     pass
+
 
 class CLIPVisionTower(nn.Module):
     def __init__(self, vision_tower, args, delay_load=False):
@@ -122,31 +124,31 @@ class CLIPVisionTower(nn.Module):
 
 class CLIPVisionTowerS2(CLIPVisionTower):
     def __init__(self, vision_tower, args, delay_load=False):
-        
-        self.s2_scales = getattr(args, 's2_scales', '336,672,1008')
-        self.s2_scales = list(map(int, self.s2_scales.split(',')))
+
+        self.s2_scales = getattr(args, "s2_scales", "336,672,1008")
+        self.s2_scales = list(map(int, self.s2_scales.split(",")))
         self.s2_scales.sort()
         self.s2_split_size = self.s2_scales[0]
         self.s2_image_size = self.s2_scales[-1]
-        
+
         super().__init__(vision_tower, args, delay_load)
 
         # change resize/crop size in preprocessing to the largest image size in s2_scale
-        if not delay_load or getattr(args, 'unfreeze_mm_vision_tower', False):
-            self.image_processor.size['shortest_edge'] = self.s2_image_size
-            self.image_processor.crop_size['height'] = self.image_processor.crop_size['width'] = self.s2_image_size
+        if not delay_load or getattr(args, "unfreeze_mm_vision_tower", False):
+            self.image_processor.size["shortest_edge"] = self.s2_image_size
+            self.image_processor.crop_size["height"] = self.image_processor.crop_size["width"] = self.s2_image_size
 
     def load_model(self, device_map=None):
         if self.is_loaded:
-            rank0_print('{} is already loaded, `load_model` called again, skipping.'.format(self.vision_tower_name))
+            rank0_print("{} is already loaded, `load_model` called again, skipping.".format(self.vision_tower_name))
             return
 
         self.image_processor = CLIPImageProcessor.from_pretrained(self.vision_tower_name)
         self.vision_tower = CLIPVisionModel.from_pretrained(self.vision_tower_name, device_map=device_map)
         self.vision_tower.requires_grad_(False)
 
-        self.image_processor.size['shortest_edge'] = self.s2_image_size
-        self.image_processor.crop_size['height'] = self.image_processor.crop_size['width'] = self.s2_image_size
+        self.image_processor.size["shortest_edge"] = self.s2_image_size
+        self.image_processor.crop_size["height"] = self.image_processor.crop_size["width"] = self.s2_image_size
 
         self.is_loaded = True
 
