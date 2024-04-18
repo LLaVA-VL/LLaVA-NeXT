@@ -226,7 +226,7 @@ def get_anyres_image_grid_shape(image_size, grid_pinpoints, patch_size):
         assert patch_size in [224, 336, 384, 448, 512], "patch_size should be in [224, 336, 384, 448, 512]"
         grid_pinpoints = grid_pinpoints.replace(" ", "").replace("x", ",")[1:-1].split("),(")
         grid_pinpoints = [[int(x) * patch_size for x in item.split(",")] for item in grid_pinpoints]
-        
+
     if type(grid_pinpoints) is list:
         possible_resolutions = grid_pinpoints
     else:
@@ -253,7 +253,7 @@ def process_anyres_image(image, processor, grid_pinpoints):
         assert vis_encoder_size in [224, 336, 384, 448, 512], "vis_encoder_size should be in [224, 336, 384, 448, 512]"
         grid_pinpoints = grid_pinpoints.replace(" ", "").replace("x", ",")[1:-1].split("),(")
         grid_pinpoints = [[int(x) * vis_encoder_size for x in item.split(",")] for item in grid_pinpoints]
-        
+
     if type(grid_pinpoints) is list:
         possible_resolutions = grid_pinpoints
     else:

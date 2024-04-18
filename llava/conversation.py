@@ -1,6 +1,6 @@
 import dataclasses
 from enum import auto, Enum
-from typing import List, Tuple
+from typing import List, Any, Dict, Union, Tuple
 import re
 import base64
 from io import BytesIO
@@ -14,6 +14,7 @@ class SeparatorStyle(Enum):
     TWO = auto()
     MPT = auto()
     PLAIN = auto()
+    CHATML = auto()
     LLAMA_2 = auto()
     QWEN = auto()
     GEMMA = auto()
@@ -31,6 +32,10 @@ class Conversation:
     sep: str = "###"
     sep2: str = None
     version: str = "Unknown"
+    # Stop criteria (the default one is EOS token)
+    stop_str: Union[str, List[str]] = None
+    # Stops generation if meeting any token in this list
+    stop_token_ids: List[int] = None
 
     skip_next: bool = False
 
@@ -60,6 +65,7 @@ class Conversation:
                     ret += role + ": " + message + self.sep
                 else:
                     ret += role + ":"
+
         elif self.sep_style == SeparatorStyle.TWO:
             seps = [self.sep, self.sep2]
             ret = self.system + seps[0]
@@ -70,6 +76,19 @@ class Conversation:
                     ret += role + ": " + message + seps[i % 2]
                 else:
                     ret += role + ":"
+
+        elif self.sep_style == SeparatorStyle.CHATML:
+            ret = "" if self.system == "" else self.system + self.sep + "\n"
+            for role, message in messages:
+                if message:
+                    if type(message) is tuple:
+                        message, images = message
+                        message = "<image>" * len(images) + message
+                    ret += role + "\n" + message + self.sep + "\n"
+                else:
+                    ret += role + "\n"
+            return ret
+
         elif self.sep_style == SeparatorStyle.MPT:
             ret = self.system + self.sep
             for role, message in messages:
@@ -79,6 +98,7 @@ class Conversation:
                     ret += role + message + self.sep
                 else:
                     ret += role
+
         elif self.sep_style == SeparatorStyle.GEMMA:
             ret = ""
             for i, (role, message) in enumerate(messages):
@@ -89,6 +109,7 @@ class Conversation:
                     ret += role + message + self.sep
                 else:
                     ret += role
+
         elif self.sep_style == SeparatorStyle.LLAMA_2:
             wrap_sys = lambda msg: f"<<SYS>>\n{msg}\n<</SYS>>\n\n" if len(msg) > 0 else msg
             wrap_inst = lambda msg: f"[INST] {msg} [/INST]"
@@ -111,6 +132,7 @@ class Conversation:
                 else:
                     ret += ""
             ret = ret.lstrip(self.sep)
+
         elif self.sep_style == SeparatorStyle.PLAIN:
             seps = [self.sep, self.sep2]
             ret = self.system
@@ -152,6 +174,7 @@ class Conversation:
             image = image.resize((336, 336))
         else:
             raise ValueError(f"Invalid image_process_mode: {image_process_mode}")
+
         max_hw, min_hw = max(image.size), min(image.size)
         aspect_ratio = max_hw / min_hw
         max_len, min_len = 672, 448
@@ -345,11 +368,11 @@ A conversation between a user and an LLM-based AI assistant. The assistant gives
 conv_qwen = Conversation(
     system="""<|im_start|>system
 You are a helpful assistant.""",
-    roles=("<|im_start|>user\n", "<|im_start|>assistant\n"),
+    roles=("<|im_start|>user", "<|im_start|>assistant"),
     version="qwen",
     messages=(),
     offset=0,
-    sep_style=SeparatorStyle.MPT,
+    sep_style=SeparatorStyle.CHATML,
     sep="<|im_end|>",
 )
 
@@ -483,3 +506,4 @@ conv_templates = {
 
 if __name__ == "__main__":
     print(default_conversation.get_prompt())
+
