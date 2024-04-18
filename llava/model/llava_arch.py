@@ -20,7 +20,6 @@ import re
 import time
 import torch
 import torch.nn as nn
-
 from .multimodal_encoder.builder import build_vision_tower
 from .multimodal_resampler.builder import build_vision_resampler
 from .multimodal_projector.builder import build_vision_projector
@@ -248,23 +247,10 @@ class LlavaMetaForCausalLM(ABC):
                         image_feature = image_feature[1:]
                         height = width = self.get_vision_tower().num_patches_per_side
                         assert height * width == base_image_feature.shape[0]
-
-                        split_num_patches = image_feature.shape[0]  # supposed to be a (N, 729, 1024) for siglip-qwen model, we need to get N.
-                        if "anyres_max" in image_aspect_ratio:
-                            matched_anyres_max_num_patches = re.match(r"anyres_max_(\d+)", image_aspect_ratio)
-                            if matched_anyres_max_num_patches:
-                                max_num_patches = int(matched_anyres_max_num_patches.group(1))
-                                if max_num_patches > 0 and split_num_patches > 0:  # Ensure positive and avoid division by zero
-                                    pool_ratio = split_num_patches / max_num_patches
-                                else:
-                                    raise ValueError("max_num_patches and split_num_patches must be positive.")
-                            else:
-                                raise ValueError(f"Invalid image_aspect_ratio format: {image_aspect_ratio}")
-                        else:
-                            max_num_patches = split_num_patches
-                            pool_ratio = 1 if split_num_patches > 0 else 0  # Handle the case where split_num_patches might be 0
-
-                        if image_aspect_ratio == "anyres" or "anyres_max" in image_aspect_ratio:
+                        matched_anyres_max_num_patches=re.match(r'anyres_max_(\d+)',image_aspect_ratio)
+                        if matched_anyres_max_num_patches:
+                            max_num_patches=int(matched_anyres_max_num_patches.group(1))
+                        if image_aspect_ratio == "anyres":
                             if hasattr(self.get_vision_tower(), "image_size"):
                                 vision_tower_image_size = self.get_vision_tower().image_size
                             else:
@@ -278,41 +264,19 @@ class LlavaMetaForCausalLM(ABC):
                             image_feature = image_feature.flatten(1, 2).flatten(2, 3)
                             image_feature = nn.functional.max_pool2d(image_feature, 2)
                             image_feature = image_feature.flatten(1, 2).transpose(0, 1)
-                        elif "unpad" in mm_patch_merge_type and "anyres_max" in image_aspect_ratio:  # if exceed max_num_patches, resize to max_num_patches
-                            unit = image_feature.shape[2]
+                        elif "unpad" in mm_patch_merge_type and matched_anyres_max_num_patches and self.get_model().projector_conv_stride==1:
+                            unit=image_feature.shape[2]
                             image_feature = image_feature.permute(4, 0, 2, 1, 3).contiguous()
                             image_feature = image_feature.flatten(1, 2).flatten(2, 3)
-                            unpad_h, unpad_w = image_feature.shape[-2], image_feature.shape[-1]
                             image_feature = unpad_image(image_feature, image_sizes[image_idx])
-                            # N, h, w = image_feature.shape
-                            # times = math.sqrt(h * w / (max_num_patches * unit**2))
-                            # Assuming h and w are the height and width of the image feature tensor before pooling
-                            # Ensure they are defined. For example:
-                            h, w = image_feature.shape[-2], image_feature.shape[-1]  # Get the current height and width
-
-                            unpadded_num_patches = math.ceil(h / unit) * math.ceil(w / unit)
-                            if unpadded_num_patches < split_num_patches:  # recalculating pool_ratio if the number of patches is reduced
-                                # rank0_print(f"Readjusting num patches from {split_num_patches} to {unpadded_num_patches} due to unpad")
-                                pool_ratio = unpadded_num_patches / max_num_patches
-
-                            if pool_ratio > 1:
-                                # Calculate new dimensions, ensuring they are at least 1
-                                new_h = max(1, math.ceil(h / math.sqrt(pool_ratio)))
-                                new_w = max(1, math.ceil(w / math.sqrt(pool_ratio)))
-                                # Add a batch dimension for interpolation, making it (1, N, H, W)
-                                image_feature = image_feature.unsqueeze(0)
-                                # Apply bilinear interpolation
-                                image_feature = nn.functional.interpolate(image_feature, size=[new_h, new_w], mode="bilinear", align_corners=True)  # mode can be "nearest" or "bilinear" or "bicubic" or "area"
-                                # Remove the batch dimension after interpolation, resulting in (N, new_h, new_w)
-                                image_feature = image_feature.squeeze(0)
-                                # rank0_print(f"Resized image feature from ({h}, {w}) to ({new_h}, {new_w})")
-                                # rank0_print(f"Original image size(w/h): {image_sizes[image_idx]}")
-                                # rank0_print(f"Unpadded tokens are: {unpad_h} x {unpad_w}, in total {unpad_h * unpad_w} tokens")
-                                # rank0_print(f"Total tokens are reduced from {h * w} to {new_h * new_w} (standard reference: {max_num_patches * 729})")
-
+                            c,h,w=image_feature.shape
+                            times=math.sqrt(h*w/(max_num_patches*unit**2))
+                            if times>1.1:
+                                image_feature = image_feature[None]
+                                image_feature = nn.functional.interpolate(image_feature,[int(h//times),int(w//times)],mode='bilinear')[0]
                             image_feature = torch.cat((image_feature, self.model.image_newline[:, None, None].expand(*image_feature.shape[:-1], 1).to(image_feature.device)), dim=-1)
                             image_feature = image_feature.flatten(1, 2).transpose(0, 1)
-                        elif "unpad" in mm_patch_merge_type:  # traditional anyres and unpad, no limit to how many grids
+                        elif "unpad" in mm_patch_merge_type:
                             image_feature = image_feature.permute(4, 0, 2, 1, 3).contiguous()
                             image_feature = image_feature.flatten(1, 2).flatten(2, 3)
                             image_feature = unpad_image(image_feature, image_sizes[image_idx])
