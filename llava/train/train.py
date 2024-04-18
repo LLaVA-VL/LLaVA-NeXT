@@ -1100,7 +1100,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 low_cpu_mem_usage=False,
                 **bnb_model_from_pretrained_args,
             )
-        elif "vicuna" in model_args.model_name_or_path.lower() or "llama" in model_args.model_name_or_path.lower() or "yi" in model_args.model_name_or_path.lower() or "nous-hermes" in model_args.model_name_or_path.lower():
+        elif "wizardlm-2" in model_args.model_name_or_path.lower() or "vicuna" in model_args.model_name_or_path.lower() or "llama" in model_args.model_name_or_path.lower() or "yi" in model_args.model_name_or_path.lower() or "nous-hermes" in model_args.model_name_or_path.lower() and "wizard-2" in model_args.model_name_or_path.lower():
             model = LlavaLlamaForCausalLM.from_pretrained(
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
