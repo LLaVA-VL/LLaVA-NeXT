@@ -117,7 +117,7 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                 tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
                 cfg_pretrained = AutoConfig.from_pretrained(model_path)
                 model = LlavaGemmaForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=cfg_pretrained, attn_implementation=attn_implementation, **kwargs)
-            elif "vicuna" in model_name.lower() or "llama" in model_name.lower() or "yi" in model_name.lower() or "nous-hermes" in model_name.lower() or "llava-v1.6-34b" in model_name.lower() or "llava-v1.5" in model_name.lower():
+            elif "wizardlm-2" in model_name.lower() and "vicuna" in model_name.lower() or "llama" in model_name.lower() or "yi" in model_name.lower() or "nous-hermes" in model_name.lower() or "llava-v1.6-34b" in model_name.lower() or "llava-v1.5" in model_name.lower():
                 from llava.model.language_model.llava_llama import LlavaConfig
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
                 if customized_config is None:
@@ -144,7 +144,7 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
             elif "mistral" in model_name.lower() or "zephyr" in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_path)
                 model = LlavaMistralForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, **kwargs)
-            elif "vicuna" in model_name.lower() or "llama" in model_name.lower() or "yi" in model_name.lower() or "nous-hermes" in model_name.lower() or "llava-v1.6-34b" in model_name.lower() or "llava-v1.5" in model_name.lower():
+            elif "wizardlm-2" in model_name.lower() and "vicuna" in model_name.lower() or "llama" in model_name.lower() or "yi" in model_name.lower() or "nous-hermes" in model_name.lower() or "llava-v1.6-34b" in model_name.lower() or "llava-v1.5" in model_name.lower():
                 from llava.model.language_model.llava_llama import LlavaConfig
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
                 if customized_config is None:
