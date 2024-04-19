@@ -35,8 +35,8 @@ class Conversation:
     sep2: str = None
     version: str = "Unknown"
 
-    tokenizer_id: str = "meta-llama/Meta-Llama-3-8B-Instruct"
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_id)
+    tokenizer_id: str = ""
+    tokenizer: Any = None
     # Stop criteria (the default one is EOS token)
     stop_str: Union[str, List[str]] = None
     # Stops generation if meeting any token in this list
