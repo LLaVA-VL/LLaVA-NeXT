@@ -585,6 +585,48 @@ def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_im
     )
 
 
+def preprocess_llama3(sources, tokenizer: transformers.PreTrainedTokenizer, has_image: bool = False, max_len=2048, system_message: str = "You are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.") -> Dict:
+    roles = {"human": "<|start_header_id|>user<|end_header_id|>", "gpt": "<|start_header_id|>assistant<|end_header_id|>"}
+
+    eot_id = tokenizer.convert_tokens_to_ids("<|eot_id|>")
+    nl_tokens = tokenizer("\n").input_ids
+
+    # Apply prompt templates
+    input_ids, targets = [], []
+    for i, source in enumerate(sources):
+        if roles[source[0]["from"]] != roles["human"]:
+            source = source[1:]
+
+        input_id, target = [], []
+        system = tokenizer("<|begin_of_text|>").input_ids + tokenizer("<|start_header_id|>system<|end_header_id|>").input_ids + nl_tokens * 2 + tokenizer(system_message).input_ids + [eot_id]
+        input_id += system
+        target += [IGNORE_INDEX] * len(system)
+        for j, sentence in enumerate(source):
+            role = roles[sentence["from"]]
+            if has_image and "<image>" in sentence["value"]:
+                assert sentence["value"].startswith("<image>"), print(sentence["value"])
+                _input_id = tokenizer(role).input_ids + nl_tokens * 2 + [IMAGE_TOKEN_INDEX] + tokenizer(sentence["value"][len("<image>") :]).input_ids + [eot_id]
+            else:
+                _input_id = tokenizer(role).input_ids + nl_tokens * 2 + tokenizer(sentence["value"]).input_ids + [eot_id]
+            input_id += _input_id
+            if role == "<|start_header_id|>user<|end_header_id|>":
+                _target = [IGNORE_INDEX] * len(_input_id)
+            elif role == "<|start_header_id|>assistant<|end_header_id|>":
+                _target = [IGNORE_INDEX] * (len(tokenizer(role).input_ids) + 2) + _input_id[len(tokenizer(role).input_ids) + 1 : -2] + [eot_id]
+            else:
+                raise NotImplementedError
+            target += _target
+        assert len(input_id) == len(target), f"{len(input_id)} != {len(target)}"
+        input_ids.append(input_id)
+        targets.append(target)
+    input_ids = torch.tensor(input_ids, dtype=torch.long)
+    targets = torch.tensor(targets, dtype=torch.long)
+
+    return dict(
+        input_ids=input_ids,  # tensor(bs x seq_len)
+        labels=targets,  # tensor(bs x seq_len)
+    )
+
 def preprocess_v1(sources, tokenizer: transformers.PreTrainedTokenizer, has_image: bool = False) -> Dict:
     conv = conversation_lib.default_conversation.copy()
     roles = {"human": conv.roles[0], "gpt": conv.roles[1]}
@@ -787,6 +829,8 @@ def preprocess(sources: Sequence[str], tokenizer: transformers.PreTrainedTokeniz
         return preprocess_qwen(sources, tokenizer, has_image=has_image)
     if conversation_lib.default_conversation.version == "gemma":
         return preprocess_gemma(sources, tokenizer, has_image=has_image)
+    if conversation_lib.default_conversation.version == "llama_v3":
+        return preprocess_llama3(sources, tokenizer, has_image=has_image)
     # add end signal and concatenate together
     conversations = []
     for source in sources:
