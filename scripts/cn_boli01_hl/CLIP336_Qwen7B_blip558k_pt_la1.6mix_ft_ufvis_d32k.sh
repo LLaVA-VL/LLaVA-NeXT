@@ -54,7 +54,6 @@ wandb login a651c244635bc6f913ab654af3f0eebaecdc9381
 wandb online
 
 ################ Arnold Jobs ################
-
 LLM_VERSION="Qwen/Qwen1.5-7B-Chat"
 LLM_VERSION_CLEAN="${LLM_VERSION//\//_}"
 VISION_MODEL_VERSION="openai/clip-vit-large-patch14-336"
@@ -94,9 +93,9 @@ ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nno
     --run_name $MID_RUN_NAME \
     --output_dir /mnt/bn/${NAS_REGION}/workspace/boli01/projects/LLaVA_Next/project_checkpoints/$MID_RUN_NAME \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 4 \
+    --per_device_train_batch_size 2 \
     --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 2 \
+    --gradient_accumulation_steps 4 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
     --save_steps 20000 \

@@ -1,0 +1,36 @@
+# /mnt/bn/${NAS_REGION}/data/llava_instruct/{llava_158k_detailv3_reinstall_gpt4v24k_wild15k_mixdocvqa_dca45k_synden40k_cococaps20k_sg40kt2k_ori,real_vision_flan/infographic_vqa_4404,real_vision_flan/infographic_azuregpt4v_1992,real_vision_flan/mathqa_29837,real_vision_flan/geo3k_2101,real_vision_flan/lrv_chart_1787,real_vision_flan/allava_instruct_vflan4v_20000,real_vision_flan/scienceqa_context_19218,real_vision_flan/textcaps_train_21952,cauldron/ai2d_2434,cauldron/diagram_image_to_text_300,cauldron/geomverse_9303,cauldron/finqa_5276,cauldron/screen2words_15730,cauldron/vistext_9969,cauldron/websight_10000,cauldron/datikz_47974,cauldron/diagram_image_to_text_300}.json
+datasets:
+  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/real_vision_flan/llava_158k_detailv3_reinstall_gpt4v24k_wild15k_mixdocvqa_dca45k_synden40k_cococaps20k_sg40kt2k_ori_rep_ai2d_filtered_794409.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/real_vision_flan/infographic_vqa_4404.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/real_vision_flan/infographic_azuregpt4v_1992.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/real_vision_flan/mathqa_29837.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/real_vision_flan/geo3k_2101.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/real_vision_flan/lrv_chart_1787.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/real_vision_flan/allava_instruct_vflan4v_20000.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/real_vision_flan/scienceqa_context_19218.json
+    sampling_strategy: "first:50%"
+  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/real_vision_flan/textcaps_train_21952.json
+    sampling_strategy: "first:50%"
+  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/cauldron/ai2d_2434.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/cauldron/diagram_image_to_text_300.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/cauldron/geomverse_9303.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/cauldron/finqa_5276.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/cauldron/screen2words_15730.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/cauldron/vistext_9969.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/cauldron/websight_10000.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/cauldron/datikz_47974.json
+    sampling_strategy: "first:20%"
