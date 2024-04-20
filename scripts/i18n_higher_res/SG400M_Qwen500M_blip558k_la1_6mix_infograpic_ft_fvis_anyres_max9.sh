@@ -111,7 +111,8 @@ if [ ! -f "/mnt/bn/${NAS_REGION}/checkpoints/${FINAL_RUN_NAME}/config.json" ];th
         --gradient_checkpointing True \
         --dataloader_num_workers 16 \
         --lazy_preprocess True \
-        --report_to wandb
+        --report_to wandb \
+        --dataloader_drop_last True
 fi
 
 ############################# Eval ################################
