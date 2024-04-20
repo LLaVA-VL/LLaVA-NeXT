@@ -168,6 +168,8 @@ If you find LLaVA useful for your research and applications, please cite using t
 ## Acknowledgement
 
 - [Vicuna](https://github.com/lm-sys/FastChat): the codebase we built upon, and our base model Vicuna-13B that has the amazing language capabilities!
+- The LLaVA-NeXT project is currently in active development by the LLaVA team along with our contributors (listed alphabetically by their first names): [Bo Li](https://brianboli.com/), [Dong Guo](https://www.linkedin.com/in/dongguoset/), [Feng Li](https://scholar.google.com/citations?hl=zh-CN&user=ybRe9GcAAAAJ&view_op=list_works&sortby=pubdate), [Hao Zhang](https://scholar.google.com/citations?user=B8hPxMQAAAAJ&hl=en), [Kaichen Zhang](https://www.linkedin.com/in/kaichen-zhang-014b17219/?originalSubdomain=sg), [Renrui Zhang](https://zrrskywalker.github.io/), [Yuanhan Zhang](https://zhangyuanhan-ai.github.io/), led by [Chunyuan Li](https://chunyuan.li/) and with the guidance and help from [Haotian Liu](https://hliu.cc/).
+- We would also like to express our gratitude to the ﻿lmms-eval and its core contributors, including Fanyi Pu, Joshua Adrian Cahyono, and Kairui Hu, for their support on the evaluation side.
 
 ## Related Projects
 
