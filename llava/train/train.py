@@ -612,7 +612,7 @@ def preprocess_llama3(sources, tokenizer: transformers.PreTrainedTokenizer, has_
             if role == "<|start_header_id|>user<|end_header_id|>":
                 _target = [IGNORE_INDEX] * len(_input_id)
             elif role == "<|start_header_id|>assistant<|end_header_id|>":
-                _target = [IGNORE_INDEX] * (len(tokenizer(role).input_ids) + 2) + _input_id[len(tokenizer(role).input_ids) + 1 : -2] + [eot_id]
+                _target = [IGNORE_INDEX] * (len(tokenizer(role).input_ids) + 2) + _input_id[len(tokenizer(role).input_ids) + 2 : -1] + [eot_id]
             else:
                 raise NotImplementedError
             target += _target
