@@ -30,7 +30,7 @@ python3 -m pip install --upgrade pip;
 
 python3 -m pip install -e ".[train]"
 
-python3 -m pip install deepspeed==0.14.0
+python3 -m pip install -U deepspeed;
 python3 -m pip install ninja
 python3 -m pip install flash-attn --no-build-isolation
 alias python=python3
@@ -58,6 +58,9 @@ export NCCL_DEBUG=INFO
 
 PORT=26000
 GPUS="0,1,2,3,4,5,6,7"
+
+wandb login a651c244635bc6f913ab654af3f0eebaecdc9381
+wandb online
 
 ################ Arnold Jobs ################
 
@@ -114,7 +117,7 @@ echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
 # Stage 2
 PROMPT_VERSION="mistral_instruct"
-MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-blip558k_pretrain_plain-la1_6mix_ft_1e_5-ufvis_2e_6_anyres_d32k"
+MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-blip558k_pretrain_plain-la1_6mix_ft_1e_5-ufvis_2e_6_anyres_d64k_1ep"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
@@ -145,7 +148,7 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --gradient_accumulation_steps 2 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
-    --save_steps 3000 \
+    --save_steps 5000 \
     --save_total_limit 1 \
     --learning_rate 1e-5 \
     --weight_decay 0. \
