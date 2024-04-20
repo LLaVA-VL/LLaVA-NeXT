@@ -181,7 +181,18 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                 cfg_pretrained = AutoConfig.from_pretrained(model_path)
                 model = LlavaGemmaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, config=cfg_pretrained, attn_implementation=attn_implementation, **kwargs)
             else:
-                raise ValueError(f"Model {model_name} not supported")
+                try:
+                    from llava.model.language_model.llava_llama import LlavaConfig
+                    tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+                    if customized_config is None:
+                        llava_cfg = LlavaConfig.from_pretrained(model_path)
+                        if "v1.5" in model_path.lower():
+                            llava_cfg.delay_load = True  # a workaround for correctly loading v1.5 models
+                    else:
+                        llava_cfg = customized_config
+                    model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, config=llava_cfg, **kwargs)
+                except:
+                    raise ValueError(f"Model {model_name} not supported")
 
     else:
         # Load language model
