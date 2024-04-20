@@ -105,7 +105,7 @@ echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
 # Stage 2
 PROMPT_VERSION="llava_llama_3" # for wizardlm-2
-MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-blip558k_pretrain_plain-la1_6_plusmix_ft-ufvis_higher_anyres_d8k"
+MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-blip558k_pretrain_plain-la1_6_plusmix_ft-ufvis_higher_anyres_d8k_fixdata"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
@@ -136,7 +136,7 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --gradient_accumulation_steps 2 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
-    --save_steps 3000 \
+    --save_steps 1000 \
     --save_total_limit 1 \
     --learning_rate 1e-5 \
     --weight_decay 0. \
@@ -149,8 +149,6 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --dataloader_num_workers 16 \
     --lazy_preprocess True \
     --report_to wandb \
-    --torch_compile True \
-    --torch_compile_backend "inductor" \
     --dataloader_drop_last True
 
 function azcopy_upload() {
