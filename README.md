@@ -1,8 +1,8 @@
 # 🌋 LLaVA: Large Language and Vision Assistant
 
 ## Release
-- [2024/04/20] Releasing new LLaVA-Next Models with support of LLama-3 and Qwen-1.5 models, we now have Llama-3-LLaVA-Next-8B/72B and LLaVA-Next-72B model. You could check our [results]() and [checkpoints](https://huggingface.co/collections/lmms-lab/llava-next-6623288e2d61edba3ddbf5ff) to see improved performance!
-- [2024/03/10] Releasing **LMMs-Eval**, a highly efficient evaluation pipeline we used when developing LLaVA-NeXT. It supports the evaluation of LMMs on dozens of public datasets and allows new dataset onboarding, making the dev of new LMMs much faster. [[Blog](https://lmms-lab.github.io/lmms-eval-blog/lmms-eval-0.1/)] [[Codebase](https://github.com/EvolvingLMMs-Lab/lmms-eval)]
+- [2024/04/20] 🔥 Releasing new **LLaVA-NeXT** Models with support of LLama-3 and Qwen-1.5 models, we now have Llama-3-LLaVA-NeXT-8B/72B and LLaVA-Next-72B model. You could check our [results]() and [checkpoints](https://huggingface.co/collections/lmms-lab/llava-next-6623288e2d61edba3ddbf5ff) to see improved performance!
+- [2024/03/10] ❄️ Releasing **LMMs-Eval**, a highly efficient evaluation pipeline we used when developing LLaVA-NeXT. It supports the evaluation of LMMs on dozens of public datasets and allows new dataset onboarding, making the dev of new LMMs much faster. [[Blog](https://lmms-lab.github.io/lmms-eval-blog/lmms-eval-0.1/)] [[Codebase](https://github.com/EvolvingLMMs-Lab/lmms-eval)]
 - [2024/1/30] 🔥 LLaVA-NeXT (LLaVA-1.6) is out! With additional scaling to LLaVA-1.5, LLaVA-NeXT-34B outperforms Gemini Pro on some benchmarks. It can now process 4x more pixels and perform more tasks/applications than before. Check out the [blog post](https://llava-vl.github.io/blog/2024-01-30-llava-next/), and explore the [demo](https://llava.hliu.cc/)! Models are available in [Model Zoo](https://github.com/haotian-liu/LLaVA/blob/main/docs/MODEL_ZOO.md). Training/eval data and scripts coming soon.
 
 <details>
@@ -41,7 +41,7 @@
 
 **Usage and License Notices**: This project utilizes certain datasets and checkpoints that are subject to their respective original licenses. Users must comply with all terms and conditions of these original licenses, including but not limited to the [OpenAI Terms of Use](https://openai.com/policies/terms-of-use) for the dataset and the specific licenses for base language models for checkpoints trained using the dataset (e.g. [Llama-1/2 community license](https://ai.meta.com/llama/license/) for LLaMA-2 and Vicuna-v1.5, [Tongyi Qianwen RESEARCH LICENSE AGREEMENT](https://huggingface.co/Qwen/Qwen1.5-0.5B-Chat/blob/main/LICENSE) and [Llama-3 Research License](https://llama.meta.com/llama3/license/)). This project does not impose any additional constraints beyond those stipulated in the original licenses. Furthermore, users are reminded to ensure that their use of the dataset and checkpoints is in compliance with all applicable laws and regulations.
 
-## Install
+## Install to Evaluate and Try Demo
 
 If you are not using Linux, do *NOT* proceed, see instructions for [macOS](https://github.com/haotian-liu/LLaVA/blob/main/docs/macOS.md) and [Windows](https://github.com/haotian-liu/LLaVA/blob/main/docs/Windows.md).
 
@@ -56,24 +56,10 @@ cd LLaVA
 conda create -n llava python=3.10 -y
 conda activate llava
 pip install --upgrade pip  # enable PEP 660 support
-pip install -e .
-```
-
-3. Install additional packages for training cases
-```
 pip install -e ".[train]"
 pip install flash-attn --no-build-isolation
-```
 
-### Upgrade to latest code base
-
-```Shell
-git pull
-pip install -e .
-
-# if you see some import errors when you upgrade,
-# please try running the command below (without #)
-# pip install flash-attn --no-build-isolation --no-cache-dir
+pip install git+https://github.com/EvolvingLMMs-Lab/lmms-eval.git
 ```
 
 ### Quick Start With HuggingFace
@@ -119,6 +105,36 @@ args = type('Args', (), {
 })()
 
 eval_model(args)
+```
+</details>
+
+### Check the evaluation results with lmms-eval
+
+<details>
+<summary>Example Code</summary>
+
+```shell
+# Evaluating Llama-3-LLaVA-NeXT-8B on multiple datasets
+accelerate launch --num_processes=8 \
+  -m lmms_eval \
+  --model llava \
+  --model_args pretrained=lmms-lab/llama3-llava-next-8b,conv_template=llava_llama_3 \
+  --tasks ai2d,docvqa_val,infovqa_val,mme,mmbench_en_dev \
+  --batch_size 1 \
+  --log_samples \
+  --log_samples_suffix llava_next_0420 \
+  --output_path ./logs/
+
+# Evaluating Llama-3-LLaVA-NeXT-70B on multiple datasets
+accelerate launch --num_processes=1 \
+  -m lmms_eval \
+  --model llava \
+  --model_args pretrained=lmms-lab/llama3-llava-next-8b,conv_template=llava_llama_3 \
+  --tasks ai2d,docvqa_val,infovqa_val,mme,mmbench_en_dev \
+  --batch_size 1 \
+  --log_samples \
+  --log_samples_suffix llava_next_0420 \
+  --output_path ./logs/
 ```
 </details>
 
