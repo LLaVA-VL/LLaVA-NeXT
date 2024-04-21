@@ -36,5 +36,5 @@ datasets:
     sampling_strategy: "all"
   - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/cauldron/diagram_image_to_text_300.json
     sampling_strategy: "all"
-  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/vision-flan.json
+  - json_path: /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/vision_flan_filtered_186070.json
     sampling_strategy: "all"
