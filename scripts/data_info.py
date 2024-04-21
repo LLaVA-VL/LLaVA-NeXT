@@ -69,36 +69,38 @@ def main():
     data = load_data(json_path)
     filtered_data = filter_data(data)
 
-    print(f"Total data items: {len(data)}, Filtered data items: {len(filtered_data)}")
-    widths, heights = calculate_image_dimensions_multiprocess(filtered_data, images_folder)
-    max_width = max(widths)
-    max_height = max(heights)
-    print(f"Max width: {max_width}, Max height: {max_height}")
+    if len(filtered_data) != 0:
+        print(f"Total data items: {len(data)}, Filtered data items: {len(filtered_data)}")
+        widths, heights = calculate_image_dimensions_multiprocess(filtered_data, images_folder)
+        max_width = max(widths)
+        max_height = max(heights)
+        print(f"Max width: {max_width}, Max height: {max_height}")
 
-    tokenized_lengths = calculate_tokenized_lengths(filtered_data)
+    tokenized_lengths = calculate_tokenized_lengths(data)
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 12))
 
-    # Plot 2D histogram
-    if min(widths) == max(widths):
-        widths_bins = [min(widths), max(widths) + 1]
-    else:
-        widths_bins = np.arange(min(widths), max(widths) + 100, 100)
+    if len(filtered_data) != 0:
+        # Plot 2D histogram
+        if min(widths) == max(widths):
+            widths_bins = [min(widths), max(widths) + 1]
+        else:
+            widths_bins = np.arange(min(widths), max(widths) + 100, 100)
 
-    if min(heights) == max(heights):
-        heights_bins = [min(heights), max(heights) + 1]
-    else:
-        heights_bins = np.arange(min(heights), max(heights) + 100, 100)
+        if min(heights) == max(heights):
+            heights_bins = [min(heights), max(heights) + 1]
+        else:
+            heights_bins = np.arange(min(heights), max(heights) + 100, 100)
 
-    h, xedges, yedges, image = ax1.hist2d(widths, heights, bins=[widths_bins, heights_bins], cmap=plt.cm.jet, density=True)
-    fig.colorbar(image, ax=ax1)
-    ax1.set_xlabel("Width")
-    ax1.set_ylabel("Height")
-    ax1.set_title(f"dist_{llava_instruct_name}_2d_w_h\nMax width: {max(widths)}, Max height: {max(heights)}", fontsize=10)
+        h, xedges, yedges, image = ax1.hist2d(widths, heights, bins=[widths_bins, heights_bins], cmap=plt.cm.jet, density=True)
+        fig.colorbar(image, ax=ax1)
+        ax1.set_xlabel("Width")
+        ax1.set_ylabel("Height")
+        ax1.set_title(f"dist_{llava_instruct_name}_2d_w_h\nMax width: {max(widths)}, Max height: {max(heights)}", fontsize=10)
 
     # Plot histogram
-    hist, bin_edges = np.histogram(tokenized_lengths, bins=np.arange(0, max(tokenized_lengths) + 10, 10))
-    bins = np.arange(0, max(tokenized_lengths) + 10, 10)
+    hist, bin_edges = np.histogram(tokenized_lengths, bins=np.arange(0, max(tokenized_lengths) + 10, 100))
+    bins = np.arange(0, max(tokenized_lengths) + 10, 100)
     ax2.bar(bin_edges[:-1], hist, width=7, edgecolor="black", log=True)
 
     # Display every nth label on the x-axis
@@ -115,6 +117,7 @@ def main():
 
     plt.tight_layout()
     plt.savefig(f"./dist_{llava_instruct_name}_combined.png")
+    print(f"Plots saved to ./dist_{llava_instruct_name}_combined.png")
 
 
 if __name__ == "__main__":
