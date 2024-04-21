@@ -1018,14 +1018,14 @@ class LazySupervisedDataset(Dataset):
                 pass
 
         # still fail, most likely to be path issue or cloud disk issue, retry the same sample for longer
-        for attempt_idx in range(num_final_retries):
-            try:
-                sample = self._get_item(i)
-                return sample
-            except Exception as e:
-                # sleep 1s in case it is a cloud disk issue
-                print(f"[Final try #{attempt_idx}] Failed to fetch sample {i}. Exception:", e)
-                time.sleep(1)
+        # for attempt_idx in range(num_final_retries):
+        #     try:
+        #         sample = self._get_item(i)
+        #         return sample
+        #     except Exception as e:
+        #         # sleep 1s in case it is a cloud disk issue
+        #         print(f"[Final try #{attempt_idx}] Failed to fetch sample {i}. Exception:", e)
+        #         time.sleep(1)
 
         # Finally raise exception on failing.
         assert False, "Failed to fetch sample."
@@ -1425,11 +1425,6 @@ def train(attn_implementation=None):
 
     data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args)
     trainer = LLaVATrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
-    # dataloader = trainer.get_train_dataloader()
-    # Debug code, don't include
-    # from tqdm import tqdm
-    # for i, data in enumerate(tqdm(dataloader)):
-    #    continue
 
     if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")):
         trainer.train(resume_from_checkpoint=True)
