@@ -48,7 +48,7 @@ train = [
     "einops==0.6.1",
     "einops-exts==0.0.4",
     "gradio_client==0.2.9",
-    "pydantic",
+    "pydantic==1.10.8",
     "timm",
     "hf_transfer",
 ]
