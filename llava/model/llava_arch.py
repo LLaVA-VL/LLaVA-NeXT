@@ -15,6 +15,9 @@
 
 from abc import ABC, abstractmethod
 
+import math
+import re
+import time
 import torch
 import torch.nn as nn
 
@@ -157,42 +160,112 @@ class LlavaMetaForCausalLM(ABC):
     def get_vision_tower(self):
         return self.get_model().get_vision_tower()
 
-    def encode_images(self, images):
-        image_features = self.get_model().get_vision_tower()(images)
-        image_features = self.get_model().vision_resampler(image_features, images=images)
-        image_features = self.get_model().mm_projector(image_features)
-        return image_features
+    def get_2dPool(self, image_feature):
+        height = width = self.get_vision_tower().num_patches_per_side
+        num_frames, num_tokens, num_dim = image_feature.shape
+        image_feature = image_feature.view(num_frames, height, width, -1)
+        image_feature = image_feature.permute(0, 3, 1, 2).contiguous()
+        # image_feature = nn.functional.max_pool2d(image_feature, self.config.mm_spatial_pool_stride)
+        if self.config.mm_spatial_pool_mode == "average":
+            image_feature = nn.functional.avg_pool2d(image_feature, self.config.mm_spatial_pool_stride)
+        elif self.config.mm_spatial_pool_mode == "max":
+            image_feature = nn.functional.max_pool2d(image_feature, self.config.mm_spatial_pool_stride)
+        else:
+            raise ValueError(f"Unexpected mm_spatial_pool_mode: {self.config.mm_spatial_pool_mode}")
+        image_feature = image_feature.permute(0, 2, 3, 1)
+        image_feature = image_feature.view(num_frames, -1, num_dim)
+        return image_feature
 
-    def prepare_inputs_labels_for_multimodal(self, input_ids, position_ids, attention_mask, past_key_values, labels, images, image_sizes=None):
+    def encode_images(self, images, video_idx_in_batch, split_sizes=None):
+        image_features = self.get_model().get_vision_tower()(images)
+        per_image_features = torch.split(image_features, split_sizes, dim=0) # tuple, (dim_1, 576, 4096)
+        all_image_features = []
+        # import pdb; pdb.set_trace()
+
+        for idx, img_feat in enumerate(per_image_features):
+            # import pdb; pdb.set_trace()
+            if idx in video_idx_in_batch:
+                img_feat = self.get_2dPool(img_feat) # (num_vid*num_frames, 576, 4096) -> (num_vid*num_frames, 144, 4096)
+            # import pdb; pdb.set_trace()
+            img_feat = self.get_model().mm_projector(img_feat) # (dim_1_sum, 576, 1024) -> (dim_1_sum, 576, 4096)
+            all_image_features.append(img_feat)
+        return all_image_features
+
+    def prepare_inputs_labels_for_multimodal(self, input_ids, position_ids, attention_mask, past_key_values, labels, images, modalities=None, image_sizes=None, prompts=None):
         vision_tower = self.get_vision_tower()
         if vision_tower is None or images is None or input_ids.shape[1] == 1:
             return input_ids, position_ids, attention_mask, past_key_values, None, labels
 
+        if isinstance(modalities, str):
+            modalities = [modalities]
+
         if type(images) is list or images.ndim == 5:
             if type(images) is list:
                 images = [x.unsqueeze(0) if x.ndim == 3 else x for x in images]
-            concat_images = torch.cat([image for image in images], dim=0)
-            image_features = self.encode_images(concat_images)
-            split_sizes = [image.shape[0] for image in images]
-            image_features = torch.split(image_features, split_sizes, dim=0)
+
+            video_idx_in_batch = []
+            for _ in range(len(modalities)):
+                if modalities[_] in ["video"]:
+                    video_idx_in_batch.append(_)
+
+            images_list = []
+            for image in images:
+                if image.ndim == 4:
+                    images_list.append(image)
+                else:
+                    images_list.append(image.unsqueeze(0))
+
+            concat_images = torch.cat([image for image in images_list], dim=0)
+            split_sizes = [image.shape[0] for image in images_list]
+            image_features = self.encode_images(concat_images, video_idx_in_batch, split_sizes)
+            
+            # image_features = torch.split(image_features, split_sizes, dim=0)
             mm_patch_merge_type = getattr(self.config, "mm_patch_merge_type", "flat")
             image_aspect_ratio = getattr(self.config, "image_aspect_ratio", "square")
+            new_image_features = []
+
             if mm_patch_merge_type == "flat":
-                image_features = [x.flatten(0, 1) for x in image_features]
+                for image_idx, image_feature in enumerate(image_features):
+                    new_image_features.append(image_feature.flatten(0, 1))
+                image_features = new_image_features
+
             elif mm_patch_merge_type.startswith("spatial"):
+                # import pdb; pdb.set_trace()
                 new_image_features = []
                 for image_idx, image_feature in enumerate(image_features):
                     # FIXME: now assume the image is square, and split to 2x2 patches
                     # num_patches = h * w, where h = w = sqrt(num_patches)
                     # currently image_feature is a tensor of shape (4, num_patches, hidden_size)
                     # we want to first unflatten it to (2, 2, h, w, hidden_size)
+                    if image_idx in video_idx_in_batch:  # video operations
+                        if "unpad" in mm_patch_merge_type:
+                            # image_feature = image_feature.permute(2, 0, 1).contiguous()
+                            # image_feature =  torch.cat((image_feature, self.model.image_newline[:, None, None].expand(*image_feature.shape[:-1], 1).to(image_feature.device)), dim=-1)
+                            # image_feature = image_feature.permute(1, 2, 0).contiguous()
+                            image_feature = image_feature.flatten(0, 1)
 
-                    if image_feature.shape[0] > 1:
+                    elif image_feature.shape[0] > 1:  # multi patches and multi images operations
                         base_image_feature = image_feature[0]
                         image_feature = image_feature[1:]
                         height = width = self.get_vision_tower().num_patches_per_side
                         assert height * width == base_image_feature.shape[0]
-                        if image_aspect_ratio == "anyres":
+
+                        split_num_patches = image_feature.shape[0]  # supposed to be a (N, 729, 1024) for siglip-qwen model, we need to get N.
+                        if "anyres_max" in image_aspect_ratio:
+                            matched_anyres_max_num_patches = re.match(r"anyres_max_(\d+)", image_aspect_ratio)
+                            if matched_anyres_max_num_patches:
+                                max_num_patches = int(matched_anyres_max_num_patches.group(1))
+                                if max_num_patches > 0 and split_num_patches > 0:  # Ensure positive and avoid division by zero
+                                    pool_ratio = split_num_patches / max_num_patches
+                                else:
+                                    raise ValueError("max_num_patches and split_num_patches must be positive.")
+                            else:
+                                raise ValueError(f"Invalid image_aspect_ratio format: {image_aspect_ratio}")
+                        else:
+                            max_num_patches = split_num_patches
+                            pool_ratio = 1 if split_num_patches > 0 else 0  # Handle the case where split_num_patches might be 0
+
+                        if image_aspect_ratio == "anyres" or "anyres_max" in image_aspect_ratio:
                             if hasattr(self.get_vision_tower(), "image_size"):
                                 vision_tower_image_size = self.get_vision_tower().image_size
                             else:
@@ -206,7 +279,41 @@ class LlavaMetaForCausalLM(ABC):
                             image_feature = image_feature.flatten(1, 2).flatten(2, 3)
                             image_feature = nn.functional.max_pool2d(image_feature, 2)
                             image_feature = image_feature.flatten(1, 2).transpose(0, 1)
-                        elif "unpad" in mm_patch_merge_type:
+                        elif "unpad" in mm_patch_merge_type and "anyres_max" in image_aspect_ratio:  # if exceed max_num_patches, resize to max_num_patches
+                            unit = image_feature.shape[2]
+                            image_feature = image_feature.permute(4, 0, 2, 1, 3).contiguous()
+                            image_feature = image_feature.flatten(1, 2).flatten(2, 3)
+                            unpad_h, unpad_w = image_feature.shape[-2], image_feature.shape[-1]
+                            image_feature = unpad_image(image_feature, image_sizes[image_idx])
+                            # N, h, w = image_feature.shape
+                            # times = math.sqrt(h * w / (max_num_patches * unit**2))
+                            # Assuming h and w are the height and width of the image feature tensor before pooling
+                            # Ensure they are defined. For example:
+                            h, w = image_feature.shape[-2], image_feature.shape[-1]  # Get the current height and width
+
+                            unpadded_num_patches = math.ceil(h / unit) * math.ceil(w / unit)
+                            if unpadded_num_patches < split_num_patches:  # recalculating pool_ratio if the number of patches is reduced
+                                # rank0_print(f"Readjusting num patches from {split_num_patches} to {unpadded_num_patches} due to unpad")
+                                pool_ratio = unpadded_num_patches / max_num_patches
+
+                            if pool_ratio > 1:
+                                # Calculate new dimensions, ensuring they are at least 1
+                                new_h = max(1, math.ceil(h / math.sqrt(pool_ratio)))
+                                new_w = max(1, math.ceil(w / math.sqrt(pool_ratio)))
+                                # Add a batch dimension for interpolation, making it (1, N, H, W)
+                                image_feature = image_feature.unsqueeze(0)
+                                # Apply bilinear interpolation
+                                image_feature = nn.functional.interpolate(image_feature, size=[new_h, new_w], mode="bilinear", align_corners=True)  # mode can be "nearest" or "bilinear" or "bicubic" or "area"
+                                # Remove the batch dimension after interpolation, resulting in (N, new_h, new_w)
+                                image_feature = image_feature.squeeze(0)
+                                # rank0_print(f"Resized image feature from ({h}, {w}) to ({new_h}, {new_w})")
+                                # rank0_print(f"Original image size(w/h): {image_sizes[image_idx]}")
+                                # rank0_print(f"Unpadded tokens are: {unpad_h} x {unpad_w}, in total {unpad_h * unpad_w} tokens")
+                                # rank0_print(f"Total tokens are reduced from {h * w} to {new_h * new_w} (standard reference: {max_num_patches * 729})")
+
+                            image_feature = torch.cat((image_feature, self.model.image_newline[:, None, None].expand(*image_feature.shape[:-1], 1).to(image_feature.device)), dim=-1)
+                            image_feature = image_feature.flatten(1, 2).transpose(0, 1)
+                        elif "unpad" in mm_patch_merge_type:  # traditional anyres and unpad, no limit to how many grids
                             image_feature = image_feature.permute(4, 0, 2, 1, 3).contiguous()
                             image_feature = image_feature.flatten(1, 2).flatten(2, 3)
                             image_feature = unpad_image(image_feature, image_sizes[image_idx])
@@ -219,10 +326,11 @@ class LlavaMetaForCausalLM(ABC):
                             pass
                         else:
                             image_feature = torch.cat((base_image_feature, image_feature), dim=0)
-                    else:
+                    else:  # single image operations
                         image_feature = image_feature[0]
                         if "unpad" in mm_patch_merge_type:
                             image_feature = torch.cat((image_feature, self.model.image_newline[None]), dim=0)
+
                     new_image_features.append(image_feature)
                 image_features = new_image_features
             else:
@@ -293,6 +401,7 @@ class LlavaMetaForCausalLM(ABC):
 
             cur_new_input_embeds = [x.to(self.device) for x in cur_new_input_embeds]
 
+            # import pdb; pdb.set_trace()
             cur_new_input_embeds = torch.cat(cur_new_input_embeds)
             cur_new_labels = torch.cat(cur_new_labels)
 
@@ -301,9 +410,13 @@ class LlavaMetaForCausalLM(ABC):
 
         # Truncate sequences to max length as image embeddings can make the sequence longer
         tokenizer_model_max_length = getattr(self.config, "tokenizer_model_max_length", None)
-        if tokenizer_model_max_length is not None:
-            new_input_embeds = [x[:tokenizer_model_max_length] for x in new_input_embeds]
-            new_labels = [x[:tokenizer_model_max_length] for x in new_labels]
+
+        new_input_embeds = [x[:tokenizer_model_max_length] for x, modality in zip(new_input_embeds, modalities)]
+        new_labels = [x[:tokenizer_model_max_length] for x, modality in zip(new_labels, modalities)]
+        # TODO: Hard code for control loss spike
+        # if tokenizer_model_max_length is not None:
+        #     new_input_embeds = [x[:4096] if modality != "video" else x[:tokenizer_model_max_length] for x, modality in zip(new_input_embeds, modalities)]
+        #     new_labels = [x[:4096] if modality != "video" else x[:tokenizer_model_max_length] for x, modality in zip(new_labels, modalities)]
 
         # Combine them
         max_len = max(x.shape[0] for x in new_input_embeds)
@@ -343,7 +456,8 @@ class LlavaMetaForCausalLM(ABC):
 
         if _position_ids is None:
             position_ids = None
-
+        
+        # import pdb; pdb.set_trace()
         return None, position_ids, attention_mask, past_key_values, new_input_embeds, new_labels
 
     def initialize_vision_tokenizer(self, model_args, tokenizer):
@@ -381,6 +495,7 @@ class LlavaMetaForCausalLM(ABC):
                     input_embeddings[-num_new_tokens:] = embed_tokens_weight
                 else:
                     raise ValueError(f"Unexpected embed_tokens_weight shape. Pretrained: {embed_tokens_weight.shape}. Current: {input_embeddings.shape}. Numer of new tokens: {num_new_tokens}.")
+
         elif model_args.mm_use_im_patch_token:
             if model_args.tune_mm_mlp_adapter:
                 for p in self.get_input_embeddings().parameters():
