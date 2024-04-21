@@ -871,7 +871,9 @@ class LazySupervisedDataset(Dataset):
             base_path, file_pattern = re.match(r"^(.*)\{(.*)\}\.json$", data_path).groups()
             file_names = file_pattern.split(",")
             rank0_print(f"Loading {file_names} from {base_path}")
+            data_args.dataset_paths = []
             for file_name in file_names:
+                data_args.dataset_paths.append(f"{base_path}{file_name}.json")
                 full_path = f"{base_path}{file_name}.json"
                 rank0_print(f"Loading {full_path}")
                 with open(full_path, "r") as file:
@@ -890,6 +892,7 @@ class LazySupervisedDataset(Dataset):
                 #     sampling_strategy: end:3000
                 #   - json_path: xxxx3.json
                 #     sampling_strategy: random:999
+                data_args.dataset_paths = [dataset.get("json_path") for dataset in datasets]
                 for dataset in datasets:
                     json_path = dataset.get("json_path")
                     sampling_strategy = dataset.get("sampling_strategy", "all")
@@ -918,6 +921,7 @@ class LazySupervisedDataset(Dataset):
                     rank0_print(f"Loaded {len(cur_data_dict)} samples from {json_path}")
                     self.list_data_dict.extend(cur_data_dict)
         else:
+            data_args.dataset_paths = [data_path]
             rank0_print(f"Loading {data_path}")
             with open(data_path, "r") as file:
                 cur_data_dict = json.load(file)
