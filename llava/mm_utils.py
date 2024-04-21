@@ -3,7 +3,7 @@ from io import BytesIO
 import base64
 import math
 import ast
-
+import re
 import torch
 from transformers import StoppingCriteria
 from llava.constants import IMAGE_TOKEN_INDEX
@@ -222,11 +222,16 @@ def get_anyres_image_grid_shape(image_size, grid_pinpoints, patch_size):
     Returns:
         tuple: The shape of the image patch grid in the format (width, height).
     """
-    if isinstance(grid_pinpoints, str):
+    if isinstance(grid_pinpoints, str) and "x" in grid_pinpoints:
         assert patch_size in [224, 336, 384, 448, 512], "patch_size should be in [224, 336, 384, 448, 512]"
-        grid_pinpoints = grid_pinpoints.replace(" ", "").replace("x", ",")[1:-1].split("),(")
-        grid_pinpoints = [[int(x) * patch_size for x in item.split(",")] for item in grid_pinpoints]
-
+        # Use regex to extract the range from the input string
+        matches = re.findall(r"\((\d+)x(\d+)\)", grid_pinpoints)
+        range_start = tuple(map(int, matches[0]))
+        range_end = tuple(map(int, matches[-1]))
+        # Generate a matrix of tuples from (range_start[0], range_start[1]) to (range_end[0], range_end[1])
+        grid_pinpoints = [(i, j) for i in range(range_start[0], range_end[0] + 1) for j in range(range_start[1], range_end[1] + 1)]
+        # Multiply all elements by patch_size
+        grid_pinpoints = [[dim * patch_size for dim in pair] for pair in grid_pinpoints]
     if type(grid_pinpoints) is list:
         possible_resolutions = grid_pinpoints
     else:
@@ -248,11 +253,17 @@ def process_anyres_image(image, processor, grid_pinpoints):
         torch.Tensor: A tensor containing the processed image patches.
     """
     # Convert grid_pinpoints from string to list
-    if isinstance(grid_pinpoints, str):
-        vis_encoder_size = processor.size[0]
-        assert vis_encoder_size in [224, 336, 384, 448, 512], "vis_encoder_size should be in [224, 336, 384, 448, 512]"
-        grid_pinpoints = grid_pinpoints.replace(" ", "").replace("x", ",")[1:-1].split("),(")
-        grid_pinpoints = [[int(x) * vis_encoder_size for x in item.split(",")] for item in grid_pinpoints]
+    # patch_size = processor.size[0]
+    if isinstance(grid_pinpoints, str) and "x" in grid_pinpoints:
+        assert patch_size in [224, 336, 384, 448, 512], "patch_size should be in [224, 336, 384, 448, 512]"
+        # Use regex to extract the range from the input string
+        matches = re.findall(r"\((\d+)x(\d+)\)", grid_pinpoints)
+        range_start = tuple(map(int, matches[0]))
+        range_end = tuple(map(int, matches[-1]))
+        # Generate a matrix of tuples from (range_start[0], range_start[1]) to (range_end[0], range_end[1])
+        grid_pinpoints = [(i, j) for i in range(range_start[0], range_end[0] + 1) for j in range(range_start[1], range_end[1] + 1)]
+        # Multiply all elements by patch_size
+        grid_pinpoints = [[dim * patch_size for dim in pair] for pair in grid_pinpoints]
 
     if type(grid_pinpoints) is list:
         possible_resolutions = grid_pinpoints
@@ -304,7 +315,7 @@ def process_images(images, image_processor, model_cfg):
         for image in images:
             image = process_highres_image(image, image_processor, model_cfg.image_grid_pinpoints)
             new_images.append(image)
-    elif image_aspect_ratio == "anyres":
+    elif image_aspect_ratio == "anyres" or "anyres" in image_aspect_ratio:
         for image in images:
             image = process_anyres_image(image, image_processor, model_cfg.image_grid_pinpoints)
             new_images.append(image)
