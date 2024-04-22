@@ -116,32 +116,23 @@ class RewardTrainer(Trainer):
                 )
         else:
             if max_length is not None and args.max_length is not None:
-                raise ValueError(
-                    "You cannot specify both `max_length` and `args.max_length`. Please use the `RewardConfig` to set `max_length` once."
-                )
+                raise ValueError("You cannot specify both `max_length` and `args.max_length`. Please use the `RewardConfig` to set `max_length` once.")
             if max_length is not None and args.max_length is None:
                 warnings.warn(
                     "The `max_length` argument is deprecated and will be removed in a future version. Please use the `RewardConfig` to set `max_length` instead.",
                     FutureWarning,
                 )
         if not is_peft_available() and peft_config is not None:
-            raise ValueError(
-                "PEFT is not installed and you passed a `peft_config` in the trainer's kwargs, please install it to use the PEFT models"
-            )
+            raise ValueError("PEFT is not installed and you passed a `peft_config` in the trainer's kwargs, please install it to use the PEFT models")
         elif is_peft_available() and peft_config is not None:
             if not isinstance(model, PeftModel):
                 if getattr(model, "is_loaded_in_8bit", False) or getattr(model, "is_quantized", False):
-                    _supports_gc_kwargs = "gradient_checkpointing_kwargs" in list(
-                        inspect.signature(prepare_model_for_kbit_training).parameters
-                    )
+                    _supports_gc_kwargs = "gradient_checkpointing_kwargs" in list(inspect.signature(prepare_model_for_kbit_training).parameters)
 
                     preprare_model_kwargs = {"use_gradient_checkpointing": args.gradient_checkpointing}
 
                     if not _supports_gc_kwargs and args.gradient_checkpointing_kwargs is not None:
-                        warnings.warn(
-                            "You passed `gradient_checkpointing_kwargs` in the trainer's kwargs, but your peft version does not support it. "
-                            "please update to the latest version of peft to use `gradient_checkpointing_kwargs`."
-                        )
+                        warnings.warn("You passed `gradient_checkpointing_kwargs` in the trainer's kwargs, but your peft version does not support it. " "please update to the latest version of peft to use `gradient_checkpointing_kwargs`.")
                     elif _supports_gc_kwargs and args.gradient_checkpointing_kwargs is not None:
                         preprare_model_kwargs["gradient_checkpointing_kwargs"] = args.gradient_checkpointing_kwargs
 
@@ -154,22 +145,18 @@ class RewardTrainer(Trainer):
 
         if data_collator is None:
             if tokenizer is None:
-                raise ValueError(
-                    "max_length or a tokenizer must be specified when using the default RewardDataCollatorWithPadding"
-                )
+                raise ValueError("max_length or a tokenizer must be specified when using the default RewardDataCollatorWithPadding")
             if type(args) == TrainingArguments:
                 if max_length is None:
                     warnings.warn(
-                        "When using RewardDataCollatorWithPadding, you should set `max_length` in RewardConfig."
-                        " It will be set to `512` by default, but you should do it yourself in the future.",
+                        "When using RewardDataCollatorWithPadding, you should set `max_length` in RewardConfig." " It will be set to `512` by default, but you should do it yourself in the future.",
                         UserWarning,
                     )
                     max_length = 512
             else:
                 if max_length is None and args.max_length is None:
                     warnings.warn(
-                        "When using RewardDataCollatorWithPadding, you should set `max_length` in RewardConfig."
-                        " It will be set to `512` by default, but you should do it yourself in the future.",
+                        "When using RewardDataCollatorWithPadding, you should set `max_length` in RewardConfig." " It will be set to `512` by default, but you should do it yourself in the future.",
                         UserWarning,
                     )
                     max_length = 512
@@ -185,8 +172,7 @@ class RewardTrainer(Trainer):
                     args = replace(args, remove_unused_columns=False)
                 # warn users
                 warnings.warn(
-                    "When using RewardDataCollatorWithPadding, you should set `remove_unused_columns=False` in your RewardConfig"
-                    " we have set it for you, but you should do it yourself in the future.",
+                    "When using RewardDataCollatorWithPadding, you should set `remove_unused_columns=False` in your RewardConfig" " we have set it for you, but you should do it yourself in the future.",
                     UserWarning,
                 )
 
@@ -214,11 +200,7 @@ class RewardTrainer(Trainer):
         return_outputs=False,
     ) -> Union[torch.Tensor, Tuple[torch.Tensor, Dict[str, torch.Tensor]]]:
         if not self.use_reward_data_collator:
-            warnings.warn(
-                "The current compute_loss is implemented for RewardDataCollatorWithPadding,"
-                " if you are using a custom data collator make sure you know what you are doing or"
-                " implement your own compute_loss method."
-            )
+            warnings.warn("The current compute_loss is implemented for RewardDataCollatorWithPadding," " if you are using a custom data collator make sure you know what you are doing or" " implement your own compute_loss method.")
         rewards_chosen = model(
             input_ids=inputs["input_ids_chosen"],
             attention_mask=inputs["attention_mask_chosen"],

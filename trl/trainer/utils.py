@@ -125,10 +125,7 @@ class DataCollatorForCompletionOnlyLM(DataCollatorForLanguageModeling):
 
                 for idx in np.where(batch["labels"][i] == self.response_token_ids[0])[0]:
                     # `response_token_ids` is `'### Response:\n'`, here we are just making sure that the token IDs match
-                    if (
-                        self.response_token_ids
-                        == batch["labels"][i][idx : idx + len(self.response_token_ids)].tolist()
-                    ):
+                    if self.response_token_ids == batch["labels"][i][idx : idx + len(self.response_token_ids)].tolist():
                         response_token_ids_start_idx = idx
 
                 if response_token_ids_start_idx is None:
@@ -152,10 +149,7 @@ class DataCollatorForCompletionOnlyLM(DataCollatorForLanguageModeling):
 
                 for assistant_idx in np.where(batch["labels"][i] == self.response_token_ids[0])[0]:
                     # find the indexes of the start of a response.
-                    if (
-                        self.response_token_ids
-                        == batch["labels"][i][assistant_idx : assistant_idx + len(self.response_token_ids)].tolist()
-                    ):
+                    if self.response_token_ids == batch["labels"][i][assistant_idx : assistant_idx + len(self.response_token_ids)].tolist():
                         response_token_ids_idxs.append(assistant_idx + len(self.response_token_ids))
 
                 if len(response_token_ids_idxs) == 0:
@@ -182,11 +176,7 @@ class DataCollatorForCompletionOnlyLM(DataCollatorForLanguageModeling):
                     )
                     batch["labels"][i, :] = self.ignore_index
 
-                if (
-                    len(human_token_ids_idxs) > 0
-                    and len(response_token_ids_idxs) > 0
-                    and human_token_ids_idxs[0] > response_token_ids_idxs[0]
-                ):
+                if len(human_token_ids_idxs) > 0 and len(response_token_ids_idxs) > 0 and human_token_ids_idxs[0] > response_token_ids_idxs[0]:
                     human_token_ids_idxs = [0] + human_token_ids_idxs
 
                 for idx, (start, end) in enumerate(zip(human_token_ids_idxs, response_token_ids_idxs)):
@@ -233,15 +223,8 @@ class RewardDataCollatorWithPadding:
         has_margin = "margin" in features[0]
         for feature in features:
             # check if the keys are named as expected
-            if (
-                "input_ids_chosen" not in feature
-                or "input_ids_rejected" not in feature
-                or "attention_mask_chosen" not in feature
-                or "attention_mask_rejected" not in feature
-            ):
-                raise ValueError(
-                    "The features should include `input_ids_chosen`, `attention_mask_chosen`, `input_ids_rejected` and `attention_mask_rejected`"
-                )
+            if "input_ids_chosen" not in feature or "input_ids_rejected" not in feature or "attention_mask_chosen" not in feature or "attention_mask_rejected" not in feature:
+                raise ValueError("The features should include `input_ids_chosen`, `attention_mask_chosen`, `input_ids_rejected` and `attention_mask_rejected`")
 
             features_chosen.append(
                 {
@@ -296,6 +279,7 @@ class DPODataCollatorWithPadding:
         is_encoder_decoder (`Optional[bool]`, `optional`, defaults to `None`):
             Whether or not you model has an encoder_decoder architecture.
     """
+
     tokenizer: PreTrainedTokenizerBase
     pad_token_id: int = 0
     label_pad_token_id: int = -100
@@ -312,9 +296,7 @@ class DPODataCollatorWithPadding:
                     if (k.startswith("prompt")) and (k.endswith("input_ids")):
                         if self.pad_token_id is None:
                             raise ValueError(
-                                "Padding is enabled, but the tokenizer is not configured with a padding token."
-                                " Explicitly set `tokenizer.pad_token` (e.g. `tokenizer.pad_token = tokenizer.eos_token`)"
-                                " before calling the trainer."
+                                "Padding is enabled, but the tokenizer is not configured with a padding token." " Explicitly set `tokenizer.pad_token` (e.g. `tokenizer.pad_token = tokenizer.eos_token`)" " before calling the trainer."
                             )
                         padding_value = self.pad_token_id
                     elif k.endswith("_attention_mask"):
@@ -333,9 +315,7 @@ class DPODataCollatorWithPadding:
                     if k.endswith("_input_ids"):
                         if self.pad_token_id is None:
                             raise ValueError(
-                                "Padding is enabled, but the tokenizer is not configured with a padding token."
-                                " Explicitly set `tokenizer.pad_token` (e.g. `tokenizer.pad_token = tokenizer.eos_token`)"
-                                " before calling the trainer."
+                                "Padding is enabled, but the tokenizer is not configured with a padding token." " Explicitly set `tokenizer.pad_token` (e.g. `tokenizer.pad_token = tokenizer.eos_token`)" " before calling the trainer."
                             )
                         padding_value = self.pad_token_id
                     elif k.endswith("_labels"):
@@ -411,8 +391,7 @@ class ConstantLengthDataset(IterableDataset):
 
         if tokenizer.eos_token_id is None:
             warnings.warn(
-                "The passed tokenizer does not have an EOS token. We will use the passed eos_token_id instead which corresponds"
-                f" to {eos_token_id}. If this is not the correct EOS token, make sure to pass the correct eos_token_id."
+                "The passed tokenizer does not have an EOS token. We will use the passed eos_token_id instead which corresponds" f" to {eos_token_id}. If this is not the correct EOS token, make sure to pass the correct eos_token_id."
             )
 
         self.concat_token_id = tokenizer.eos_token_id if tokenizer.eos_token_id else eos_token_id
@@ -457,9 +436,7 @@ class ConstantLengthDataset(IterableDataset):
                     else:
                         more_examples = False
                         break
-            tokenized_inputs = self.tokenizer(buffer, add_special_tokens=self.add_special_tokens, truncation=False)[
-                "input_ids"
-            ]
+            tokenized_inputs = self.tokenizer(buffer, add_special_tokens=self.add_special_tokens, truncation=False)["input_ids"]
             all_token_ids = []
             for tokenized_input in tokenized_inputs:
                 if self.append_concat_token:
@@ -544,9 +521,7 @@ def compute_accuracy(eval_pred) -> Dict[str, float]:
     # Here, predictions is rewards_chosen and rewards_rejected.
     # We want to see how much of the time rewards_chosen > rewards_rejected.
     if np.array(predictions[:, 0] == predictions[:, 1], dtype=float).sum() > 0:
-        warnings.warn(
-            f"There are {np.array(predictions[:, 0] == predictions[:, 1]).sum()} out of {len(predictions[:, 0])} instances where the predictions for both options are equal. As a consequence the accuracy can be misleading."
-        )
+        warnings.warn(f"There are {np.array(predictions[:, 0] == predictions[:, 1]).sum()} out of {len(predictions[:, 0])} instances where the predictions for both options are equal. As a consequence the accuracy can be misleading.")
     predictions = np.argmax(predictions, axis=1)
 
     accuracy = np.array(predictions == labels, dtype=float).mean().item()

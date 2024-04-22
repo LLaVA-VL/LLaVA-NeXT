@@ -77,20 +77,13 @@ class IterativeSFTTrainer(Trainer):
     ):
         # Step 0: check positional arguments validity
         if not isinstance(tokenizer, (PreTrainedTokenizerBase)):
-            raise ValueError(
-                f"tokenizer must be a PreTrainedTokenizerBase like a PreTrainedTokenizer or a PreTrainedTokenizerFast, got {type(tokenizer)}"
-            )
+            raise ValueError(f"tokenizer must be a PreTrainedTokenizerBase like a PreTrainedTokenizer or a PreTrainedTokenizerFast, got {type(tokenizer)}")
         if not isinstance(model, PreTrainedModel):
             raise ValueError(f"model must be a PreTrainedModel, got {type(model)}")
         if not model.can_generate():
-            warnings.warn(
-                f"The current model class {type(model)} is not compatible with `.generate()`"
-                "Please make sure that this is intended."
-            )
+            warnings.warn(f"The current model class {type(model)} is not compatible with `.generate()`" "Please make sure that this is intended.")
         if optimizers[1] is None and args.max_steps == -1:
-            raise ValueError(
-                "When no scheduler is provided, you need to set the total number of training steps to perform `max_steps`"
-            )
+            raise ValueError("When no scheduler is provided, you need to set the total number of training steps to perform `max_steps`")
 
         self.is_encoder_decoder = getattr(model.config, "is_encoder_decoder", False)
         self.is_peft_model = is_peft_available() and isinstance(model, PeftModel)
@@ -99,10 +92,7 @@ class IterativeSFTTrainer(Trainer):
 
         if data_collator is None:
             if self.is_encoder_decoder:
-                warnings.warn(
-                    "No data collator is provided. Using 'DataCollatorForSeq2Seq' with"
-                    "'labels_pad_token_id' set to '-100' and 'pad_to_multiple_of' set to 8."
-                )
+                warnings.warn("No data collator is provided. Using 'DataCollatorForSeq2Seq' with" "'labels_pad_token_id' set to '-100' and 'pad_to_multiple_of' set to 8.")
                 self.data_collator = DataCollatorForSeq2Seq(tokenizer, label_pad_token_id=-100, pad_to_multiple_of=8)
             else:
                 warnings.warn("No data collator is provided. Using 'DataCollatorForLanguageModeling'")
@@ -128,16 +118,12 @@ class IterativeSFTTrainer(Trainer):
         self.create_optimizer_and_scheduler(self.args.max_steps)
 
         # prepare model, optimizer and lr_scheduler
-        self.model, self.optimizer, self.lr_scheduler = self.accelerator.prepare(
-            self.model, self.optimizer, self.lr_scheduler
-        )
+        self.model, self.optimizer, self.lr_scheduler = self.accelerator.prepare(self.model, self.optimizer, self.lr_scheduler)
 
         self.tokenizer.truncation_side = "left" if self.truncation_mode == "keep_end" else "right"
 
         if not hasattr(self, "accelerator"):
-            raise AttributeError(
-                "Your `Trainer` does not have an `accelerator` object. Consider upgrading `transformers`."
-            )
+            raise AttributeError("Your `Trainer` does not have an `accelerator` object. Consider upgrading `transformers`.")
 
         PPODecorators.optimize_device_cache = self.optimize_device_cache
 
@@ -146,21 +132,14 @@ class IterativeSFTTrainer(Trainer):
             attention_mask = [torch.ones_like(ids) for ids in input_ids]
 
         if self.is_encoder_decoder:
-            input_data = self.data_collator(
-                [
-                    {"input_ids": ids, "attention_mask": att, "labels": lab}
-                    for ids, att, lab in zip(input_ids, attention_mask, labels)
-                ]
-            ).to(self.model.device)
+            input_data = self.data_collator([{"input_ids": ids, "attention_mask": att, "labels": lab} for ids, att, lab in zip(input_ids, attention_mask, labels)]).to(self.model.device)
 
             input_data.pop("decoder_input_ids", None)  # This is directly computed inside the model
 
             input_data["labels"][input_data["labels"] == self.tokenizer.pad_token_id] = -100
 
         else:
-            input_data = self.data_collator(
-                [{"input_ids": ids, "attention_mask": att} for ids, att in zip(input_ids, attention_mask)]
-            ).to(self.model.device)
+            input_data = self.data_collator([{"input_ids": ids, "attention_mask": att} for ids, att in zip(input_ids, attention_mask)]).to(self.model.device)
 
         # truncate in case the user has provided input_ids, attention_mask and labels
         if self.max_length is not None:
@@ -206,9 +185,7 @@ class IterativeSFTTrainer(Trainer):
                     if not isinstance(tensor_list[0], torch.Tensor):
                         raise ValueError(f"Elements in {name} must be tensors - got {type(tensor_list[0])}")
             else:
-                for name, tensor_list in zip(
-                    ["input_ids", "attention_mask", "labels"], [input_ids, attention_mask, labels]
-                ):
+                for name, tensor_list in zip(["input_ids", "attention_mask", "labels"], [input_ids, attention_mask, labels]):
                     if not isinstance(tensor_list, list):
                         raise ValueError(f"{name} must be a list of tensors - got {type(tensor_list)}")
                     if not isinstance(tensor_list[0], torch.Tensor):
@@ -260,30 +237,20 @@ class IterativeSFTTrainer(Trainer):
         if input_ids is None and texts is None:
             raise ValueError("Step should include `input_ids` or `texts` as keyword arguments.")
         elif input_ids is not None and texts is not None:
-            warnings.warn(
-                "Both 'input_ids' and 'texts' are provided. 'input_ids' will be overwritten using inputs provided by the 'texts' keyword argument."
-            )
+            warnings.warn("Both 'input_ids' and 'texts' are provided. 'input_ids' will be overwritten using inputs provided by the 'texts' keyword argument.")
 
         if labels is None and texts_labels is None and self.is_encoder_decoder:
-            raise ValueError(
-                "No 'labels' or 'text_labels' are provided. When using an encoder-decoder architecture, 'labels' or 'text_labels' must be passed."
-            )
+            raise ValueError("No 'labels' or 'text_labels' are provided. When using an encoder-decoder architecture, 'labels' or 'text_labels' must be passed.")
 
-        input_ids, attention_mask, labels, texts, texts_labels = self._step_safety_checker(
-            input_ids, attention_mask, labels, texts, texts_labels
-        )
+        input_ids, attention_mask, labels, texts, texts_labels = self._step_safety_checker(input_ids, attention_mask, labels, texts, texts_labels)
 
         if texts is not None:
-            model_inputs = self.tokenizer(
-                texts, max_length=self.max_length, truncation=True, padding=True, return_tensors="pt"
-            )
+            model_inputs = self.tokenizer(texts, max_length=self.max_length, truncation=True, padding=True, return_tensors="pt")
 
             input_ids, attention_mask = model_inputs["input_ids"], model_inputs["attention_mask"]
 
         if texts_labels is not None:
-            labels = self.tokenizer(
-                texts, max_length=self.max_length, truncation=True, padding=True, return_tensors="pt"
-            )["input_ids"]
+            labels = self.tokenizer(texts, max_length=self.max_length, truncation=True, padding=True, return_tensors="pt")["input_ids"]
 
         if labels is None:
             warnings.warn("No labels are provided. Setting labels to input_ids")

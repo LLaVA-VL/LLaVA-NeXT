@@ -34,6 +34,7 @@ def read_yaml_to_llava_data(yaml_path, images_folder):
             for d in missing_data:
                 print(d)
 
+
 def direct_check_llava_data(json_path, images_folder):
     missing_data = check_missing_images(json_path, images_folder)
     if len(missing_data) > 0:

@@ -163,9 +163,7 @@ def _left_broadcast(input_tensor, shape):
     """
     input_ndim = input_tensor.ndim
     if input_ndim > len(shape):
-        raise ValueError(
-            "The number of dimensions of the tensor to broadcast cannot be greater than the length of the shape to broadcast to"
-        )
+        raise ValueError("The number of dimensions of the tensor to broadcast cannot be greater than the length of the shape to broadcast to")
     return input_tensor.reshape(input_tensor.shape + (1,) * (len(shape) - input_ndim)).broadcast_to(shape)
 
 
@@ -219,9 +217,7 @@ def scheduler_step(
     """
 
     if self.num_inference_steps is None:
-        raise ValueError(
-            "Number of inference steps is 'None', you need to run 'set_timesteps' after creating the scheduler"
-        )
+        raise ValueError("Number of inference steps is 'None', you need to run 'set_timesteps' after creating the scheduler")
 
     # See formulas (12) and (16) of DDIM paper https://arxiv.org/pdf/2010.02502.pdf
     # Ideally, read DDIM paper in-detail understanding
@@ -263,18 +259,13 @@ def scheduler_step(
         pred_original_sample = (alpha_prod_t**0.5) * sample - (beta_prod_t**0.5) * model_output
         pred_epsilon = (alpha_prod_t**0.5) * model_output + (beta_prod_t**0.5) * sample
     else:
-        raise ValueError(
-            f"prediction_type given as {self.config.prediction_type} must be one of `epsilon`, `sample`, or"
-            " `v_prediction`"
-        )
+        raise ValueError(f"prediction_type given as {self.config.prediction_type} must be one of `epsilon`, `sample`, or" " `v_prediction`")
 
     # 4. Clip or threshold "predicted x_0"
     if self.config.thresholding:
         pred_original_sample = self._threshold_sample(pred_original_sample)
     elif self.config.clip_sample:
-        pred_original_sample = pred_original_sample.clamp(
-            -self.config.clip_sample_range, self.config.clip_sample_range
-        )
+        pred_original_sample = pred_original_sample.clamp(-self.config.clip_sample_range, self.config.clip_sample_range)
 
     # 5. compute variance: "sigma_t(η)" -> see formula (16)
     # σ_t = sqrt((1 − α_t−1)/(1 − α_t)) * sqrt(1 − α_t/α_t−1)
@@ -293,10 +284,7 @@ def scheduler_step(
     prev_sample_mean = alpha_prod_t_prev ** (0.5) * pred_original_sample + pred_sample_direction
 
     if prev_sample is not None and generator is not None:
-        raise ValueError(
-            "Cannot pass both generator and prev_sample. Please make sure that either `generator` or"
-            " `prev_sample` stays `None`."
-        )
+        raise ValueError("Cannot pass both generator and prev_sample. Please make sure that either `generator` or" " `prev_sample` stays `None`.")
 
     if prev_sample is None:
         variance_noise = randn_tensor(
@@ -308,11 +296,7 @@ def scheduler_step(
         prev_sample = prev_sample_mean + std_dev_t * variance_noise
 
     # log prob of prev_sample given prev_sample_mean and std_dev_t
-    log_prob = (
-        -((prev_sample.detach() - prev_sample_mean) ** 2) / (2 * (std_dev_t**2))
-        - torch.log(std_dev_t)
-        - torch.log(torch.sqrt(2 * torch.as_tensor(np.pi)))
-    )
+    log_prob = -((prev_sample.detach() - prev_sample_mean) ** 2) / (2 * (std_dev_t**2)) - torch.log(std_dev_t) - torch.log(torch.sqrt(2 * torch.as_tensor(np.pi)))
     # mean along all but batch dimension
     log_prob = log_prob.mean(dim=tuple(range(1, log_prob.ndim)))
 
@@ -530,9 +514,7 @@ def pipeline_step(
 
 class DefaultDDPOStableDiffusionPipeline(DDPOStableDiffusionPipeline):
     def __init__(self, pretrained_model_name: str, *, pretrained_model_revision: str = "main", use_lora: bool = True):
-        self.sd_pipeline = StableDiffusionPipeline.from_pretrained(
-            pretrained_model_name, revision=pretrained_model_revision
-        )
+        self.sd_pipeline = StableDiffusionPipeline.from_pretrained(pretrained_model_name, revision=pretrained_model_revision)
 
         self.use_lora = use_lora
         self.pretrained_model = pretrained_model_name
@@ -547,10 +529,7 @@ class DefaultDDPOStableDiffusionPipeline(DDPOStableDiffusionPipeline):
             self.use_lora = True
         except OSError:
             if use_lora:
-                warnings.warn(
-                    "If you are aware that the pretrained model has no lora weights to it, ignore this message. "
-                    "Otherwise please check the if `pytorch_lora_weights.safetensors` exists in the model folder."
-                )
+                warnings.warn("If you are aware that the pretrained model has no lora weights to it, ignore this message. " "Otherwise please check the if `pytorch_lora_weights.safetensors` exists in the model folder.")
 
         self.sd_pipeline.scheduler = DDIMScheduler.from_config(self.sd_pipeline.scheduler.config)
         self.sd_pipeline.safety_checker = None
@@ -633,9 +612,7 @@ class DefaultDDPOStableDiffusionPipeline(DDPOStableDiffusionPipeline):
         if len(models) != 1:
             raise ValueError("Given how the trainable params were set, this should be of length 1")
         if self.use_lora:
-            lora_state_dict, network_alphas = self.sd_pipeline.lora_state_dict(
-                input_dir, weight_name="pytorch_lora_weights.safetensors"
-            )
+            lora_state_dict, network_alphas = self.sd_pipeline.lora_state_dict(input_dir, weight_name="pytorch_lora_weights.safetensors")
             self.sd_pipeline.load_lora_into_unet(lora_state_dict, network_alphas=network_alphas, unet=models[0])
 
         elif not self.use_lora and isinstance(models[0], UNet2DConditionModel):

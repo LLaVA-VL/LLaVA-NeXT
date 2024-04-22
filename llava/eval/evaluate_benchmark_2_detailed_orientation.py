@@ -19,6 +19,7 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+
 def shrink_string_correctly(text):
     # Split the text into sentences for better analysis
     parts = text.split(" ")
@@ -35,6 +36,7 @@ def shrink_string_correctly(text):
     # Reconstruct the string, taking into account the removal of duplicates
     return " ".join(output)
 
+
 def annotate(prediction_set, caption_files, output_dir):
     """
     Evaluates question and answer pairs using GPT-3 and
@@ -49,7 +51,6 @@ def annotate(prediction_set, caption_files, output_dir):
 
         # pred = shrink_string_correctly(pred)
 
-            
         try:
             print(key, "query")
             if pred == "" or len(pred) < 2:
@@ -116,7 +117,9 @@ def main():
                     pred_contents += [json.loads(line)]
                 # pred_contents += [json.loads(line) for line in open(file)]
             except:
-                import pdb;pdb.set_trace()
+                import pdb
+
+                pdb.set_trace()
     else:
         pred_contents = [json.loads(line) for line in open(args.pred_path)]
 
@@ -227,13 +230,16 @@ def main():
                 break
         except Exception as e:
             print(f"Error processing file '{key}': {e}")
-            import pdb; pdb.set_trace()
+            import pdb
+
+            pdb.set_trace()
     average_score = score_sum / count
     combined_contents["average_score"] = average_score
     with open(json_path, "w") as json_file:
         json.dump(combined_contents, json_file, indent=4)
     print("Average score for detailed orientation:", average_score)
     print("Valid question nunber:", count)
+
 
 if __name__ == "__main__":
     main()

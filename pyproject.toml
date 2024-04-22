@@ -51,7 +51,7 @@ train = [
     "pydantic==1.10.8",
     "timm",
     "hf_transfer",
-    "trl",
+    "decord",
 ]
 
 [project.urls]

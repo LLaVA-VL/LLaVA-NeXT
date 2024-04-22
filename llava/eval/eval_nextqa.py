@@ -19,6 +19,7 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+
 def shrink_string_correctly(text):
     # Split the text into sentences for better analysis
     parts = text.split(" ")
@@ -35,6 +36,7 @@ def shrink_string_correctly(text):
     # Reconstruct the string, taking into account the removal of duplicates
     return " ".join(output)
 
+
 # Attempt to shrink the string correctly this time
 
 
@@ -44,11 +46,11 @@ def annotate(prediction_set, caption_files, output_dir):
     Returns a score for correctness.
     """
     for file in tqdm(caption_files):
-        key = file[:-5] # Strip file extension
+        key = file[:-5]  # Strip file extension
         qa_set = prediction_set[key]
-        question = qa_set['q']
-        answer = qa_set['a']
-        pred = qa_set['pred']
+        question = qa_set["q"]
+        answer = qa_set["a"]
+        pred = qa_set["pred"]
 
         # pred = shrink_string_correctly(pred)
         # pred = pred[:256]
@@ -62,28 +64,26 @@ def annotate(prediction_set, caption_files, output_dir):
                 messages=[
                     {
                         "role": "system",
-                        "content": 
-                            "You are an intelligent chatbot designed for evaluating the correctness of generative outputs for question-answer pairs. "
-                            "Your task is to compare the predicted answer with the correct answer and determine if they match meaningfully. Here's how you can accomplish the task:"
-                            "------"
-                            "##INSTRUCTIONS: "
-                            "- Focus on the meaningful match between the predicted answer and the correct answer.\n"
-                            "- Consider synonyms or paraphrases as valid matches.\n"
-                            "- Evaluate the correctness of the prediction compared to the answer."
+                        "content": "You are an intelligent chatbot designed for evaluating the correctness of generative outputs for question-answer pairs. "
+                        "Your task is to compare the predicted answer with the correct answer and determine if they match meaningfully. Here's how you can accomplish the task:"
+                        "------"
+                        "##INSTRUCTIONS: "
+                        "- Focus on the meaningful match between the predicted answer and the correct answer.\n"
+                        "- Consider synonyms or paraphrases as valid matches.\n"
+                        "- Evaluate the correctness of the prediction compared to the answer.",
                     },
                     {
                         "role": "user",
-                        "content":
-                            "Please evaluate the following video-based question-answer pair:\n\n"
-                            f"Question: {question}\n"
-                            f"Correct Answer: {answer}\n"
-                            f"Predicted Answer: {pred}\n\n"
-                            "Provide your evaluation only as a yes/no and score where the score is an integer value between 0 and 5, with 5 indicating the highest meaningful match. "
-                            "Please generate the response in the form of a Python dictionary string with keys 'pred' and 'score', where value of 'pred' is  a string of 'yes' or 'no' and value of 'score' is in INTEGER, not STRING."
-                            "DO NOT PROVIDE ANY OTHER OUTPUT TEXT OR EXPLANATION. Only provide the Python dictionary string. "
-                            "For example, your response should look like this: {'pred': 'yes', 'score': 4.8}."
-                    }
-                ]
+                        "content": "Please evaluate the following video-based question-answer pair:\n\n"
+                        f"Question: {question}\n"
+                        f"Correct Answer: {answer}\n"
+                        f"Predicted Answer: {pred}\n\n"
+                        "Provide your evaluation only as a yes/no and score where the score is an integer value between 0 and 5, with 5 indicating the highest meaningful match. "
+                        "Please generate the response in the form of a Python dictionary string with keys 'pred' and 'score', where value of 'pred' is  a string of 'yes' or 'no' and value of 'score' is in INTEGER, not STRING."
+                        "DO NOT PROVIDE ANY OTHER OUTPUT TEXT OR EXPLANATION. Only provide the Python dictionary string. "
+                        "For example, your response should look like this: {'pred': 'yes', 'score': 4.8}.",
+                    },
+                ],
             )
             # Convert response to a Python dictionary.
             response_message = completion["choices"][0]["message"]["content"]
@@ -124,7 +124,7 @@ def main():
     # Iterate through each sample in pred_contents
     for sample in pred_contents:
         # import pdb; pdb.set_trace()
-        video_id = sample['id']
+        video_id = sample["id"]
         if video_id in video_id_counts:
             video_id_counts[video_id] += 1
         else:
@@ -132,11 +132,11 @@ def main():
 
         # Create a new sample with the modified key
         new_sample = sample
-        new_sample['id'] = f"{video_id}_{video_id_counts[video_id]}"
+        new_sample["id"] = f"{video_id}_{video_id_counts[video_id]}"
         new_pred_contents.append(new_sample)
 
     # Generating list of id's and corresponding files
-    id_list = [x['id'] for x in new_pred_contents]
+    id_list = [x["id"] for x in new_pred_contents]
     caption_files = [f"{id}.json" for id in id_list]
 
     output_dir = args.output_dir
@@ -147,17 +147,17 @@ def main():
     # Preparing dictionary of question-answer sets
     prediction_set = {}
     for sample in new_pred_contents:
-        id = sample['id']
-        question = sample['question']
-        answer = sample['answer']
-        pred = sample['pred']
+        id = sample["id"]
+        question = sample["question"]
+        answer = sample["answer"]
+        pred = sample["pred"]
         qa_set = {"q": question, "a": answer, "pred": pred}
         prediction_set[id] = qa_set
 
     # Set the OpenAI API key.
-    openai.api_key = args.api_key # Your API key here
+    openai.api_key = args.api_key  # Your API key here
     if args.api_base:
-        openai.api_base = args.api_base # Your API base here
+        openai.api_base = args.api_base  # Your API base here
     num_tasks = args.num_tasks
 
     # While loop to ensure that all captions are processed.
@@ -179,7 +179,7 @@ def main():
 
             # Split tasks into parts.
             part_len = len(incomplete_files) // num_tasks
-            all_parts = [incomplete_files[i:i + part_len] for i in range(0, len(incomplete_files), part_len)]
+            all_parts = [incomplete_files[i : i + part_len] for i in range(0, len(incomplete_files), part_len)]
             task_args = [(prediction_set, part, args.output_dir) for part in all_parts]
 
             # Use a pool of workers to process the files in parallel.
@@ -210,24 +210,26 @@ def main():
     count = 0
     yes_count = 0
     no_count = 0
-        
+
     for key, result in combined_contents.items():
         # Computing score
         count += 1
         try:
-            score_match = result[0]['score']
+            score_match = result[0]["score"]
             score = int(score_match)
             score_sum += score
         except:
-            import pdb; pdb.set_trace()
+            import pdb
+
+            pdb.set_trace()
             continue
 
         try:
             # Computing accuracy
-            pred = result[0]['pred']
+            pred = result[0]["pred"]
         except:
-            pred = result[0]['predicted']
-        
+            pred = result[0]["predicted"]
+
         if "yes" in pred.lower():
             yes_count += 1
         elif "no" in pred.lower():
@@ -248,7 +250,5 @@ def main():
     print("All evaluation completed!")
 
 
-
 if __name__ == "__main__":
     main()
-

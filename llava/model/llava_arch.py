@@ -178,16 +178,16 @@ class LlavaMetaForCausalLM(ABC):
 
     def encode_images(self, images, video_idx_in_batch, split_sizes=None):
         image_features = self.get_model().get_vision_tower()(images)
-        per_image_features = torch.split(image_features, split_sizes, dim=0) # tuple, (dim_1, 576, 4096)
+        per_image_features = torch.split(image_features, split_sizes, dim=0)  # tuple, (dim_1, 576, 4096)
         all_image_features = []
         # import pdb; pdb.set_trace()
 
         for idx, img_feat in enumerate(per_image_features):
             # import pdb; pdb.set_trace()
             if idx in video_idx_in_batch:
-                img_feat = self.get_2dPool(img_feat) # (num_vid*num_frames, 576, 4096) -> (num_vid*num_frames, 144, 4096)
+                img_feat = self.get_2dPool(img_feat)  # (num_vid*num_frames, 576, 4096) -> (num_vid*num_frames, 144, 4096)
             # import pdb; pdb.set_trace()
-            img_feat = self.get_model().mm_projector(img_feat) # (dim_1_sum, 576, 1024) -> (dim_1_sum, 576, 4096)
+            img_feat = self.get_model().mm_projector(img_feat)  # (dim_1_sum, 576, 1024) -> (dim_1_sum, 576, 4096)
             all_image_features.append(img_feat)
         return all_image_features
 
@@ -218,7 +218,7 @@ class LlavaMetaForCausalLM(ABC):
             concat_images = torch.cat([image for image in images_list], dim=0)
             split_sizes = [image.shape[0] for image in images_list]
             image_features = self.encode_images(concat_images, video_idx_in_batch, split_sizes)
-            
+
             # image_features = torch.split(image_features, split_sizes, dim=0)
             mm_patch_merge_type = getattr(self.config, "mm_patch_merge_type", "flat")
             image_aspect_ratio = getattr(self.config, "image_aspect_ratio", "square")
@@ -455,7 +455,7 @@ class LlavaMetaForCausalLM(ABC):
 
         if _position_ids is None:
             position_ids = None
-        
+
         # import pdb; pdb.set_trace()
         return None, position_ids, attention_mask, past_key_values, new_input_embeds, new_labels
 

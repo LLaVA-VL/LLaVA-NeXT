@@ -21,21 +21,14 @@ class ModelConfig:
     torch_dtype: Optional[str] = field(
         default=None,
         metadata={
-            "help": (
-                "Override the default `torch.dtype` and load the model under this dtype. If `auto` is passed, the "
-                "dtype will be automatically derived from the model's weights."
-            ),
+            "help": ("Override the default `torch.dtype` and load the model under this dtype. If `auto` is passed, the " "dtype will be automatically derived from the model's weights."),
             "choices": ["auto", "bfloat16", "float16", "float32"],
         },
     )
     trust_remote_code: bool = field(default=False, metadata={"help": "Trust remote code when loading a model."})
     attn_implementation: Optional[str] = field(
         default=None,
-        metadata={
-            "help": (
-                "Which attention implementation to use; you can run --attn_implementation=flash_attention_2, in which case you must install this manually by running `pip install flash-attn --no-build-isolation`"
-            )
-        },
+        metadata={"help": ("Which attention implementation to use; you can run --attn_implementation=flash_attention_2, in which case you must install this manually by running `pip install flash-attn --no-build-isolation`")},
     )
     use_peft: bool = field(
         default=False,
@@ -61,16 +54,10 @@ class ModelConfig:
         default=None,
         metadata={"help": ("Model layers to unfreeze & train")},
     )
-    load_in_8bit: bool = field(
-        default=False, metadata={"help": "use 8 bit precision for the base model - works only with LoRA"}
-    )
-    load_in_4bit: bool = field(
-        default=False, metadata={"help": "use 4 bit precision for the base model - works only with LoRA"}
-    )
+    load_in_8bit: bool = field(default=False, metadata={"help": "use 8 bit precision for the base model - works only with LoRA"})
+    load_in_4bit: bool = field(default=False, metadata={"help": "use 4 bit precision for the base model - works only with LoRA"})
 
-    bnb_4bit_quant_type: Optional[str] = field(
-        default="nf4", metadata={"help": "precise the quantization type (fp4 or nf4)"}
-    )
+    bnb_4bit_quant_type: Optional[str] = field(default="nf4", metadata={"help": "precise the quantization type (fp4 or nf4)"})
     use_bnb_nested_quant: bool = field(default=False, metadata={"help": "use nested quantization"})
 
     def to_dict(self):

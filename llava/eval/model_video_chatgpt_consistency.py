@@ -21,6 +21,7 @@ import openai
 
 import time
 
+
 def split_list(lst, n):
     """Split a list into n (roughly) equal-sized chunks"""
     chunk_size = math.ceil(len(lst) / n)  # integer division
@@ -55,7 +56,7 @@ def parse_args():
     parser.add_argument("--image_aspect_ratio", type=str, default="anyres")
     parser.add_argument("--image_grid_pinpoints", type=str, default="[(224, 448), (224, 672), (224, 896), (448, 448), (448, 224), (672, 224), (896, 224)]")
     parser.add_argument("--mm_patch_merge_type", type=str, default="spatial_unpad")
-    parser.add_argument("--overwrite", type=lambda x: (str(x).lower() == 'true'), default=True)
+    parser.add_argument("--overwrite", type=lambda x: (str(x).lower() == "true"), default=True)
     parser.add_argument("--for_get_frames_num", type=int, default=4)
     parser.add_argument("--api_key", type=str, help="OpenAI API key")
 
@@ -91,6 +92,7 @@ def load_video_base64(path):
     # print(len(base64Frames), "frames read.")
     return base64Frames
 
+
 def run_inference(args):
     """
     Run inference on ActivityNet QA DataSet using the Video-ChatGPT model.
@@ -113,11 +115,11 @@ def run_inference(args):
             if "qwen" not in args.model_path.lower():
                 if "224" in cfg_pretrained.mm_vision_tower:
                     # suppose the length of text tokens is around 1000, from bo's report
-                    least_token_number = args.for_get_frames_num*(16//args.mm_spatial_pool_stride)**2 + 1000
+                    least_token_number = args.for_get_frames_num * (16 // args.mm_spatial_pool_stride) ** 2 + 1000
                 else:
-                    least_token_number = args.for_get_frames_num*(24//args.mm_spatial_pool_stride)**2 + 1000
+                    least_token_number = args.for_get_frames_num * (24 // args.mm_spatial_pool_stride) ** 2 + 1000
 
-                scaling_factor = math.ceil(least_token_number/4096)
+                scaling_factor = math.ceil(least_token_number / 4096)
                 if scaling_factor >= 2:
                     if "mistral" not in args.model_path:
                         print(float(scaling_factor))
@@ -146,11 +148,11 @@ def run_inference(args):
         output_name = args.output_name
 
     current_answers_json = {}
-    
+
     answers_file = os.path.join(args.output_dir, f"{output_name}.json")
     if os.path.exists(answers_file):
         current_answers_list = []
-        with open(answers_file, 'r') as f:
+        with open(answers_file, "r") as f:
             current_answers_list = [json.loads(line) for line in f]
         for _ in current_answers_list:
             video_name = _["video_name"]
@@ -186,7 +188,6 @@ def run_inference(args):
                 video = load_video_base64(video_path)
                 interval = int(len(video) / args.for_get_frames_num)
 
-
         questions = [question_1, question_2]
         for i, question in enumerate(questions):
             if "gpt4v" != args.model_path:
@@ -218,9 +219,13 @@ def run_inference(args):
                 with torch.inference_mode():
                     # model.update_prompt([[cur_prompt]])
                     if "mistral" in args.model_path:
-                        output_ids = model.generate(inputs=input_ids, images=video, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, max_new_tokens=1024, use_cache=True)#, stopping_criteria=[stopping_criteria])
+                        output_ids = model.generate(
+                            inputs=input_ids, images=video, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, max_new_tokens=1024, use_cache=True
+                        )  # , stopping_criteria=[stopping_criteria])
                     else:
-                        output_ids = model.generate(inputs=input_ids, images=video, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, max_new_tokens=1024, use_cache=True, stopping_criteria=[stopping_criteria])
+                        output_ids = model.generate(
+                            inputs=input_ids, images=video, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, max_new_tokens=1024, use_cache=True, stopping_criteria=[stopping_criteria]
+                        )
                 outputs = tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0].strip()
                 if "mistral" not in args.model_path:
                     if outputs.endswith(stop_str):
@@ -244,44 +249,48 @@ def run_inference(args):
                     "messages": PROMPT_MESSAGES,
                     "max_tokens": 1024,
                 }
-                sucess_flag=False
+                sucess_flag = False
                 while max_num_retries < retry:
                     try:
                         result = openai.ChatCompletion.create(**params)
                         outputs = result.choices[0].message.content
                         sucess_flag = True
                         break
-                    except Exception as inst :
-                        if 'error' in dir(inst):
+                    except Exception as inst:
+                        if "error" in dir(inst):
                             # import pdb;pdb.set_trace()
-                            if  inst.error.code == 'rate_limit_exceeded':
+                            if inst.error.code == "rate_limit_exceeded":
                                 if "TPM" in inst.error.message:
                                     time.sleep(30)
                                     continue
                                 else:
-                                    import pdb;pdb.set_trace()
-                            elif inst.error.code == 'insufficient_quota':
-                                print(f'insufficient_quota key')
+                                    import pdb
+
+                                    pdb.set_trace()
+                            elif inst.error.code == "insufficient_quota":
+                                print(f"insufficient_quota key")
                                 exit()
-                            elif inst.error.code == 'content_policy_violation':
-                                print(f'content_policy_violation')
-                                system_error =   "content_policy_violation"
+                            elif inst.error.code == "content_policy_violation":
+                                print(f"content_policy_violation")
+                                system_error = "content_policy_violation"
 
                                 break
-                        print('Find error message in response: ',str(inst.error.message), 'error code: ', str(inst.error.code))
+                        print("Find error message in response: ", str(inst.error.message), "error code: ", str(inst.error.code))
 
                         continue
                 if not sucess_flag:
-                    print(f'Calling OpenAI failed after retrying for {max_num_retries} times. Check the logs for details.')
+                    print(f"Calling OpenAI failed after retrying for {max_num_retries} times. Check the logs for details.")
                     exit()
 
             if "gpt4v" == args.model_path:
-                if system_error == 'content_policy_violation':
+                if system_error == "content_policy_violation":
                     continue
                 elif system_error == "":
                     continue
                 else:
-                    import pdb;pdb.set_trace()  
+                    import pdb
+
+                    pdb.set_trace()
 
             outputs = outputs.strip()
             sample_set[f"pred{i+1}"] = outputs

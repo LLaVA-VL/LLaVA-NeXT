@@ -85,6 +85,7 @@ class AutoModelForCausalLMWithValueHead(PreTrainedModelWrapper):
                 - **"normal"** -- Initializes the weights of the `ValueHead` with a normal distribution.
 
     """
+
     transformers_parent_class = AutoModelForCausalLM
     lm_head_namings = ["lm_head", "embed_out"]
     supported_args = (
@@ -235,13 +236,8 @@ class AutoModelForCausalLMWithValueHead(PreTrainedModelWrapper):
         del state_dict
 
         if hasattr(self.pretrained_model, "hf_device_map"):
-            if (
-                "cpu" in self.pretrained_model.hf_device_map.values()
-                or "disk" in self.pretrained_model.hf_device_map.values()
-            ):
-                raise ValueError(
-                    "The model is offloaded on CPU or disk - CPU & disk offloading is not supported for ValueHead models."
-                )
+            if "cpu" in self.pretrained_model.hf_device_map.values() or "disk" in self.pretrained_model.hf_device_map.values():
+                raise ValueError("The model is offloaded on CPU or disk - CPU & disk offloading is not supported for ValueHead models.")
 
             first_device = list(set(self.pretrained_model.hf_device_map.values()))[0]
 
@@ -276,6 +272,7 @@ class AutoModelForSeq2SeqLMWithValueHead(PreTrainedModelWrapper):
         kwargs:
             Additional keyword arguments passed along to the `ValueHead` class.
     """
+
     transformers_parent_class = AutoModelForSeq2SeqLM
     lm_head_namings = ["lm_head", "embed_out", "output_projection"]
     supported_args = (
@@ -316,13 +313,8 @@ class AutoModelForSeq2SeqLMWithValueHead(PreTrainedModelWrapper):
         del state_dict
 
         if hasattr(self.pretrained_model, "hf_device_map"):
-            if (
-                "cpu" in self.pretrained_model.hf_device_map.values()
-                or "disk" in self.pretrained_model.hf_device_map.values()
-            ):
-                raise ValueError(
-                    "The model is offloaded on CPU or disk - CPU & disk offloading is not supported for ValueHead models."
-                )
+            if "cpu" in self.pretrained_model.hf_device_map.values() or "disk" in self.pretrained_model.hf_device_map.values():
+                raise ValueError("The model is offloaded on CPU or disk - CPU & disk offloading is not supported for ValueHead models.")
 
             # get the lm_head device
             for name, module in self.pretrained_model.named_modules():
