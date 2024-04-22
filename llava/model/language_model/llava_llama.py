@@ -81,7 +81,7 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
         image_sizes: Optional[List[List[int]]] = None,
         return_dict: Optional[bool] = None,
         prompts: Optional[List[str]] = None,
-        modalities: Optional[List[str]] = None,
+        modalities: Optional[List[str]] = ["image"],
         cache_position=None,
         dpo_forward: Optional[bool] = None,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
@@ -106,7 +106,6 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
         logits = self.lm_head(hidden_states)
         if dpo_forward:
             return logits, labels
-        # print(88888888888888)
         loss = None
         if labels is not None:
             # Shift so that tokens < n predict n
@@ -138,7 +137,7 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
         inputs: Optional[torch.Tensor] = None,
         images: Optional[torch.Tensor] = None,
         image_sizes: Optional[torch.Tensor] = None,
-        modalities: Optional[List[str]] = None,
+        modalities: Optional[List[str]] = ["image"],
         **kwargs,
     ) -> Union[GenerateOutput, torch.LongTensor]:
         position_ids = kwargs.pop("position_ids", None)
