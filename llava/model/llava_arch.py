@@ -191,7 +191,7 @@ class LlavaMetaForCausalLM(ABC):
             all_image_features.append(img_feat)
         return all_image_features
 
-    def prepare_inputs_labels_for_multimodal(self, input_ids, position_ids, attention_mask, past_key_values, labels, images, modalities=None, image_sizes=None, prompts=None):
+    def prepare_inputs_labels_for_multimodal(self, input_ids, position_ids, attention_mask, past_key_values, labels, images, modalities=["image"], image_sizes=None, prompts=None):
         vision_tower = self.get_vision_tower()
         if vision_tower is None or images is None or input_ids.shape[1] == 1:
             return input_ids, position_ids, attention_mask, past_key_values, None, labels
@@ -230,7 +230,6 @@ class LlavaMetaForCausalLM(ABC):
                 image_features = new_image_features
 
             elif mm_patch_merge_type.startswith("spatial"):
-                # import pdb; pdb.set_trace()
                 new_image_features = []
                 for image_idx, image_feature in enumerate(image_features):
                     # FIXME: now assume the image is square, and split to 2x2 patches
