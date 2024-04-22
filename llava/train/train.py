@@ -980,13 +980,9 @@ class LazySupervisedDataset(Dataset):
             print(f"Failed to open image {image_file}. Exception:", exn)
             raise exn
 
-        import re
-        image_size = image.size
-        matched_anyres_max_num_patches=re.match(r'anyres_max_(\d+)',self.data_args.image_aspect_ratio)
-
         if self.data_args.image_aspect_ratio == "highres":
             image = process_highres_image(image, self.data_args.image_processor, self.data_args.image_grid_pinpoints)
-        elif self.data_args.image_aspect_ratio == "anyres" or matched_anyres_max_num_patches:
+        elif self.data_args.image_aspect_ratio == "anyres" or "anyres_max" in self.data_args.image_aspect_ratio:
             image = process_anyres_image(image, self.data_args.image_processor, self.data_args.image_grid_pinpoints)
         elif self.data_args.image_aspect_ratio == "crop_split":
             image = process_highres_image_crop_split(image, self.data_args)
