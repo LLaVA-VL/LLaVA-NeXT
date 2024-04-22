@@ -19,6 +19,7 @@ from PIL import Image
 
 import numpy as np
 
+
 def split_list(lst, n):
     """Split a list into n (roughly) equal-sized chunks"""
     chunk_size = math.ceil(len(lst) / n)  # integer division
@@ -51,12 +52,11 @@ def parse_args():
     parser.add_argument("--image_aspect_ratio", type=str, default="anyres")
     parser.add_argument("--image_grid_pinpoints", type=str, default="[(224, 448), (224, 672), (224, 896), (448, 448), (448, 224), (672, 224), (896, 224)]")
     parser.add_argument("--mm_patch_merge_type", type=str, default="spatial_unpad")
-    parser.add_argument("--overwrite", type=lambda x: (str(x).lower() == 'true'), default=True)
+    parser.add_argument("--overwrite", type=lambda x: (str(x).lower() == "true"), default=True)
     parser.add_argument("--for_get_frames_num", type=int, default=4)
-    parser.add_argument("--load_8bit",  type=lambda x: (str(x).lower() == 'true'), default=False)
-    parser.add_argument("--prompt", type=str, default=None) 
+    parser.add_argument("--load_8bit", type=lambda x: (str(x).lower() == "true"), default=False)
+    parser.add_argument("--prompt", type=str, default=None)
     return parser.parse_args()
-
 
 
 def run_inference(args):
@@ -84,9 +84,8 @@ def run_inference(args):
     image = image_processor.preprocess(image, return_tensors="pt")["pixel_values"].half().cuda()
     image = [image]
 
-
-    question = args.prompt     # try:
-        # Run inference on the video and add the output to the list
+    question = args.prompt  # try:
+    # Run inference on the video and add the output to the list
 
     qs = question
     if model.config.mm_use_im_start_end:
@@ -116,7 +115,6 @@ def run_inference(args):
     outputs = tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0].strip()
     print(f"Question: {prompt}\n")
     print(f"Response: {outputs}\n")
-
 
 
 if __name__ == "__main__":

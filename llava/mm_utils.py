@@ -253,8 +253,8 @@ def process_anyres_image(image, processor, grid_pinpoints):
         torch.Tensor: A tensor containing the processed image patches.
     """
     # Convert grid_pinpoints from string to list
-    # patch_size = processor.size[0]
     if isinstance(grid_pinpoints, str) and "x" in grid_pinpoints:
+        patch_size = processor.size[0]
         assert patch_size in [224, 336, 384, 448, 512], "patch_size should be in [224, 336, 384, 448, 512]"
         # Use regex to extract the range from the input string
         matches = re.findall(r"\((\d+)x(\d+)\)", grid_pinpoints)

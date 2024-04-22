@@ -171,9 +171,7 @@ class DDPOTrainer(BaseTrainer):
         if self.config.allow_tf32:
             torch.backends.cuda.matmul.allow_tf32 = True
 
-        self.optimizer = self._setup_optimizer(
-            trainable_layers.parameters() if not isinstance(trainable_layers, list) else trainable_layers
-        )
+        self.optimizer = self._setup_optimizer(trainable_layers.parameters() if not isinstance(trainable_layers, list) else trainable_layers)
 
         self.neg_prompt_embed = self.sd_pipeline.text_encoder(
             self.sd_pipeline.tokenizer(
@@ -224,10 +222,7 @@ class DDPOTrainer(BaseTrainer):
                 )
         else:
             rewards = self.executor.map(lambda x: self.reward_fn(*x), prompt_image_pairs)
-            rewards = [
-                (torch.as_tensor(reward.result(), device=self.accelerator.device), reward_metadata.result())
-                for reward, reward_metadata in rewards
-            ]
+            rewards = [(torch.as_tensor(reward.result(), device=self.accelerator.device), reward_metadata.result()) for reward, reward_metadata in rewards]
 
         return zip(*rewards)
 
@@ -255,9 +250,7 @@ class DDPOTrainer(BaseTrainer):
 
         # collate samples into dict where each entry has shape (num_batches_per_epoch * sample.batch_size, ...)
         samples = {k: torch.cat([s[k] for s in samples]) for k in samples[0].keys()}
-        rewards, rewards_metadata = self.compute_rewards(
-            prompt_image_data, is_async=self.config.async_reward_computation
-        )
+        rewards, rewards_metadata = self.compute_rewards(prompt_image_data, is_async=self.config.async_reward_computation)
 
         for i, image_data in enumerate(prompt_image_data):
             image_data.extend([rewards[i], rewards_metadata[i]])
@@ -287,11 +280,7 @@ class DDPOTrainer(BaseTrainer):
             advantages = (rewards - rewards.mean()) / (rewards.std() + 1e-8)
 
         # ungather advantages;  keep the entries corresponding to the samples on this process
-        samples["advantages"] = (
-            torch.as_tensor(advantages)
-            .reshape(self.accelerator.num_processes, -1)[self.accelerator.process_index]
-            .to(self.accelerator.device)
-        )
+        samples["advantages"] = torch.as_tensor(advantages).reshape(self.accelerator.num_processes, -1)[self.accelerator.process_index].to(self.accelerator.device)
 
         del samples["prompt_ids"]
 
@@ -304,9 +293,7 @@ class DDPOTrainer(BaseTrainer):
 
             # shuffle along time dimension independently for each sample
             # still trying to understand the code below
-            perms = torch.stack(
-                [torch.randperm(num_timesteps, device=self.accelerator.device) for _ in range(total_batch_size)]
-            )
+            perms = torch.stack([torch.randperm(num_timesteps, device=self.accelerator.device) for _ in range(total_batch_size)])
 
             for key in ["timesteps", "latents", "next_latents", "log_probs"]:
                 samples[key] = samples[key][
@@ -328,9 +315,7 @@ class DDPOTrainer(BaseTrainer):
             global_step = self._train_batched_samples(inner_epoch, epoch, global_step, samples_batched)
             # ensure optimization step at the end of the inner epoch
             if not self.accelerator.sync_gradients:
-                raise ValueError(
-                    "Optimization step should have been performed by this point. Please check calculated gradient accumulation settings."
-                )
+                raise ValueError("Optimization step should have been performed by this point. Please check calculated gradient accumulation settings.")
 
         if epoch != 0 and epoch % self.config.save_freq == 0 and self.accelerator.is_main_process:
             self.accelerator.save_state()
@@ -368,9 +353,7 @@ class DDPOTrainer(BaseTrainer):
                     embeds,
                 ).sample
                 noise_pred_uncond, noise_pred_text = noise_pred.chunk(2)
-                noise_pred = noise_pred_uncond + self.config.sample_guidance_scale * (
-                    noise_pred_text - noise_pred_uncond
-                )
+                noise_pred = noise_pred_uncond + self.config.sample_guidance_scale * (noise_pred_text - noise_pred_uncond)
             else:
                 noise_pred = self.sd_pipeline.unet(
                     latents,
@@ -547,9 +530,7 @@ class DDPOTrainer(BaseTrainer):
                     self.accelerator.backward(loss)
                     if self.accelerator.sync_gradients:
                         self.accelerator.clip_grad_norm_(
-                            self.trainable_layers.parameters()
-                            if not isinstance(self.trainable_layers, list)
-                            else self.trainable_layers,
+                            self.trainable_layers.parameters() if not isinstance(self.trainable_layers, list) else self.trainable_layers,
                             self.config.train_max_grad_norm,
                         )
                     self.optimizer.step()
@@ -567,14 +548,8 @@ class DDPOTrainer(BaseTrainer):
         return global_step
 
     def _config_check(self) -> Tuple[bool, str]:
-        samples_per_epoch = (
-            self.config.sample_batch_size * self.accelerator.num_processes * self.config.sample_num_batches_per_epoch
-        )
-        total_train_batch_size = (
-            self.config.train_batch_size
-            * self.accelerator.num_processes
-            * self.config.train_gradient_accumulation_steps
-        )
+        samples_per_epoch = self.config.sample_batch_size * self.accelerator.num_processes * self.config.sample_num_batches_per_epoch
+        total_train_batch_size = self.config.train_batch_size * self.accelerator.num_processes * self.config.train_gradient_accumulation_steps
 
         if not self.config.sample_batch_size >= self.config.train_batch_size:
             return (

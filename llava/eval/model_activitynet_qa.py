@@ -54,7 +54,7 @@ def parse_args():
     parser.add_argument("--image_aspect_ratio", type=str, default="anyres")
     parser.add_argument("--image_grid_pinpoints", type=str, default="[(224, 448), (224, 672), (224, 896), (448, 448), (448, 224), (672, 224), (896, 224)]")
     parser.add_argument("--mm_patch_merge_type", type=str, default="spatial_unpad")
-    parser.add_argument("--overwrite", type=lambda x: (str(x).lower() == 'true'), default=True)
+    parser.add_argument("--overwrite", type=lambda x: (str(x).lower() == "true"), default=True)
     parser.add_argument("--for_get_frames_num", type=int, default=4)
     return parser.parse_args()
 
@@ -98,18 +98,18 @@ def run_inference(args):
 
             if "224" in cfg_pretrained.mm_vision_tower:
                 # suppose the length of text tokens is around 1000, from bo's report
-                least_token_number = args.for_get_frames_num*(16//args.mm_spatial_pool_stride)**2 + 1000
+                least_token_number = args.for_get_frames_num * (16 // args.mm_spatial_pool_stride) ** 2 + 1000
             else:
-                least_token_number = args.for_get_frames_num*(24//args.mm_spatial_pool_stride)**2 + 1000
+                least_token_number = args.for_get_frames_num * (24 // args.mm_spatial_pool_stride) ** 2 + 1000
 
-            scaling_factor = math.ceil(least_token_number/4096)
+            scaling_factor = math.ceil(least_token_number / 4096)
             if scaling_factor >= 2:
                 if "mistral" not in args.model_path:
                     print(float(scaling_factor))
                     overwrite_config["rope_scaling"] = {"factor": float(scaling_factor), "type": "linear"}
                 overwrite_config["max_sequence_length"] = 4096 * scaling_factor
                 overwrite_config["tokenizer_model_max_length"] = 4096 * scaling_factor
-            
+
         tokenizer, model, image_processor, context_len = load_pretrained_model(args.model_path, args.model_base, model_name, args.model_max_length, overwrite_config=overwrite_config)
     else:
         tokenizer, model, image_processor, context_len = load_pretrained_model(args.model_path, args.model_base, model_name, args.model_max_length)
@@ -182,7 +182,9 @@ def run_inference(args):
         with torch.inference_mode():
             # model.update_prompt([[cur_prompt]])
             if "mistral" in args.model_path:
-                output_ids = model.generate(inputs=input_ids, images=video, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, max_new_tokens=1024, use_cache=True)#, stopping_criteria=[stopping_criteria])
+                output_ids = model.generate(
+                    inputs=input_ids, images=video, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, max_new_tokens=1024, use_cache=True
+                )  # , stopping_criteria=[stopping_criteria])
             else:
                 output_ids = model.generate(inputs=input_ids, images=video, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, max_new_tokens=1024, use_cache=True, stopping_criteria=[stopping_criteria])
         # input_token_len = input_ids.shape[1]
@@ -195,8 +197,8 @@ def run_inference(args):
         print(f"Question: {prompt}")
         print(f"Response: {outputs}")
 
-        if "mistral" not in args.model_path:        
-        # import pdb; pdb.set_trace()
+        if "mistral" not in args.model_path:
+            # import pdb; pdb.set_trace()
             if outputs.endswith(stop_str):
                 outputs = outputs[: -len(stop_str)]
 

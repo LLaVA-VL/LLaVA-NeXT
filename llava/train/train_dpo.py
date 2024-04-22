@@ -39,29 +39,23 @@ from llava.constants import IGNORE_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_
 from torch.utils.data import Dataset
 from llava.train.llava_trainer import LLaVADPOTrainer
 from data_processing.utils import load_jsonl, load_json
-
-
 from llava import conversation as conversation_lib
 from llava.model import *
 from llava.mm_utils import process_highres_image, process_anyres_image, process_highres_image_crop_split, tokenizer_image_token
 from llava.utils import rank0_print
+from transformers import AutoConfig
+import pickle
 
 from trl.trainer.utils import DPODataCollatorWithPadding
 from PIL import Image, ImageFile
 from decord import VideoReader, cpu
 
-
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-
 from packaging import version
-
 from typing import Any
 
-
 local_rank = None
-
 import numpy as np
-
 
 IS_TOKENIZER_GREATER_THAN_0_14 = version.parse(tokenizers.__version__) >= version.parse("0.14")
 
@@ -134,8 +128,6 @@ class DataArguments:
     num_sample: Optional[int] = field(default=None)
 
 
-
-
 @dataclass
 class TrainingArguments(transformers.TrainingArguments):
     cache_dir: Optional[str] = field(default=None)
@@ -171,8 +163,6 @@ class TrainingArguments(transformers.TrainingArguments):
     gamma: float = field(default=1.0)
     generate_during_eval: bool = field(default=False)
     precompute_ref_log_probs: bool = field(default=False)
-
-
 
 
 def maybe_zero_3(param, ignore_status=False, name=None):
@@ -387,6 +377,23 @@ def preprocess_multimodal(sources: Sequence[str], data_args: DataArguments) -> D
     return sources
 
 
+def preprocess_multimodal_movie(sources: Sequence[str], data_args: DataArguments, video_inputs: str) -> Dict:
+    is_multimodal = data_args.is_multimodal
+    if not is_multimodal:
+        return sources
+
+    for source in sources:
+        for sentence in source:
+            if DEFAULT_IMAGE_TOKEN in sentence["value"]:
+                prompt = sentence["value"].replace(DEFAULT_IMAGE_TOKEN, "").strip()
+            replace_token = video_inputs
+            if data_args.mm_use_im_start_end:
+                replace_token = DEFAULT_IM_START_TOKEN + replace_token + DEFAULT_IM_END_TOKEN
+            sentence["value"] = sentence["value"].replace(DEFAULT_IMAGE_TOKEN, replace_token)
+
+    return sources, prompt
+
+
 def preprocess_llama_2(sources, tokenizer: transformers.PreTrainedTokenizer, has_image: bool = False) -> Dict:
     conv = conversation_lib.default_conversation.copy()
     roles = {"human": conv.roles[0], "gpt": conv.roles[1]}
@@ -454,12 +461,13 @@ def preprocess_llama_2(sources, tokenizer: transformers.PreTrainedTokenizer, has
         if cur_len < tokenizer.model_max_length:
             if cur_len != total_len:
                 target[:] = IGNORE_INDEX
-                print(f"WARNING: tokenization mismatch: {cur_len} vs. {total_len}." f" (ignored)")
+                rank0_print(f"WARNING: tokenization mismatch: {cur_len} vs. {total_len}." f" (ignored)")
 
     return dict(
         input_ids=input_ids,
         labels=targets,
     )
+
 
 def make_conv(prompt, answer):
     return [
@@ -472,6 +480,7 @@ def make_conv(prompt, answer):
             "value": answer,
         },
     ]
+
 
 def preprocess_gemma(sources: List[List[Dict[str, str]]], tokenizer: transformers.PreTrainedTokenizer, has_image: bool = False) -> Dict:
     conv: conversation_lib.Conversation = conversation_lib.default_conversation.copy()
@@ -544,7 +553,7 @@ def preprocess_gemma(sources: List[List[Dict[str, str]]], tokenizer: transformer
         if cur_len < tokenizer.model_max_length:
             if cur_len != total_len:
                 target[:] = IGNORE_INDEX
-                print(f"warning: tokenization mismatch: {cur_len} vs. {total_len}." f" (ignored)")
+                rank0_print(f"WARNING: tokenization mismatch: {cur_len} vs. {total_len}." f" (ignored)")
 
     return dict(
         input_ids=input_ids,
@@ -603,7 +612,13 @@ def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_im
     )
 
 
-def preprocess_llama3(sources, tokenizer: transformers.PreTrainedTokenizer, has_image: bool = False, max_len=2048, system_message: str = "You are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.") -> Dict:
+def preprocess_llama3(
+    sources,
+    tokenizer: transformers.PreTrainedTokenizer,
+    has_image: bool = False,
+    max_len=2048,
+    system_message: str = "You are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.",
+) -> Dict:
     roles = {"human": "<|start_header_id|>user<|end_header_id|>", "gpt": "<|start_header_id|>assistant<|end_header_id|>"}
 
     eot_id = tokenizer.convert_tokens_to_ids("<|eot_id|>")
@@ -644,6 +659,7 @@ def preprocess_llama3(sources, tokenizer: transformers.PreTrainedTokenizer, has_
         input_ids=input_ids,  # tensor(bs x seq_len)
         labels=targets,  # tensor(bs x seq_len)
     )
+
 
 def preprocess_v1(sources, tokenizer: transformers.PreTrainedTokenizer, has_image: bool = False) -> Dict:
     conv = conversation_lib.default_conversation.copy()
@@ -879,82 +895,21 @@ def preprocess(sources: Sequence[str], tokenizer: transformers.PreTrainedTokeniz
 
 
 def load_data(data_args):
-    if 'jsonl' in data_args.data_path:
+    if "jsonl" in data_args.data_path:
         data_list = load_jsonl(data_args.data_path)
-    else: 
+    else:
         data_list = load_json(data_args.data_path)
     return data_list
+
 
 class DPODataset(Dataset):
     """Dataset for DPODataset fine-tuning."""
 
     def __init__(self, data_path: str, tokenizer: transformers.PreTrainedTokenizer, data_args: DataArguments):
-        super(LazySupervisedDataset, self).__init__()
-        self.tokenizer = tokenizer
-        self.list_data_dict = []
-
-        # Handle multiple JSON files specified in the data_path
-        if "{" in data_path and "}" in data_path:
-            base_path, file_pattern = re.match(r"^(.*)\{(.*)\}\.json$", data_path).groups()
-            file_names = file_pattern.split(",")
-            rank0_print(f"Loading {file_names} from {base_path}")
-            data_args.dataset_paths = []
-            for file_name in file_names:
-                data_args.dataset_paths.append(f"{base_path}{file_name}.json")
-                full_path = f"{base_path}{file_name}.json"
-                rank0_print(f"Loading {full_path}")
-                with open(full_path, "r") as file:
-                    cur_data_dict = json.load(file)
-                    rank0_print(f"Loaded {len(cur_data_dict)} samples from {full_path}")
-                    self.list_data_dict.extend(cur_data_dict)
-        elif data_path.endswith(".yaml"):
-            with open(data_path, "r") as file:
-                yaml_data = yaml.safe_load(file)
-                datasets = yaml_data.get("datasets")
-                # file should be in the format of:
-                # datasets:
-                #   - json_path: xxxx1.json
-                #     sampling_strategy: first:1000
-                #   - json_path: xxxx2.json
-                #     sampling_strategy: end:3000
-                #   - json_path: xxxx3.json
-                #     sampling_strategy: random:999
-                data_args.dataset_paths = [dataset.get("json_path") for dataset in datasets]
-                for dataset in datasets:
-                    json_path = dataset.get("json_path")
-                    sampling_strategy = dataset.get("sampling_strategy", "all")
-                    sampling_number = None
-
-                    rank0_print(f"Loading {json_path} with {sampling_strategy} sampling strategy")
-                    with open(json_path, "r") as json_file:
-                        cur_data_dict = json.load(json_file)
-
-                    if ":" in sampling_strategy:
-                        sampling_strategy, sampling_number = sampling_strategy.split(":")
-                        if "%" in sampling_number:
-                            sampling_number = math.ceil(int(sampling_number.split("%")[0]) * len(cur_data_dict) / 100)
-                        else:
-                            sampling_number = int(sampling_number)
-
-                    # Apply the sampling strategy
-                    if sampling_strategy == "first" and sampling_number is not None:
-                        cur_data_dict = cur_data_dict[:sampling_number]
-                    elif sampling_strategy == "end" and sampling_number is not None:
-                        cur_data_dict = cur_data_dict[-sampling_number:]
-                    elif sampling_strategy == "random" and sampling_number is not None:
-                        random.shuffle(cur_data_dict)
-                        cur_data_dict = cur_data_dict[:sampling_number]
-
-                    rank0_print(f"Loaded {len(cur_data_dict)} samples from {json_path}")
-                    self.list_data_dict.extend(cur_data_dict)
-        else:
-            data_args.dataset_paths = [data_path]
-            rank0_print(f"Loading {data_path}")
-            with open(data_path, "r") as file:
-                cur_data_dict = json.load(file)
-                rank0_print(f"Loaded {len(cur_data_dict)} samples from {data_path}")
-                self.list_data_dict.extend(cur_data_dict)
-
+        super(DPODataset, self).__init__()
+        list_data_dict = load_data(data_args)
+        if data_args.num_sample is not None:
+            list_data_dict = list_data_dict[: data_args.num_sample]
         rank0_print("Formatting inputs...Skip in lazy mode")
         self.tokenizer = tokenizer
         self.list_data_dict = list_data_dict
@@ -967,16 +922,21 @@ class DPODataset(Dataset):
     def lengths(self):
         length_list = []
         for sample in self.list_data_dict:
+            # Calculate the length of the prompt, answer, chosen, and rejected text
+            cur_len = len(sample["prompt"].split()) + len(sample["answer"].split()) + len(sample["chosen"].split()) + len(sample["rejected"].split())
+            # Add additional tokens if an image is present
             img_tokens = 128 if "image" in sample else 0
-            length_list.append(sum(len(conv["value"].split()) for conv in sample["conversations"]) + img_tokens)
+            length_list.append(cur_len + img_tokens)
         return length_list
 
     @property
     def modality_lengths(self):
         length_list = []
         for sample in self.list_data_dict:
-            cur_len = sum(len(conv["value"].split()) for conv in sample["conversations"])
-            cur_len = cur_len if ("image" in sample or "video" in sample) else -cur_len
+            # Calculate the length of the prompt, answer, chosen, and rejected text
+            cur_len = len(sample["prompt"].split()) + len(sample["answer"].split()) + len(sample["chosen"].split()) + len(sample["rejected"].split())
+            # If the sample includes a video, the length is positive; otherwise, it is negative
+            cur_len = cur_len if ("video" in sample or "image" in sample) else -cur_len
             length_list.append(cur_len)
         return length_list
 
@@ -1089,8 +1049,8 @@ class DPODataset(Dataset):
                 # replace the default image token with multiple tokens
                 input_prompt = input_prompt.replace(DEFAULT_IMAGE_TOKEN, DEFAULT_IMAGE_TOKEN * self.data_args.video_token)
                 sources, query_prompt = preprocess_multimodal_movie(copy.deepcopy([e["conversations"] for e in sources]), self.data_args, input_prompt)
-            else:                    # using videoreader
-                    # import pdb;pdb.set_trace()
+            else:  # using videoreader
+                # import pdb;pdb.set_trace()
                 if "shareVideoGPTV" not in video_file and "liangke" not in video_file:
                     vr = VideoReader(video_file, ctx=cpu(0))
                     total_frame_num = len(vr)
@@ -1136,13 +1096,13 @@ class DPODataset(Dataset):
 
         has_image = ("image" in self.list_data_dict[i]) or ("video" in self.list_data_dict[i])
         # data_dict = preprocess(sources, self.tokenizer, has_image=has_image)
-        data_dict = copy.deepcopy(self.list_data_dict[i]) # inplace modification following
+        data_dict = copy.deepcopy(self.list_data_dict[i])  # inplace modification following
 
         if "prompt" in data_dict:
             prompt = data_dict["prompt"]
             prompt = prompt.replace("<image>", "").strip()
             prompt = "<image>\n" + prompt
-            data_dict['prompt'] = prompt
+            data_dict["prompt"] = prompt
         else:
             prompt = None
 
@@ -1168,7 +1128,6 @@ class DPODataset(Dataset):
         # import pdb;pdb.set_trace()
         data_dict["has_image"] = has_image
 
-
         return data_dict
 
 
@@ -1178,35 +1137,35 @@ class DPODataCollator(DPODataCollatorWithPadding):
 
     # tokenizer: transformers.PreTrainedTokenizer
 
-    def pad_sequence(self, input_ids, batch_first, padding_value):
-        if self.tokenizer.padding_side == "left":
-            input_ids = [torch.flip(_input_ids, [0]) for _input_ids in input_ids]
-        input_ids = torch.nn.utils.rnn.pad_sequence(input_ids, batch_first=batch_first, padding_value=padding_value)
-        if self.tokenizer.padding_side == "left":
-            input_ids = torch.flip(input_ids, [1])
-        return input_ids
-
-    def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
-        input_ids, labels = tuple([instance[key] for instance in instances] for key in ("input_ids", "labels"))
-        input_ids = [_input_ids[: self.tokenizer.model_max_length] for _input_ids in input_ids]
-        labels = [_labels[: self.tokenizer.model_max_length] for _labels in labels]
-        if self.tokenizer.pad_token_id is None:
-            self.tokenizer.pad_token_id = 0 # FIXME: this could only be triggered for llama3 model.
-        input_ids = self.pad_sequence(input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id)
-        labels = self.pad_sequence(labels, batch_first=True, padding_value=IGNORE_INDEX)
-        batch = dict(
-            input_ids=input_ids,
-            labels=labels.long() if labels.dtype == torch.int32 else labels,
-            attention_mask=input_ids.ne(self.tokenizer.pad_token_id),
-        )
-
-        try:
-            if all("image" in instance for instance in instances):
-                images = [instance["image"] for instance in instances]
-                batch["image_sizes"] = [im[1] for im_list in images for im in im_list]
-                images = [im[0] for im_list in images for im in im_list]
-                if all(x is not None and x.shape == images[0].shape for x in images):
-                    batch["images"] = torch.stack(images)
+    def collate(self, batch):
+        # first, pad everything to the same length
+        # input_ids, labels = tuple([instance[key] for instance in instances]
+        #                           for key in ("input_ids", "labels"))
+        # input_ids = torch.nn.utils.rnn.pad_sequence(
+        #     input_ids,
+        #     batch_first=True,
+        #     padding_value=self.tokenizer.pad_token_id)
+        # labels = torch.nn.utils.rnn.pad_sequence(labels,
+        #                                          batch_first=True,
+        #                                          padding_value=IGNORE_INDEX)
+        # input_ids = input_ids[:, :self.tokenizer.model_max_length]
+        # labels = labels[:, :self.tokenizer.model_max_length]
+        # batch = dict(
+        #     input_ids=input_ids,
+        #     labels=labels,
+        #     attention_mask=input_ids.ne(self.tokenizer.pad_token_id),
+        # )
+        padded_batch = {}
+        for k in batch[0].keys():
+            if k.endswith("_input_ids") or k.endswith("_attention_mask") or k.endswith("_labels"):
+                # if "prompt" in k:
+                #     to_pad = [torch.LongTensor(ex[k][::-1]) for ex in batch]
+                # else:
+                to_pad = [torch.LongTensor(ex[k]) for ex in batch]
+                if k.endswith("_input_ids"):
+                    padding_value = self.tokenizer.pad_token_id
+                elif k.endswith("_labels"):
+                    padding_value = self.label_pad_token_id
                 else:
                     continue
                 # elif k.endswith("_attention_mask"):
@@ -1220,18 +1179,12 @@ class DPODataCollator(DPODataCollatorWithPadding):
                 #     padded_batch[k] = padded_batch[k].flip(dims=[1])
             else:
                 padded_batch[k] = [ex[k] for ex in batch]
-        for k in ['chosen_input_ids', 'rejected_input_ids']:
-            attn_k = k.replace('input_ids', 'attention_mask')
+        for k in ["chosen_input_ids", "rejected_input_ids"]:
+            attn_k = k.replace("input_ids", "attention_mask")
             padded_batch[attn_k] = padded_batch[k].ne(self.tokenizer.pad_token_id)
         return padded_batch
 
-    def tokenize_batch_element(
-        self,
-        prompt: str,
-        chosen: str,
-        rejected: str,
-        has_image: bool = True
-    ) -> Dict:
+    def tokenize_batch_element(self, prompt: str, chosen: str, rejected: str, has_image: bool = True) -> Dict:
         """Tokenize a single batch element.
 
         At this stage, we don't convert to PyTorch tensors yet; we just handle the truncation
@@ -1244,22 +1197,14 @@ class DPODataCollator(DPODataCollatorWithPadding):
         """
         # import pdb; pdb.set_trace()
         batch = {}
-        
+
         chosen_sources = make_conv(prompt, chosen)
         rejected_sources = make_conv(prompt, rejected)
-        chosen_data_dict = preprocess(
-            [chosen_sources],
-            self.tokenizer,
-            has_image=has_image
-        )
-        #chosen_data_dict['attention_mask'] = chosen_data_dict["input_ids"].ne(self.tokenizer.pad_token_id)
+        chosen_data_dict = preprocess([chosen_sources], self.tokenizer, has_image=has_image)
+        # chosen_data_dict['attention_mask'] = chosen_data_dict["input_ids"].ne(self.tokenizer.pad_token_id)
 
-        rejected_data_dict = preprocess(
-            [rejected_sources],
-            self.tokenizer,
-            has_image=has_image
-        )
-        #rejected_data_dict['attention_mask'] = rejected_data_dict["input_ids"].ne(self.tokenizer.pad_token_id)
+        rejected_data_dict = preprocess([rejected_sources], self.tokenizer, has_image=has_image)
+        # rejected_data_dict['attention_mask'] = rejected_data_dict["input_ids"].ne(self.tokenizer.pad_token_id)
 
         chosen_data_dict = {k: v[0] for k, v in chosen_data_dict.items()}
         rejected_data_dict = {k: v[0] for k, v in rejected_data_dict.items()}
@@ -1277,22 +1222,21 @@ class DPODataCollator(DPODataCollatorWithPadding):
     # def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
     def __call__(self, features: List[Dict[str, Any]]) -> Dict[str, Any]:
 
-
         tokenized_batch = []
         Xs, keys = [], []
         for feature in features:
             prompt = feature["prompt"]
             chosen = feature["chosen"]
             rejected = feature["rejected"]
-            has_image = feature['has_image']
+            has_image = feature["has_image"]
             # Xs.append(feature[has_X])
             # keys.append(has_X)
-             
+
             batch_element = self.tokenize_batch_element(prompt, chosen, rejected, has_image=has_image)
             tokenized_batch.append(batch_element)
 
         # return collated batch
-        padded_batch =  self.collate(tokenized_batch)
+        padded_batch = self.collate(tokenized_batch)
         # import pdb;pdb.set_trace()
         if "image" in features[0]:
             # instances[1]['image'][0][0].shape
@@ -1310,27 +1254,57 @@ class DPODataCollator(DPODataCollatorWithPadding):
         return padded_batch
 
 
-def make_dpo_data_module(tokenizer: transformers.PreTrainedTokenizer,
-                                data_args) -> Dict:
+def make_dpo_data_module(tokenizer: transformers.PreTrainedTokenizer, data_args) -> Dict:
     """Make dataset and collator for supervised fine-tuning."""
-    train_dataset = DPODataset(tokenizer=tokenizer,
-                                data_path=data_args.data_path,
-                                data_args=data_args)
+    train_dataset = DPODataset(tokenizer=tokenizer, data_path=data_args.data_path, data_args=data_args)
     return train_dataset
-
-
-def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer, data_args) -> Dict:
-    """Make dataset and collator for supervised fine-tuning."""
-    train_dataset = LazySupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, data_args=data_args)
-    data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
-    return dict(train_dataset=train_dataset, eval_dataset=None, data_collator=data_collator)
 
 
 def get_model(model_args, training_args, bnb_model_from_pretrained_args):
     assert training_args.attn_implementation
     if training_args.attn_implementation == "sdpa" and torch.__version__ < "2.1.2":
         raise ValueError("The 'sdpa' attention implementation requires torch version 2.1.2 or higher.")
-    # import pdb;pdb.set_trace()
+
+    cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path)
+    overwrite_config = {}
+    if model_args.rope_scaling_factor is not None and model_args.rope_scaling_type is not None:
+        overwrite_config["rope_scaling"] = {
+            "factor": model_args.rope_scaling_factor,
+            "type": model_args.rope_scaling_type,
+        }
+        if training_args.model_max_length is None:
+            training_args.model_max_length = cfg_pretrained.max_position_embeddings * model_args.rope_scaling_factor
+            overwrite_config["max_sequence_length"] = training_args.model_max_length
+        assert training_args.model_max_length == int(cfg_pretrained.max_position_embeddings * model_args.rope_scaling_factor), print(
+            f"model_max_length: {training_args.model_max_length}, max_position_embeddings: {cfg_pretrained.max_position_embeddings}, rope_scaling_factor: {model_args.rope_scaling_factor}"
+        )
+        # overwrite_config["max_sequence_length"] = model_args.max_sequence_length
+        # overwrite_config["tokenizer_model_max_length"] = model_args.tokenizer_model_max_length
+
+    if model_args.mm_spatial_pool_stride is not None and model_args.mm_spatial_pool_out_channels is not None and model_args.mm_spatial_pool_mode is not None and model_args.mm_resampler_type is not None:
+        overwrite_config["mm_resampler_type"] = model_args.mm_resampler_type
+        overwrite_config["mm_spatial_pool_stride"] = model_args.mm_spatial_pool_stride
+        overwrite_config["mm_spatial_pool_out_channels"] = model_args.mm_spatial_pool_out_channels
+        overwrite_config["mm_spatial_pool_mode"] = model_args.mm_spatial_pool_mode
+
+        # if "224" in model_args.vision_tower:
+        #     # suppose the length of text tokens is around 1000, from bo's report
+        #     least_token_number = data_args.frames_upbound*(16//model_args.mm_spatial_pool_stride)**2 + 1000
+        # else:
+        #     least_token_number = data_args.frames_upbound*(24//model_args.mm_spatial_pool_stride)**2 + 1000
+
+        # scaling_factor = math.ceil(least_token_number/4096)
+        # if scaling_factor >= 2:
+        #     overwrite_config["rope_scaling"] = {"factor": float(scaling_factor), "type": "linear"}
+        #     overwrite_config["max_sequence_length"] = 4096 * scaling_factor
+        #     overwrite_config["tokenizer_model_max_length"] = 4096 * scaling_factor
+        #     training_args.model_max_length = 4096 * scaling_factor
+
+    if overwrite_config:
+        rank0_print(f"Overwriting config with {overwrite_config}")
+        for k, v in overwrite_config.items():
+            setattr(cfg_pretrained, k, v)
+
     ref_model = None
     if model_args.model_class_name is not None:
         actual_model_class_name = f"{model_args.model_class_name}ForCausalLM"
@@ -1362,6 +1336,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
                 attn_implementation=training_args.attn_implementation,
+                config=cfg_pretrained,
                 torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                 low_cpu_mem_usage=False,
                 **bnb_model_from_pretrained_args,
@@ -1378,23 +1353,31 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
                 attn_implementation=training_args.attn_implementation,
+                config=cfg_pretrained,
                 torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                 low_cpu_mem_usage=False,
                 **bnb_model_from_pretrained_args,
             )
 
             if "zero3" in training_args.deepspeed:
-                print("####deepspeed_zero3_enabled#####")
+                rank0_print("#### Initialize reference model #####")
                 ref_model = LlavaLlamaForCausalLM.from_pretrained(
-                    model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, config=cfg_pretrained, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
-                )                
-                
+                    model_args.model_name_or_path,
+                    cache_dir=training_args.cache_dir,
+                    attn_implementation=training_args.attn_implementation,
+                    config=cfg_pretrained,
+                    torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
+                    low_cpu_mem_usage=False,
+                    **bnb_model_from_pretrained_args,
+                )
+
         elif "qwen" in model_args.model_name_or_path.lower() or "quyen" in model_args.model_name_or_path.lower():
             if "moe" in model_args.model_name_or_path.lower():
                 model = LlavaQwenMoeForCausalLM.from_pretrained(
                     model_args.model_name_or_path,
                     cache_dir=training_args.cache_dir,
                     attn_implementation=training_args.attn_implementation,
+                    config=cfg_pretrained,
                     torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                     low_cpu_mem_usage=False,
                     **bnb_model_from_pretrained_args,
@@ -1407,15 +1390,30 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                     model_args.model_name_or_path,
                     cache_dir=training_args.cache_dir,
                     attn_implementation=training_args.attn_implementation,
+                    config=cfg_pretrained,
                     torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                     low_cpu_mem_usage=False,
                     **bnb_model_from_pretrained_args,
                 )
+
+            if "zero3" in training_args.deepspeed:
+                rank0_print("#### Initialize reference model #####")
+                ref_model = LlavaQwenForCausalLM.from_pretrained(
+                    model_args.model_name_or_path,
+                    cache_dir=training_args.cache_dir,
+                    attn_implementation=training_args.attn_implementation,
+                    config=cfg_pretrained,
+                    torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
+                    low_cpu_mem_usage=False,
+                    **bnb_model_from_pretrained_args,
+                )
+
         elif "gemma" in model_args.model_name_or_path.lower():
             model = LlavaGemmaForCausalLM.from_pretrained(
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
                 attn_implementation=training_args.attn_implementation,
+                config=cfg_pretrained,
                 torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                 low_cpu_mem_usage=False,
                 **bnb_model_from_pretrained_args,
@@ -1468,11 +1466,6 @@ def train(attn_implementation=None):
 
     model, ref_model = get_model(model_args, training_args, bnb_model_from_pretrained_args)
     model.config.use_cache = False
-    if model_args.rope_scaling_factor is not None and model_args.rope_scaling_type is not None:
-        model.config.rope_scaling = {
-            "factor": model_args.rope_scaling_factor,
-            "type": model_args.rope_scaling_type,
-        }
 
     if model_args.freeze_backbone:
         model.model.requires_grad_(False)
@@ -1497,7 +1490,7 @@ def train(attn_implementation=None):
 
             if ref_model is not None:
                 ref_model.get_input_embeddings().register_forward_hook(make_inputs_require_grad)
-                
+
     if training_args.lora_enable:
         from peft import LoraConfig, get_peft_model
 
@@ -1667,7 +1660,7 @@ def train(attn_implementation=None):
             parameter_names = [n for n, _ in ref_model.named_parameters()]
             for param_name in parameter_names:
                 param = ref_model.get_parameter(param_name)
-                param.requires_grad = False            
+                param.requires_grad = False
             ref_model.eval()
 
     if training_args.bits in [4, 8]:
@@ -1684,8 +1677,28 @@ def train(attn_implementation=None):
                     if training_args.bf16 and module.weight.dtype == torch.float32:
                         module = module.to(torch.bfloat16)
 
-    data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args)
-    trainer = LLaVATrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
+    train_dataset = make_dpo_data_module(tokenizer=tokenizer, data_args=data_args)
+    data_collator = DPODataCollator(
+        tokenizer,
+        label_pad_token_id=IGNORE_INDEX,
+        pad_token_id=tokenizer.pad_token_id,
+    )
+
+    trainer = LLaVADPOTrainer(
+        model,
+        ref_model,
+        args=training_args,
+        dpo_alpha=training_args.dpo_alpha,
+        beta=training_args.beta,
+        gamma=training_args.gamma,
+        train_dataset=train_dataset,
+        eval_dataset=None,
+        data_collator=data_collator,
+        tokenizer=tokenizer,
+        max_length=training_args.model_max_length,
+        generate_during_eval=False,  # training_args.generate_during_eval,
+        precompute_ref_log_probs=training_args.precompute_ref_log_probs,
+    )
 
     if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")):
         trainer.train(resume_from_checkpoint=True)

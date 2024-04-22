@@ -57,9 +57,7 @@ def instructions_formatting_function(tokenizer: AutoTokenizer):
     return format_dataset
 
 
-def get_formatting_func_from_dataset(
-    dataset: Union[Dataset, ConstantLengthDataset], tokenizer: AutoTokenizer
-) -> Optional[Callable]:
+def get_formatting_func_from_dataset(dataset: Union[Dataset, ConstantLengthDataset], tokenizer: AutoTokenizer) -> Optional[Callable]:
     r"""
     Finds the correct formatting function based on the dataset structure. Currently supported datasets are:
     - `ChatML` with [{"role": str, "content": str}]

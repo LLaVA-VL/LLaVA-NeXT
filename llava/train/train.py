@@ -585,9 +585,17 @@ def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_im
     )
 
 
-def preprocess_llama3(sources, tokenizer: transformers.PreTrainedTokenizer, has_image: bool = False, max_len=2048, system_message: str = "You are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.") -> Dict:
+def preprocess_llama3(
+    sources,
+    tokenizer: transformers.PreTrainedTokenizer,
+    has_image: bool = False,
+    max_len=2048,
+    system_message: str = "You are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.",
+) -> Dict:
     roles = {"human": "<|start_header_id|>user<|end_header_id|>", "gpt": "<|start_header_id|>assistant<|end_header_id|>"}
 
+    start_header_id = tokenizer.convert_tokens_to_ids("<|start_header_id|>")
+    end_header_id = tokenizer.convert_tokens_to_ids("<|end_header_id|>")
     eot_id = tokenizer.convert_tokens_to_ids("<|eot_id|>")
     nl_tokens = tokenizer("\n").input_ids
 
@@ -600,7 +608,8 @@ def preprocess_llama3(sources, tokenizer: transformers.PreTrainedTokenizer, has_
         input_id, target = [], []
         system = tokenizer("<|begin_of_text|>").input_ids + tokenizer("<|start_header_id|>system<|end_header_id|>").input_ids + nl_tokens * 2 + tokenizer(system_message).input_ids + [eot_id]
         input_id += system
-        target += [IGNORE_INDEX] * len(system)
+        # Here I just unmask every special token include <|begin_of_text|>, start_header, end_header, nl_tokens, and eot
+        target += tokenizer("<|begin_of_text|>").input_ids + [start_header_id] + [IGNORE_INDEX] * len(tokenizer("system").input_ids) + [end_header_id] + nl_tokens * 2 + [IGNORE_INDEX] * len(tokenizer(system_message).input_ids) + [eot_id]
         for j, sentence in enumerate(source):
             role = roles[sentence["from"]]
             if has_image and "<image>" in sentence["value"]:
@@ -610,9 +619,17 @@ def preprocess_llama3(sources, tokenizer: transformers.PreTrainedTokenizer, has_
                 _input_id = tokenizer(role).input_ids + nl_tokens * 2 + tokenizer(sentence["value"]).input_ids + [eot_id]
             input_id += _input_id
             if role == "<|start_header_id|>user<|end_header_id|>":
-                _target = [IGNORE_INDEX] * len(_input_id)
+                # _target = [IGNORE_INDEX] * len(_input_id)
+                _target = []
+                for i in _input_id:
+                    if i in [start_header_id, end_header_id, nl_tokens[0], eot_id]:
+                        _target.append(i)
+                    else:
+                        _target.append(IGNORE_INDEX)
+                # _target = [IGNORE_INDEX if i != start_header_id or i != end_header_id or i != nl_tokens else i for i in _input_id]
+                # print(_target)
             elif role == "<|start_header_id|>assistant<|end_header_id|>":
-                _target = [IGNORE_INDEX] * (len(tokenizer(role).input_ids) + 2) + _input_id[len(tokenizer(role).input_ids) + 2 : -1] + [eot_id]
+                _target = [start_header_id] + [IGNORE_INDEX] + [end_header_id] + _input_id[len(tokenizer(role).input_ids) : -1] + [eot_id]
             else:
                 raise NotImplementedError
             target += _target
@@ -626,6 +643,7 @@ def preprocess_llama3(sources, tokenizer: transformers.PreTrainedTokenizer, has_
         input_ids=input_ids,  # tensor(bs x seq_len)
         labels=targets,  # tensor(bs x seq_len)
     )
+
 
 def preprocess_v1(sources, tokenizer: transformers.PreTrainedTokenizer, has_image: bool = False) -> Dict:
     conv = conversation_lib.default_conversation.copy()
@@ -1079,7 +1097,7 @@ class DataCollatorForSupervisedDataset(object):
         input_ids = [_input_ids[: self.tokenizer.model_max_length] for _input_ids in input_ids]
         labels = [_labels[: self.tokenizer.model_max_length] for _labels in labels]
         if self.tokenizer.pad_token_id is None:
-            self.tokenizer.pad_token_id = 0 # FIXME: this could only be triggered for llama3 model.
+            self.tokenizer.pad_token_id = 0  # FIXME: this could only be triggered for llama3 model.
         input_ids = self.pad_sequence(input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id)
         labels = self.pad_sequence(labels, batch_first=True, padding_value=IGNORE_INDEX)
         batch = dict(

@@ -19,6 +19,7 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+
 def shrink_string_correctly(text):
     # Split the text into sentences for better analysis
     parts = text.split(" ")
@@ -50,7 +51,6 @@ def annotate(prediction_set, caption_files, output_dir):
 
         # if len(pred) > 256:
         # pred = shrink_string_correctly(pred)
-
 
         # import pdb; pdb.set_trace()
         try:
@@ -205,7 +205,9 @@ def main():
                     content = json.load(json_file)
                     combined_contents[file_name[:-5]] = content
                 except:
-                    import pdb;pdb.set_trace()
+                    import pdb
+
+                    pdb.set_trace()
 
     score_sum = 0
     count = 0
@@ -221,7 +223,9 @@ def main():
                 break
         except Exception as e:
             print(f"Error processing file '{key}': {e}")
-            import pdb; pdb.set_trace()
+            import pdb
+
+            pdb.set_trace()
     average_score = score_sum / count
     combined_contents["average_score"] = average_score
     with open(json_path, "w") as json_file:

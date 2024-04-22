@@ -22,6 +22,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_sequence
+
 # from transformers import top_k_top_p_filtering
 
 from .import_utils import is_npu_available, is_xpu_available
@@ -34,6 +35,7 @@ except ImportError:
 
 
 WANDB_PADDING = -1
+
 
 def top_k_top_p_filtering(
     logits: torch.FloatTensor,
@@ -59,14 +61,10 @@ def top_k_top_p_filtering(
     """
 
     if top_k > 0:
-        logits = TopKLogitsWarper(top_k=top_k, filter_value=filter_value, min_tokens_to_keep=min_tokens_to_keep)(
-            None, logits
-        )
+        logits = TopKLogitsWarper(top_k=top_k, filter_value=filter_value, min_tokens_to_keep=min_tokens_to_keep)(None, logits)
 
     if 0 <= top_p <= 1.0:
-        logits = TopPLogitsWarper(top_p=top_p, filter_value=filter_value, min_tokens_to_keep=min_tokens_to_keep)(
-            None, logits
-        )
+        logits = TopPLogitsWarper(top_p=top_p, filter_value=filter_value, min_tokens_to_keep=min_tokens_to_keep)(None, logits)
 
     return logits
 
@@ -96,9 +94,7 @@ def convert_to_scalar(stats: Dict) -> Dict:
     for k, v in stats.items():
         # for tensorboard compatibility - arrays and tensors are ignored with tensorboard
         # therefore we convert single element tensors to scalars
-        if (isinstance(v, torch.Tensor) or isinstance(v, np.ndarray)) and (
-            len(v.shape) == 0 or (len(v.shape) == 1 and v.shape[0] == 1)
-        ):
+        if (isinstance(v, torch.Tensor) or isinstance(v, np.ndarray)) and (len(v.shape) == 0 or (len(v.shape) == 1 and v.shape[0] == 1)):
             v = v.item()
         tensorboard_stats[k] = v
     return tensorboard_stats
@@ -164,10 +160,7 @@ def masked_var(values: torch.Tensor, mask: torch.Tensor, unbiased: bool = True) 
     if unbiased:
         mask_sum = mask.sum()
         if mask_sum == 0:
-            raise ValueError(
-                "The sum of the mask is zero, which can happen when `mini_batch_size=1`;"
-                "try increase the `mini_batch_size` or `gradient_accumulation_steps`"
-            )
+            raise ValueError("The sum of the mask is zero, which can happen when `mini_batch_size=1`;" "try increase the `mini_batch_size` or `gradient_accumulation_steps`")
         # note that if mask_sum == 1, then there is a division by zero issue
         # to avoid it you just need to use a larger minibatch_size
         bessel_correction = mask_sum / (mask_sum - 1)
@@ -224,9 +217,7 @@ def stats_to_np(stats_dict: Dict) -> Dict:
     return new_dict
 
 
-def respond_to_batch(
-    model: nn.Module, queries: List[torch.LongTensor], txt_len: int = 20, top_k: int = 0, top_p: float = 1.0
-) -> torch.LongTensor:
+def respond_to_batch(model: nn.Module, queries: List[torch.LongTensor], txt_len: int = 20, top_k: int = 0, top_p: float = 1.0) -> torch.LongTensor:
     """Sample text from language model."""
     input_ids = queries
     for i in range(txt_len):
@@ -330,10 +321,7 @@ def randn_tensor(
 
     if isinstance(generator, list):
         shape = (1,) + shape[1:]
-        latents = [
-            torch.randn(shape, generator=generator[i], device=rand_device, dtype=dtype, layout=layout)
-            for i in range(batch_size)
-        ]
+        latents = [torch.randn(shape, generator=generator[i], device=rand_device, dtype=dtype, layout=layout) for i in range(batch_size)]
         latents = torch.cat(latents, dim=0).to(device)
     else:
         latents = torch.randn(shape, generator=generator, device=rand_device, dtype=dtype, layout=layout).to(device)

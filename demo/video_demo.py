@@ -18,6 +18,7 @@ from transformers import AutoConfig
 
 import numpy as np
 
+
 def split_list(lst, n):
     """Split a list into n (roughly) equal-sized chunks"""
     chunk_size = math.ceil(len(lst) / n)  # integer division
@@ -50,10 +51,10 @@ def parse_args():
     parser.add_argument("--image_aspect_ratio", type=str, default="anyres")
     parser.add_argument("--image_grid_pinpoints", type=str, default="[(224, 448), (224, 672), (224, 896), (448, 448), (448, 224), (672, 224), (896, 224)]")
     parser.add_argument("--mm_patch_merge_type", type=str, default="spatial_unpad")
-    parser.add_argument("--overwrite", type=lambda x: (str(x).lower() == 'true'), default=True)
+    parser.add_argument("--overwrite", type=lambda x: (str(x).lower() == "true"), default=True)
     parser.add_argument("--for_get_frames_num", type=int, default=4)
-    parser.add_argument("--load_8bit",  type=lambda x: (str(x).lower() == 'true'), default=False)
-    parser.add_argument("--prompt", type=str, default=None) 
+    parser.add_argument("--load_8bit", type=lambda x: (str(x).lower() == "true"), default=False)
+    parser.add_argument("--prompt", type=str, default=None)
     return parser.parse_args()
 
 
@@ -90,14 +91,14 @@ def run_inference(args):
 
         if "224" in cfg_pretrained.mm_vision_tower:
             # suppose the length of text tokens is around 1000, from bo's report
-            least_token_number = args.for_get_frames_num*(16//args.mm_spatial_pool_stride)**2 + 1000
+            least_token_number = args.for_get_frames_num * (16 // args.mm_spatial_pool_stride) ** 2 + 1000
         else:
-            least_token_number = args.for_get_frames_num*(24//args.mm_spatial_pool_stride)**2 + 1000
+            least_token_number = args.for_get_frames_num * (24 // args.mm_spatial_pool_stride) ** 2 + 1000
 
-        scaling_factor = math.ceil(least_token_number/4096)
+        scaling_factor = math.ceil(least_token_number / 4096)
         if scaling_factor >= 2:
             # import pdb;pdb.set_trace()
-            if "mistral" not in args.model_path: #and "yi" not in args.model_path.lower():
+            if "mistral" not in args.model_path:  # and "yi" not in args.model_path.lower():
                 print(float(scaling_factor))
                 overwrite_config["rope_scaling"] = {"factor": float(scaling_factor), "type": "linear"}
             overwrite_config["max_sequence_length"] = 4096 * scaling_factor
@@ -123,12 +124,12 @@ def run_inference(args):
     if os.path.isdir(video_path):
         # If it's a directory, loop over all files in the directory
         for filename in os.listdir(video_path):
-                    # Load the video file
+            # Load the video file
             cur_video_path = os.path.join(video_path, f"{filename}")
             all_video_pathes.append(os.path.join(video_path, cur_video_path))
     else:
         # If it's a file, just process the video
-        all_video_pathes.append(video_path) 
+        all_video_pathes.append(video_path)
 
     # import pdb;pdb.set_trace()
     for video_path in all_video_pathes:
@@ -136,7 +137,6 @@ def run_inference(args):
         question = args.prompt
         sample_set["Q"] = question
         sample_set["video_name"] = video_path
-        
 
         # Check if the video exists
         if os.path.exists(video_path):

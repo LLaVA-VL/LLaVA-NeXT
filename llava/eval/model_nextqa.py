@@ -57,7 +57,7 @@ def parse_args():
     parser.add_argument("--image_aspect_ratio", type=str, default="anyres")
     parser.add_argument("--image_grid_pinpoints", type=str, default="[(224, 448), (224, 672), (224, 896), (448, 448), (448, 224), (672, 224), (896, 224)]")
     parser.add_argument("--mm_patch_merge_type", type=str, default="spatial_unpad")
-    parser.add_argument("--overwrite", type=lambda x: (str(x).lower() == 'true'), default=True)
+    parser.add_argument("--overwrite", type=lambda x: (str(x).lower() == "true"), default=True)
     parser.add_argument("--for_get_frames_num", type=int, default=4)
     return parser.parse_args()
 
@@ -101,11 +101,11 @@ def run_inference(args):
 
             if "224" in cfg_pretrained.mm_vision_tower:
                 # suppose the length of text tokens is around 1000, from bo's report
-                least_token_number = args.for_get_frames_num*(16//args.mm_spatial_pool_stride)**2 + 1000
+                least_token_number = args.for_get_frames_num * (16 // args.mm_spatial_pool_stride) ** 2 + 1000
             else:
-                least_token_number = args.for_get_frames_num*(24//args.mm_spatial_pool_stride)**2 + 1000
+                least_token_number = args.for_get_frames_num * (24 // args.mm_spatial_pool_stride) ** 2 + 1000
 
-            scaling_factor = math.ceil(least_token_number/4096)
+            scaling_factor = math.ceil(least_token_number / 4096)
             if scaling_factor >= 2:
                 if "mistral" not in args.model_path:
                     print(float(scaling_factor))
@@ -126,7 +126,7 @@ def run_inference(args):
     for index, row in df.iterrows():
         # You can access data for each column by column name
         # import pdb; pdb.set_trace()
-        gt_questions.append({"qid": row["qid"], "video_name": vid_map[str(row["video"])], "video_id":str(row["video"]), "question": row["question"], "answer": row["answer"]})
+        gt_questions.append({"qid": row["qid"], "video_name": vid_map[str(row["video"])], "video_id": str(row["video"]), "question": row["question"], "answer": row["answer"]})
     gt_questions = get_chunk(gt_questions, args.num_chunks, args.chunk_idx)
 
     # Create the output directory if it doesn't exist
@@ -148,7 +148,7 @@ def run_inference(args):
         answer = sample["answer"]
         video_id = sample["video_id"]
 
-        sample_set = {"id": qid, "video_id": video_id,"question": question, "answer": answer}
+        sample_set = {"id": qid, "video_id": video_id, "question": question, "answer": answer}
 
         # Load the video file
         # import pdb; pdb.set_trace()
@@ -183,7 +183,6 @@ def run_inference(args):
         # prompt = prompt.replace("<|im_start|>system\nAnswer the questions.<|im_end|>","")
         input_ids = tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).cuda()
         attention_masks = input_ids.ne(tokenizer.pad_token_id).long().cuda()
-
 
         stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
         keywords = [stop_str]

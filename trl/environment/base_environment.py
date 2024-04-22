@@ -270,10 +270,7 @@ class TextEnvironment:
         turns = 0
 
         queries = [self.prompt + task for task in queries]
-        queries_tokens = [
-            self.tokenizer(query, return_tensors="pt").input_ids[0].to(self.model.pretrained_model.device)
-            for query in queries
-        ]
+        queries_tokens = [self.tokenizer(query, return_tensors="pt").input_ids[0].to(self.model.pretrained_model.device) for query in queries]
 
         histories = [TextHistory(q, qt, system=True) for q, qt in zip(queries, queries_tokens)]
 
@@ -322,9 +319,7 @@ class TextEnvironment:
 
         history.append_segment(
             response + self.response_token,
-            self.tokenizer(response + self.response_token, return_tensors="pt")
-            .input_ids[0]
-            .to(self.model.pretrained_model.device),
+            self.tokenizer(response + self.response_token, return_tensors="pt").input_ids[0].to(self.model.pretrained_model.device),
             system=True,
         )
 
@@ -403,10 +398,7 @@ class TextEnvironment:
             ended = True
         elif self.tokenizer.eos_token in history.text:
             ended = True
-        elif model_turn and not (
-            (self.request_token in history.last_text_segment and self.call_token in history.last_text_segment)
-            or self.submit_token in history.last_text_segment
-        ):
+        elif model_turn and not ((self.request_token in history.last_text_segment and self.call_token in history.last_text_segment) or self.submit_token in history.last_text_segment):
             ended = True
         elif self.submit_token in history.last_text_segment:
             ended = True
@@ -456,9 +448,7 @@ class TextEnvironment:
 
             generations = extract_model_from_parallel(self.model).generate(**padded_inputs, **self.generation_kwargs)
 
-            for generation, mask, generated_tokens in zip(
-                generations, padded_inputs["attention_mask"], stopping_criteria.generated_tokens
-            ):
+            for generation, mask, generated_tokens in zip(generations, padded_inputs["attention_mask"], stopping_criteria.generated_tokens):
                 if not self.is_encoder_decoder:
                     output = generation[(1 - mask).sum() :]  # remove padding
                 else:

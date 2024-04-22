@@ -138,9 +138,7 @@ class PPOConfig:
     """TO BE FILLED In RUNTIME: the effective `batch_size` across all processes"""
 
     if optimize_cuda_cache is not None:
-        warnings.warn(
-            "The `optimize_cuda_cache` argument will be deprecated soon, please use `optimize_device_cache` instead."
-        )
+        warnings.warn("The `optimize_cuda_cache` argument will be deprecated soon, please use `optimize_device_cache` instead.")
         optimize_device_cache = optimize_cuda_cache
     else:
         optimize_device_cache = False
@@ -165,9 +163,7 @@ class PPOConfig:
         if self.log_with == "wandb":
             # raise error if wandb is not installed
             if not is_wandb_available():
-                raise ImportError(
-                    "Please install wandb to use wandb logging. You can do this by running `pip install wandb`."
-                )
+                raise ImportError("Please install wandb to use wandb logging. You can do this by running `pip install wandb`.")
 
         self.total_ppo_epochs = int(np.ceil(self.steps / self.batch_size))
         assert self.kl_penalty in ["kl", "abs", "mse", "full"]

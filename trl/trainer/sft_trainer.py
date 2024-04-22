@@ -117,6 +117,7 @@ class SFTTrainer(Trainer):
         dataset_kwargs: (`Optional[Dict]`, *optional*):
             Dict of Optional kwargs to pass when creating packed or non-packed datasets
     """
+
     _tag_names = ["trl", "sft"]
 
     def __init__(
@@ -152,40 +153,24 @@ class SFTTrainer(Trainer):
             raise ValueError("You passed model_kwargs to the SFTTrainer. But your model is already instantiated.")
 
         if infinite is not None:
-            warnings.warn(
-                "The `infinite` argument is deprecated and will be removed in a future version of TRL. Use `TrainingArguments.max_steps` or `TrainingArguments.num_train_epochs` instead to control training length."
-            )
+            warnings.warn("The `infinite` argument is deprecated and will be removed in a future version of TRL. Use `TrainingArguments.max_steps` or `TrainingArguments.num_train_epochs` instead to control training length.")
 
         if isinstance(model, str):
-            warnings.warn(
-                "You passed a model_id to the SFTTrainer. This will automatically create an "
-                "`AutoModelForCausalLM` or a `PeftModel` (if you passed a `peft_config`) for you."
-            )
+            warnings.warn("You passed a model_id to the SFTTrainer. This will automatically create an " "`AutoModelForCausalLM` or a `PeftModel` (if you passed a `peft_config`) for you.")
             model = AutoModelForCausalLM.from_pretrained(model, **model_init_kwargs)
 
         if packing and data_collator is not None and isinstance(data_collator, DataCollatorForCompletionOnlyLM):
-            raise ValueError(
-                "You passed a `DataCollatorForCompletionOnlyLM` to the SFTTrainer. This is not compatible with the `packing` argument."
-            )
+            raise ValueError("You passed a `DataCollatorForCompletionOnlyLM` to the SFTTrainer. This is not compatible with the `packing` argument.")
 
         if is_peft_available() and peft_config is not None:
             if not isinstance(peft_config, PeftConfig):
-                raise ValueError(
-                    "If you want to use the PeftModel, you need to pass a PeftConfig object to the SFTTrainer."
-                    f" and you passed a {type(peft_config)}."
-                )
+                raise ValueError("If you want to use the PeftModel, you need to pass a PeftConfig object to the SFTTrainer." f" and you passed a {type(peft_config)}.")
 
             if not isinstance(model, PeftModel):
-                _support_gc_kwargs = hasattr(
-                    args, "gradient_checkpointing_kwargs"
-                ) and "gradient_checkpointing_kwargs" in list(
-                    inspect.signature(prepare_model_for_kbit_training).parameters
-                )
+                _support_gc_kwargs = hasattr(args, "gradient_checkpointing_kwargs") and "gradient_checkpointing_kwargs" in list(inspect.signature(prepare_model_for_kbit_training).parameters)
                 gradient_checkpointing_kwargs = getattr(args, "gradient_checkpointing_kwargs", None) or {}
                 if getattr(model, "is_loaded_in_8bit", False) or getattr(model, "is_loaded_in_4bit", False):
-                    preprare_model_kwargs = {
-                        "use_gradient_checkpointing": getattr(args, "gradient_checkpointing", False)
-                    }
+                    preprare_model_kwargs = {"use_gradient_checkpointing": getattr(args, "gradient_checkpointing", False)}
 
                     if _support_gc_kwargs:
                         preprare_model_kwargs["gradient_checkpointing_kwargs"] = gradient_checkpointing_kwargs
@@ -194,10 +179,7 @@ class SFTTrainer(Trainer):
 
                     if args is not None:
                         args = dataclasses.replace(args, gradient_checkpointing=False)
-                elif getattr(args, "gradient_checkpointing", False) and (
-                    "use_reentrant" not in gradient_checkpointing_kwargs
-                    or gradient_checkpointing_kwargs["use_reentrant"]
-                ):
+                elif getattr(args, "gradient_checkpointing", False) and ("use_reentrant" not in gradient_checkpointing_kwargs or gradient_checkpointing_kwargs["use_reentrant"]):
                     # For backward compatibility with older versions of transformers
                     if hasattr(model, "enable_input_require_grads"):
                         model.enable_input_require_grads()
@@ -221,9 +203,7 @@ class SFTTrainer(Trainer):
             # to overcome some issues with broken tokenizers
             max_seq_length = min(tokenizer.model_max_length, 1024)
 
-            warnings.warn(
-                f"You didn't pass a `max_seq_length` argument to the SFTTrainer, this will default to {max_seq_length}"
-            )
+            warnings.warn(f"You didn't pass a `max_seq_length` argument to the SFTTrainer, this will default to {max_seq_length}")
 
         self.dataset_num_proc = dataset_num_proc
         self.dataset_batch_size = dataset_batch_size
@@ -232,9 +212,7 @@ class SFTTrainer(Trainer):
 
         if neftune_noise_alpha is not None and self._trainer_supports_neftune:
             args.neftune_noise_alpha = neftune_noise_alpha
-            warnings.warn(
-                "You passed a `neftune_noise_alpha` argument to the SFTTrainer, the value you passed will override the one in the `TrainingArguments`."
-            )
+            warnings.warn("You passed a `neftune_noise_alpha` argument to the SFTTrainer, the value you passed will override the one in the `TrainingArguments`.")
             # self.neftune_noise_alpha is done at Trainer level
         elif not self._trainer_supports_neftune:
             self.neftune_noise_alpha = neftune_noise_alpha
@@ -246,9 +224,7 @@ class SFTTrainer(Trainer):
 
         if not packing:
             if dataset_text_field is None and formatting_func is None:
-                raise ValueError(
-                    "You passed `packing=False` to the SFTTrainer, but you didn't pass a `dataset_text_field` or `formatting_func` argument."
-                )
+                raise ValueError("You passed `packing=False` to the SFTTrainer, but you didn't pass a `dataset_text_field` or `formatting_func` argument.")
 
             if data_collator is None:
                 data_collator = DataCollatorForLanguageModeling(tokenizer=tokenizer, mlm=False)
@@ -310,9 +286,7 @@ class SFTTrainer(Trainer):
         )
 
         if self.args.max_steps > 0 and packing:
-            warnings.warn(
-                "You passed `packing=True` to the SFTTrainer, and you are training your model with `max_steps` strategy. The dataset will be iterated until the `max_steps` are reached."
-            )
+            warnings.warn("You passed `packing=True` to the SFTTrainer, and you are training your model with `max_steps` strategy. The dataset will be iterated until the `max_steps` are reached.")
             self.train_dataset.infinite = True
         elif self.args.max_steps == -1 and packing:
             self.train_dataset.infinite = False
@@ -421,9 +395,7 @@ class SFTTrainer(Trainer):
 
             if use_formatting_func and not self._dataset_sanity_checked:
                 if not isinstance(formatting_func(element), list):
-                    raise ValueError(
-                        "The `formatting_func` should return a list of processed strings since it can lead to silent bugs."
-                    )
+                    raise ValueError("The `formatting_func` should return a list of processed strings since it can lead to silent bugs.")
                 else:
                     self._dataset_sanity_checked = True
 
@@ -484,18 +456,12 @@ class SFTTrainer(Trainer):
                     yield i
 
             try:
-                packed_dataset = Dataset.from_generator(
-                    data_generator, gen_kwargs={"constant_length_iterator": constant_length_iterator}
-                )
+                packed_dataset = Dataset.from_generator(data_generator, gen_kwargs={"constant_length_iterator": constant_length_iterator})
             except (DatasetGenerationError, SchemaInferenceError):
-                raise ValueError(
-                    "Error occurred while packing the dataset. Make sure that your dataset has enough samples to at least yield one packed sequence."
-                )
+                raise ValueError("Error occurred while packing the dataset. Make sure that your dataset has enough samples to at least yield one packed sequence.")
             return packed_dataset
         else:
-            raise ValueError(
-                "You need to pass a `dataset_text_field` or `formatting_func` argument to the SFTTrainer if you want to use the `ConstantLengthDataset`."
-            )
+            raise ValueError("You need to pass a `dataset_text_field` or `formatting_func` argument to the SFTTrainer if you want to use the `ConstantLengthDataset`.")
 
     def _trl_activate_neftune(self, model):
         r"""

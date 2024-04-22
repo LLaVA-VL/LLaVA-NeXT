@@ -19,17 +19,18 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+
 def longest_repeating_substring(s):
     n = len(s)
-    dp = [[0] * (n+1) for _ in range(n+1)]
+    dp = [[0] * (n + 1) for _ in range(n + 1)]
     res = ""
     res_length = 0
 
     index = 0
-    for i in range(1, n+1):
-        for j in range(i+1, n+1):
-            if (dp[i-1][j-1] > 0 and dp[i-1][j-1] < (j-i)) or s[i-1] == s[j-1]:
-                dp[i][j] = dp[i-1][j-1] + 1
+    for i in range(1, n + 1):
+        for j in range(i + 1, n + 1):
+            if (dp[i - 1][j - 1] > 0 and dp[i - 1][j - 1] < (j - i)) or s[i - 1] == s[j - 1]:
+                dp[i][j] = dp[i - 1][j - 1] + 1
                 if dp[i][j] > res_length:
                     res_length = dp[i][j]
                     index = max(i, index)
@@ -37,10 +38,11 @@ def longest_repeating_substring(s):
                 dp[i][j] = 0
 
     if res_length > 0:
-        for i in range(index-res_length+1, index+1):
-            res = res + s[i-1]
+        for i in range(index - res_length + 1, index + 1):
+            res = res + s[i - 1]
 
     return res
+
 
 def annotate(prediction_set, caption_files, output_dir):
     """
@@ -57,7 +59,6 @@ def annotate(prediction_set, caption_files, output_dir):
         # pred = longest_repeating_substring(pred)#[:1024]
         print(pred)
 
-            
         try:
             print(key, "query")
             if pred == "" or len(pred) < 2:
@@ -193,7 +194,7 @@ def main():
 
             # Use a pool of workers to process the files in parallel.
             # with Pool() as pool:
-                # pool.starmap(annotate, task_args)
+            # pool.starmap(annotate, task_args)
             # import pdb;pdb.set_trace()
             annotate(*task_args[0])
 
@@ -234,7 +235,9 @@ def main():
                 break
         except Exception as e:
             print(f"Error processing file '{key}': {e}")
-            import pdb; pdb.set_trace()
+            import pdb
+
+            pdb.set_trace()
     average_score = score_sum / count
     combined_contents["average_score"] = average_score
     with open(json_path, "w") as json_file:

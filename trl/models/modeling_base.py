@@ -70,19 +70,14 @@ class PreTrainedModelWrapper(nn.Module):
         supported_args: (`list`)
             The list of arguments that are supported by the wrapper class.
     """
+
     transformers_parent_class = None
     supported_args = None
     supported_modules = ("v_head",)
     supported_rm_modules = ("score",)
-    supported_pretrained_model_architectures = (
-        (PreTrainedModel)
-        if not is_peft_available()
-        else (PreTrainedModel, PeftModelForCausalLM, PeftModelForSeq2SeqLM)
-    )
+    supported_pretrained_model_architectures = (PreTrainedModel) if not is_peft_available() else (PreTrainedModel, PeftModelForCausalLM, PeftModelForSeq2SeqLM)
 
-    def __init__(
-        self, pretrained_model=None, score_module=None, supports_rm_adapter=False, rm_adapter_name=None, **kwargs
-    ):
+    def __init__(self, pretrained_model=None, score_module=None, supports_rm_adapter=False, rm_adapter_name=None, **kwargs):
         super().__init__()
         self.pretrained_model = pretrained_model
 
@@ -144,9 +139,7 @@ class PreTrainedModelWrapper(nn.Module):
             token = None
 
         if reward_adapter is not None and not isinstance(reward_adapter, str):
-            raise ValueError(
-                "The `reward_adapter` argument should be a string representing the name of local path or the Hub id to the Reward Modeling adapter."
-            )
+            raise ValueError("The `reward_adapter` argument should be a string representing the name of local path or the Hub id to the Reward Modeling adapter.")
 
         is_peft_model = False
 
@@ -191,10 +184,7 @@ class PreTrainedModelWrapper(nn.Module):
 
             if (local_adapter_present or remote_adapter_config is not None) and is_peft_available():
                 if peft_config is not None:
-                    logging.warning(
-                        "`peft_config` argument ignored since a peft config file was found in "
-                        f"{pretrained_model_name_or_path}"
-                    )
+                    logging.warning("`peft_config` argument ignored since a peft config file was found in " f"{pretrained_model_name_or_path}")
 
                 # Load the trained peft adapter config
                 if local_adapter_present:
@@ -204,19 +194,13 @@ class PreTrainedModelWrapper(nn.Module):
                     trained_adapter_config = PeftConfig.from_pretrained(remote_adapter_dir)
 
                 # Load the pretrained base model
-                pretrained_model = cls.transformers_parent_class.from_pretrained(
-                    trained_adapter_config.base_model_name_or_path, *model_args, **pretrained_kwargs
-                )
+                pretrained_model = cls.transformers_parent_class.from_pretrained(trained_adapter_config.base_model_name_or_path, *model_args, **pretrained_kwargs)
 
                 # Wrap the pretrained model with the trained peft adapter
-                pretrained_model = PeftModel.from_pretrained(
-                    pretrained_model, pretrained_model_name_or_path, is_trainable=is_trainable
-                )
+                pretrained_model = PeftModel.from_pretrained(pretrained_model, pretrained_model_name_or_path, is_trainable=is_trainable)
                 logging.info("Trained peft adapter loaded")
             else:
-                pretrained_model = cls.transformers_parent_class.from_pretrained(
-                    pretrained_model_name_or_path, *model_args, **pretrained_kwargs
-                )
+                pretrained_model = cls.transformers_parent_class.from_pretrained(pretrained_model_name_or_path, *model_args, **pretrained_kwargs)
 
                 if peft_config is not None:
                     # Initialize a new peft adapter with the given config
@@ -241,27 +225,20 @@ class PreTrainedModelWrapper(nn.Module):
                 pretrained_model = get_peft_model(pretrained_model, peft_config)
                 logging.info("peft adapter initialised")
         else:
-            raise ValueError(
-                "pretrained_model_name_or_path should be a string or a PreTrainedModel, "
-                f"but is {type(pretrained_model_name_or_path)}"
-            )
+            raise ValueError("pretrained_model_name_or_path should be a string or a PreTrainedModel, " f"but is {type(pretrained_model_name_or_path)}")
 
         if is_peft_available():
             if isinstance(pretrained_model, PeftModel):
                 is_peft_model = True
                 # for backward compatibility
-                if hasattr(pretrained_model, "active_peft_config") and isinstance(
-                    pretrained_model.active_peft_config, PromptLearningConfig
-                ):
+                if hasattr(pretrained_model, "active_peft_config") and isinstance(pretrained_model.active_peft_config, PromptLearningConfig):
                     raise ValueError("PromptLearningConfig is not supported for PPO training.")
 
         # Add reward modeling adapter if specified
         if not is_peft_model and reward_adapter is not None:
             raise ValueError("reward_adapter can only be used with a PeftModel. ")
         elif is_peft_model and reward_adapter is not None:
-            score_module = cls.add_and_load_reward_modeling_adapter(
-                pretrained_model, reward_adapter, reward_adapter_name, token=token
-            )
+            score_module = cls.add_and_load_reward_modeling_adapter(pretrained_model, reward_adapter, reward_adapter_name, token=token)
             multi_adapter_args = {
                 "score_module": score_module,
                 "supports_rm_adapter": True,
@@ -371,10 +348,7 @@ class PreTrainedModelWrapper(nn.Module):
                 except (EntryNotFoundError, LocalEntryNotFoundError, HFValidationError, RepositoryNotFoundError):
                     # not continue training, do not have v_head weight
                     is_resuming_training = False
-                    logging.warning(
-                        f"A {type(pretrained_model)} model is loaded from '{pretrained_model_name_or_path}', "
-                        f"and no v_head weight is found. This IS expected if you are not resuming PPO training."
-                    )
+                    logging.warning(f"A {type(pretrained_model)} model is loaded from '{pretrained_model_name_or_path}', " f"and no v_head weight is found. This IS expected if you are not resuming PPO training.")
             # load json
             if is_resuming_training:
                 with open(index_file_name, "r") as f:
@@ -438,9 +412,7 @@ class PreTrainedModelWrapper(nn.Module):
         return supported_kwargs, unsupported_kwargs, peft_kwargs
 
     @classmethod
-    def add_and_load_reward_modeling_adapter(
-        cls, pretrained_model, adapter_model_id, adapter_name="reward_model_adapter", token=None
-    ):
+    def add_and_load_reward_modeling_adapter(cls, pretrained_model, adapter_model_id, adapter_name="reward_model_adapter", token=None):
         r"""
         Add and load a reward modeling adapter. This method can only be used if the
         model is a `PeftModel` and if you have initialized the model with the `reward_modeling_adapter_id`
@@ -470,9 +442,7 @@ class PreTrainedModelWrapper(nn.Module):
                             token=token,
                         )
                     except:  # noqa
-                        raise ValueError(
-                            "Could not find adapter model in the Hub, make sure you have the correct adapter model id."
-                        )
+                        raise ValueError("Could not find adapter model in the Hub, make sure you have the correct adapter model id.")
                 else:
                     local_filename = filename
         else:
@@ -599,9 +569,7 @@ class PreTrainedModelWrapper(nn.Module):
         return scores
 
 
-def create_reference_model(
-    model: PreTrainedModelWrapper, num_shared_layers: int = None, pattern: str = None
-) -> PreTrainedModelWrapper:
+def create_reference_model(model: PreTrainedModelWrapper, num_shared_layers: int = None, pattern: str = None) -> PreTrainedModelWrapper:
     """
     Creates a static reference copy of a model. Note that model will be in `.eval()` mode.
 
@@ -615,9 +583,7 @@ def create_reference_model(
         `PreTrainedModelWrapper`
     """
     if is_deepspeed_zero3_enabled():
-        raise ValueError(
-            "DeepSpeed ZeRO-3 is enabled and is not compatible with `create_reference_model()`. Please instantiate your reference model directly with `AutoCausalLM.from_pretrained()`."
-        )
+        raise ValueError("DeepSpeed ZeRO-3 is enabled and is not compatible with `create_reference_model()`. Please instantiate your reference model directly with `AutoCausalLM.from_pretrained()`.")
 
     parameter_names = [n for n, _ in model.named_parameters()]
     ref_model = deepcopy(model)

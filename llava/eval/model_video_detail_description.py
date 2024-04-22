@@ -23,6 +23,7 @@ import time
 
 import numpy as np
 
+
 def split_list(lst, n):
     """Split a list into n (roughly) equal-sized chunks"""
     chunk_size = math.ceil(len(lst) / n)  # integer division
@@ -56,12 +57,11 @@ def parse_args():
     parser.add_argument("--image_aspect_ratio", type=str, default="anyres")
     parser.add_argument("--image_grid_pinpoints", type=str, default="[(224, 448), (224, 672), (224, 896), (448, 448), (448, 224), (672, 224), (896, 224)]")
     parser.add_argument("--mm_patch_merge_type", type=str, default="spatial_unpad")
-    parser.add_argument("--overwrite", type=lambda x: (str(x).lower() == 'true'), default=True)
+    parser.add_argument("--overwrite", type=lambda x: (str(x).lower() == "true"), default=True)
     parser.add_argument("--for_get_frames_num", type=int, default=4)
-    parser.add_argument("--load_8bit",  type=lambda x: (str(x).lower() == 'true'), default=False)
+    parser.add_argument("--load_8bit", type=lambda x: (str(x).lower() == "true"), default=False)
     parser.add_argument("--description_root", type=str, default="data/llava_video/video_detail_description/Test_Human_Annotated_Captions")
     parser.add_argument("--api_key", type=str, help="OpenAI API key")
-
 
     return parser.parse_args()
 
@@ -79,6 +79,7 @@ def load_video(video_path, args):
     spare_frames = vr.get_batch(frame_idx).asnumpy()
     return spare_frames
 
+
 def load_video_base64(path):
     video = cv2.VideoCapture(path)
 
@@ -93,6 +94,7 @@ def load_video_base64(path):
     video.release()
     # print(len(base64Frames), "frames read.")
     return base64Frames
+
 
 def run_inference(args):
     """
@@ -118,11 +120,11 @@ def run_inference(args):
             if "qwen" not in args.model_path.lower():
                 if "224" in cfg_pretrained.mm_vision_tower:
                     # suppose the length of text tokens is around 1000, from bo's report
-                    least_token_number = args.for_get_frames_num*(16//args.mm_spatial_pool_stride)**2 + 1000
+                    least_token_number = args.for_get_frames_num * (16 // args.mm_spatial_pool_stride) ** 2 + 1000
                 else:
-                    least_token_number = args.for_get_frames_num*(24//args.mm_spatial_pool_stride)**2 + 1000
+                    least_token_number = args.for_get_frames_num * (24 // args.mm_spatial_pool_stride) ** 2 + 1000
 
-                scaling_factor = math.ceil(least_token_number/4096)
+                scaling_factor = math.ceil(least_token_number / 4096)
                 if scaling_factor >= 2:
                     if "mistral" not in args.model_path and "yi" not in args.model_path.lower():
                         print(float(scaling_factor))
@@ -136,7 +138,7 @@ def run_inference(args):
     else:
         pass
 
-    # Load 
+    # Load
     videos = os.listdir(args.description_root)
     videos = get_chunk(videos, args.num_chunks, args.chunk_idx)
 
@@ -154,7 +156,7 @@ def run_inference(args):
     answers_file = os.path.join(args.output_dir, f"{output_name}.json")
     if os.path.exists(answers_file):
         current_answers_list = []
-        with open(answers_file, 'r') as f:
+        with open(answers_file, "r") as f:
             current_answers_list = [json.loads(line) for line in f]
         for _ in current_answers_list:
             video_name = _["video_name"]
@@ -171,7 +173,7 @@ def run_inference(args):
             continue
         # print(sample.keys(), "---")
         # import pdb;pdb.set_trace()
-        with open(f"{args.description_root}/{cur_video_name}",encoding='utf-8-sig') as f:
+        with open(f"{args.description_root}/{cur_video_name}", encoding="utf-8-sig") as f:
             description = f.readlines()[0]
         # import pdb;pdb.set_trace()
         question = "Please provide a detailed description of the video, focusing on the main subjects, their actions, and the background scenes"
@@ -228,7 +230,9 @@ def run_inference(args):
                 # model.update_prompt([[cur_prompt]])
                 # import pdb;pdb.set_trace()
                 if "mistral" in args.model_path:
-                    output_ids = model.generate(inputs=input_ids, images=video, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, max_new_tokens=1024, use_cache=True)#, stopping_criteria=[stopping_criteria])
+                    output_ids = model.generate(
+                        inputs=input_ids, images=video, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, max_new_tokens=1024, use_cache=True
+                    )  # , stopping_criteria=[stopping_criteria])
                 else:
                     output_ids = model.generate(inputs=input_ids, images=video, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, max_new_tokens=1024, use_cache=True, stopping_criteria=[stopping_criteria])
 
@@ -252,39 +256,41 @@ def run_inference(args):
                 },
             ]
             params = {
-                "model": "gpt-4-vision-preview", #gpt-4-1106-vision-preview
+                "model": "gpt-4-vision-preview",  # gpt-4-1106-vision-preview
                 "messages": PROMPT_MESSAGES,
                 "max_tokens": 1024,
             }
-            sucess_flag=False
+            sucess_flag = False
             while max_num_retries < retry:
                 try:
                     result = openai.ChatCompletion.create(**params)
                     outputs = result.choices[0].message.content
                     sucess_flag = True
                     break
-                except Exception as inst :
-                    if 'error' in dir(inst):
+                except Exception as inst:
+                    if "error" in dir(inst):
                         # import pdb;pdb.set_trace()
-                        if  inst.error.code == 'rate_limit_exceeded':
+                        if inst.error.code == "rate_limit_exceeded":
                             if "TPM" in inst.error.message:
                                 time.sleep(30)
                                 continue
                             else:
-                                import pdb;pdb.set_trace()
-                        elif inst.error.code == 'insufficient_quota':
-                            print(f'insufficient_quota key')
+                                import pdb
+
+                                pdb.set_trace()
+                        elif inst.error.code == "insufficient_quota":
+                            print(f"insufficient_quota key")
                             exit()
-                        elif inst.error.code == 'content_policy_violation':
-                            print(f'content_policy_violation')
+                        elif inst.error.code == "content_policy_violation":
+                            print(f"content_policy_violation")
                             system_error = "content_policy_violation"
 
                             break
-                        print('Find error message in response: ',str(inst.error.message), 'error code: ', str(inst.error.code))
+                        print("Find error message in response: ", str(inst.error.message), "error code: ", str(inst.error.code))
 
                     continue
             if not sucess_flag:
-                print(f'Calling OpenAI failed after retrying for {max_num_retries} times. Check the logs for details.')
+                print(f"Calling OpenAI failed after retrying for {max_num_retries} times. Check the logs for details.")
                 exit()
 
         print(f"Question: {prompt}\n")
@@ -292,12 +298,14 @@ def run_inference(args):
         # import pdb;pdb.set_trace()
 
         if "gpt4v" == args.model_path:
-            if system_error == 'content_policy_violation':
+            if system_error == "content_policy_violation":
                 continue
             elif system_error == "":
                 continue
             else:
-                import pdb;pdb.set_trace()
+                import pdb
+
+                pdb.set_trace()
 
         outputs = outputs.strip()
         sample_set["pred"] = outputs
