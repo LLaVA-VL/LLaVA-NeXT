@@ -247,9 +247,9 @@ class LlavaMetaForCausalLM(ABC):
                         image_feature = image_feature[1:]
                         height = width = self.get_vision_tower().num_patches_per_side
                         assert height * width == base_image_feature.shape[0]
-                        matched_anyres_max_num_patches=re.match(r'anyres_max_(\d+)',image_aspect_ratio)
+                        matched_anyres_max_num_patches = re.match(r"anyres_max_(\d+)", image_aspect_ratio)
                         if matched_anyres_max_num_patches:
-                            max_num_patches=int(matched_anyres_max_num_patches.group(1))
+                            max_num_patches = int(matched_anyres_max_num_patches.group(1))
                         if image_aspect_ratio == "anyres":
                             if hasattr(self.get_vision_tower(), "image_size"):
                                 vision_tower_image_size = self.get_vision_tower().image_size
@@ -264,16 +264,16 @@ class LlavaMetaForCausalLM(ABC):
                             image_feature = image_feature.flatten(1, 2).flatten(2, 3)
                             image_feature = nn.functional.max_pool2d(image_feature, 2)
                             image_feature = image_feature.flatten(1, 2).transpose(0, 1)
-                        elif "unpad" in mm_patch_merge_type and matched_anyres_max_num_patches and self.get_model().projector_conv_stride==1:
-                            unit=image_feature.shape[2]
+                        elif "unpad" in mm_patch_merge_type and matched_anyres_max_num_patches and self.get_model().projector_conv_stride == 1:
+                            unit = image_feature.shape[2]
                             image_feature = image_feature.permute(4, 0, 2, 1, 3).contiguous()
                             image_feature = image_feature.flatten(1, 2).flatten(2, 3)
                             image_feature = unpad_image(image_feature, image_sizes[image_idx])
-                            c,h,w=image_feature.shape
-                            times=math.sqrt(h*w/(max_num_patches*unit**2))
-                            if times>1.1:
+                            c, h, w = image_feature.shape
+                            times = math.sqrt(h * w / (max_num_patches * unit**2))
+                            if times > 1.1:
                                 image_feature = image_feature[None]
-                                image_feature = nn.functional.interpolate(image_feature,[int(h//times),int(w//times)],mode='bilinear')[0]
+                                image_feature = nn.functional.interpolate(image_feature, [int(h // times), int(w // times)], mode="bilinear")[0]
                             image_feature = torch.cat((image_feature, self.model.image_newline[:, None, None].expand(*image_feature.shape[:-1], 1).to(image_feature.device)), dim=-1)
                             image_feature = image_feature.flatten(1, 2).transpose(0, 1)
                         elif "unpad" in mm_patch_merge_type:
