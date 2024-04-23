@@ -239,10 +239,7 @@ class LlavaMetaForCausalLM(ABC):
                             # image_feature =  torch.cat((image_feature, self.model.image_newline[:, None, None].expand(*image_feature.shape[:-1], 1).to(image_feature.device)), dim=-1)
                             # image_feature = image_feature.permute(1, 2, 0).contiguous()
                             image_feature = image_feature.flatten(0, 1)
-                            image_feature = torch.cat((
-                                image_feature,
-                                self.model.image_newline[None].to(image_feature.device)
-                            ), dim=0)
+                            image_feature = torch.cat((image_feature, self.model.image_newline[None].to(image_feature.device)), dim=0)
 
                     elif image_feature.shape[0] > 1:  # multi patches and multi images operations
                         base_image_feature = image_feature[0]
@@ -264,7 +261,7 @@ class LlavaMetaForCausalLM(ABC):
                             image_feature = image_feature.view(num_patch_height, num_patch_width, height, width, -1)
                         else:
                             image_feature = image_feature.view(2, 2, height, width, -1)
-                            
+
                         if "maxpool2x2" in mm_patch_merge_type:
                             image_feature = image_feature.permute(4, 0, 2, 1, 3).contiguous()
                             image_feature = image_feature.flatten(1, 2).flatten(2, 3)
