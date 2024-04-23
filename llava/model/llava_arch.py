@@ -264,7 +264,7 @@ class LlavaMetaForCausalLM(ABC):
                             image_feature = image_feature.flatten(1, 2).flatten(2, 3)
                             image_feature = nn.functional.max_pool2d(image_feature, 2)
                             image_feature = image_feature.flatten(1, 2).transpose(0, 1)
-                        elif "unpad" in mm_patch_merge_type and matched_anyres_max_num_patches and self.get_model().projector_conv_stride == 1:
+                        elif "unpad" in mm_patch_merge_type and "anyres_max" in image_aspect_ratio and matched_anyres_max_num_patches:
                             unit = image_feature.shape[2]
                             image_feature = image_feature.permute(4, 0, 2, 1, 3).contiguous()
                             image_feature = image_feature.flatten(1, 2).flatten(2, 3)
