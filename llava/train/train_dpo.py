@@ -1219,7 +1219,6 @@ class DPODataCollator(DPODataCollatorWithPadding):
                 batch[f"{k}_{type_key}"] = tokens
         return batch
 
-    # def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
     def __call__(self, features: List[Dict[str, Any]]) -> Dict[str, Any]:
 
         tokenized_batch = []
