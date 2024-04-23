@@ -1357,7 +1357,7 @@ def train(attn_implementation=None):
                     patch_size = data_args.image_processor.size[0]
                 except Exception as e:
                     patch_size = data_args.image_processor.size["shortest_edge"]
-                
+
                 assert patch_size in [224, 336, 384, 448, 512], "patch_size should be in [224, 336, 384, 448, 512]"
                 # Use regex to extract the range from the input string
                 matches = re.findall(r"\((\d+)x(\d+)\)", data_args.image_grid_pinpoints)
