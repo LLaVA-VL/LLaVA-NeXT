@@ -254,7 +254,10 @@ def process_anyres_image(image, processor, grid_pinpoints):
     """
     # Convert grid_pinpoints from string to list
     if isinstance(grid_pinpoints, str) and "x" in grid_pinpoints:
-        patch_size = processor.size[0]
+        try:
+            patch_size = processor.size[0]
+        except Exception as e:
+            patch_size = processor.size["shortest_edge"]
         assert patch_size in [224, 336, 384, 448, 512], "patch_size should be in [224, 336, 384, 448, 512]"
         # Use regex to extract the range from the input string
         matches = re.findall(r"\((\d+)x(\d+)\)", grid_pinpoints)

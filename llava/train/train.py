@@ -980,6 +980,7 @@ class LazySupervisedDataset(Dataset):
             print(f"Failed to open image {image_file}. Exception:", exn)
             raise exn
 
+        image_size = image.size
         if self.data_args.image_aspect_ratio == "highres":
             image = process_highres_image(image, self.data_args.image_processor, self.data_args.image_grid_pinpoints)
         elif self.data_args.image_aspect_ratio == "anyres" or "anyres_max" in self.data_args.image_aspect_ratio:
@@ -1351,8 +1352,24 @@ def train(attn_implementation=None):
 
         model.config.image_aspect_ratio = data_args.image_aspect_ratio
         if data_args.image_grid_pinpoints is not None:
-            data_args.image_grid_pinpoints = ast.literal_eval(data_args.image_grid_pinpoints)
-        model.config.image_grid_pinpoints = data_args.image_grid_pinpoints
+            if isinstance(data_args.image_grid_pinpoints, str) and "x" in data_args.image_grid_pinpoints:
+                try:
+                    patch_size = data_args.image_processor.size[0]
+                except Exception as e:
+                    patch_size = data_args.image_processor.size["shortest_edge"]
+                
+                assert patch_size in [224, 336, 384, 448, 512], "patch_size should be in [224, 336, 384, 448, 512]"
+                # Use regex to extract the range from the input string
+                matches = re.findall(r"\((\d+)x(\d+)\)", data_args.image_grid_pinpoints)
+                range_start = tuple(map(int, matches[0]))
+                range_end = tuple(map(int, matches[-1]))
+                # Generate a matrix of tuples from (range_start[0], range_start[1]) to (range_end[0], range_end[1])
+                grid_pinpoints = [(i, j) for i in range(range_start[0], range_end[0] + 1) for j in range(range_start[1], range_end[1] + 1)]
+                # Multiply all elements by patch_size
+                grid_pinpoints = [[dim * patch_size for dim in pair] for pair in grid_pinpoints]
+            elif isinstance(data_args.image_grid_pinpoints, str):
+                grid_pinpoints = ast.literal_eval(data_args.image_grid_pinpoints)
+        model.config.image_grid_pinpoints = grid_pinpoints
         model.config.image_crop_resolution = data_args.image_crop_resolution
         model.config.image_split_resolution = data_args.image_split_resolution
         model.config.tokenizer_padding_side = tokenizer.padding_side
