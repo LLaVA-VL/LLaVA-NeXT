@@ -226,7 +226,7 @@ class LlavaMetaForCausalLM(ABC):
                             matched_anyres_max_num_patches = re.match(r"anyres_max_(\d+)", image_aspect_ratio)
                             if matched_anyres_max_num_patches:
                                 max_num_patches = int(matched_anyres_max_num_patches.group(1))
-                                
+
                         if image_aspect_ratio == "anyres" or "anyres_max" in image_aspect_ratio:
                             if hasattr(self.get_vision_tower(), "image_size"):
                                 vision_tower_image_size = self.get_vision_tower().image_size
