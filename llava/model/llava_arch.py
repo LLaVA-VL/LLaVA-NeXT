@@ -188,8 +188,8 @@ class LlavaMetaForCausalLM(ABC):
 
         for idx, feat in enumerate(per_videos_or_images_features):
             if idx in video_idx_in_batch:
-                feat = self.get_2dPool(feat)  # (num_vid*num_frames, 576, 4096) -> (num_vid * num_frames, 144, 4096)
-                
+                feat = self.get_2dPool(feat)  # (num_vid * num_frames, 576, 4096) -> (num_vid * num_frames, 144, 4096)
+
             feat = self.get_model().mm_projector(feat)  # (dim_1_sum, 576, 1024) -> (dim_1_sum, 576, 4096)
             all_videos_or_images_features.append(feat)
         return all_videos_or_images_features
@@ -214,19 +214,18 @@ class LlavaMetaForCausalLM(ABC):
                     images_list.append(image)
                 else:
                     images_list.append(image.unsqueeze(0))
-                
-            concat_images = torch.cat([image for image in images], dim=0)
-            split_sizes = [image.shape[0] for image in images]
+
+            concat_images = torch.cat([image for image in images_list], dim=0)
+            split_sizes = [image.shape[0] for image in images_list]
 
             image_features = self.encode_multimodals(concat_images, video_idx_in_batch, split_sizes)
             # image_features = torch.split(image_features, split_sizes, dim=0)
             mm_patch_merge_type = getattr(self.config, "mm_patch_merge_type", "flat")
             image_aspect_ratio = getattr(self.config, "image_aspect_ratio", "square")
 
-            new_features = []
             if mm_patch_merge_type == "flat":
                 image_features = [x.flatten(0, 1) for x in image_features]
-                
+
             elif mm_patch_merge_type.startswith("spatial"):
                 new_image_features = []
                 for image_idx, image_feature in enumerate(image_features):
@@ -240,6 +239,10 @@ class LlavaMetaForCausalLM(ABC):
                             # image_feature =  torch.cat((image_feature, self.model.image_newline[:, None, None].expand(*image_feature.shape[:-1], 1).to(image_feature.device)), dim=-1)
                             # image_feature = image_feature.permute(1, 2, 0).contiguous()
                             image_feature = image_feature.flatten(0, 1)
+                            image_feature = torch.cat((
+                                image_feature,
+                                self.model.image_newline[None].to(image_feature.device)
+                            ), dim=0)
 
                     elif image_feature.shape[0] > 1:  # multi patches and multi images operations
                         base_image_feature = image_feature[0]
@@ -261,6 +264,7 @@ class LlavaMetaForCausalLM(ABC):
                             image_feature = image_feature.view(num_patch_height, num_patch_width, height, width, -1)
                         else:
                             image_feature = image_feature.view(2, 2, height, width, -1)
+                            
                         if "maxpool2x2" in mm_patch_merge_type:
                             image_feature = image_feature.permute(4, 0, 2, 1, 3).contiguous()
                             image_feature = image_feature.flatten(1, 2).flatten(2, 3)

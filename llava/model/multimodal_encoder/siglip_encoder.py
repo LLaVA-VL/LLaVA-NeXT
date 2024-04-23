@@ -48,6 +48,8 @@ class SigLipImageProcessor:
         if isinstance(images, Image.Image):
             images = [images]
         else:
+            # to adapt video data
+            images = [to_numpy_array(image) for image in images]
             assert isinstance(images, list)
 
         transforms = [
