@@ -181,17 +181,18 @@ class LlavaMetaForCausalLM(ABC):
         image_features = self.get_model().mm_projector(image_features)
         return image_features
 
-    def encode_videos(self, videos, video_idx_in_batch, split_sizes=None):
-        video_features = self.get_model().get_vision_tower()(videos)
-        per_video_features = torch.split(video_features, split_sizes, dim=0)  # tuple, (dim_1, 576, 4096)
-        all_video_features = []
+    def encode_multimodals(self, videos_or_images, video_idx_in_batch, split_sizes=None):
+        videos_or_images_features = self.get_model().get_vision_tower()(videos_or_images)
+        per_videos_or_images_features = torch.split(videos_or_images_features, split_sizes, dim=0)  # tuple, (dim_1, 576, 4096)
+        all_videos_or_images_features = []
 
-        for idx, video_feat in enumerate(per_video_features):
+        for idx, feat in enumerate(per_videos_or_images_features):
             if idx in video_idx_in_batch:
-                img_feat = self.get_2dPool(img_feat)  # (num_vid*num_frames, 576, 4096) -> (num_vid*num_frames, 144, 4096)
-            img_feat = self.get_model().mm_projector(img_feat)  # (dim_1_sum, 576, 1024) -> (dim_1_sum, 576, 4096)
-            all_video_features.append(video_feat)
-        return all_video_features
+                feat = self.get_2dPool(feat)  # (num_vid*num_frames, 576, 4096) -> (num_vid * num_frames, 144, 4096)
+                
+            feat = self.get_model().mm_projector(feat)  # (dim_1_sum, 576, 1024) -> (dim_1_sum, 576, 4096)
+            all_videos_or_images_features.append(feat)
+        return all_videos_or_images_features
 
     def prepare_inputs_labels_for_multimodal(self, input_ids, position_ids, attention_mask, past_key_values, labels, images, modalities=["image"], image_sizes=None):
         vision_tower = self.get_vision_tower()
@@ -201,14 +202,31 @@ class LlavaMetaForCausalLM(ABC):
         if type(images) is list or images.ndim == 5:
             if type(images) is list:
                 images = [x.unsqueeze(0) if x.ndim == 3 else x for x in images]
+
+            video_idx_in_batch = []
+            for _ in range(len(modalities)):
+                if modalities[_] == "video":
+                    video_idx_in_batch.append(_)
+
+            images_list = []
+            for image in images:
+                if image.ndim == 4:
+                    images_list.append(image)
+                else:
+                    images_list.append(image.unsqueeze(0))
+                
             concat_images = torch.cat([image for image in images], dim=0)
-            image_features = self.encode_images(concat_images)
             split_sizes = [image.shape[0] for image in images]
-            image_features = torch.split(image_features, split_sizes, dim=0)
+
+            image_features = self.encode_multimodals(concat_images, video_idx_in_batch, split_sizes)
+            # image_features = torch.split(image_features, split_sizes, dim=0)
             mm_patch_merge_type = getattr(self.config, "mm_patch_merge_type", "flat")
             image_aspect_ratio = getattr(self.config, "image_aspect_ratio", "square")
+
+            new_features = []
             if mm_patch_merge_type == "flat":
                 image_features = [x.flatten(0, 1) for x in image_features]
+                
             elif mm_patch_merge_type.startswith("spatial"):
                 new_image_features = []
                 for image_idx, image_feature in enumerate(image_features):
@@ -216,7 +234,14 @@ class LlavaMetaForCausalLM(ABC):
                     # num_patches = h * w, where h = w = sqrt(num_patches)
                     # currently image_feature is a tensor of shape (4, num_patches, hidden_size)
                     # we want to first unflatten it to (2, 2, h, w, hidden_size)
-                    if image_feature.shape[0] > 1:  # multi patches and multi images operations
+                    if image_idx in video_idx_in_batch:  # video operations
+                        if "unpad" in mm_patch_merge_type:
+                            # image_feature = image_feature.permute(2, 0, 1).contiguous()
+                            # image_feature =  torch.cat((image_feature, self.model.image_newline[:, None, None].expand(*image_feature.shape[:-1], 1).to(image_feature.device)), dim=-1)
+                            # image_feature = image_feature.permute(1, 2, 0).contiguous()
+                            image_feature = image_feature.flatten(0, 1)
+
+                    elif image_feature.shape[0] > 1:  # multi patches and multi images operations
                         base_image_feature = image_feature[0]
                         image_feature = image_feature[1:]
                         height = width = self.get_vision_tower().num_patches_per_side
