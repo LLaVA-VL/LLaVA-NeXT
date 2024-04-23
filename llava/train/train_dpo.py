@@ -1323,6 +1323,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
                 attn_implementation=training_args.attn_implementation,
+                config=cfg_pretrained,
                 torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                 low_cpu_mem_usage=False,
                 **bnb_model_from_pretrained_args,

@@ -14,15 +14,18 @@
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
 
+import ast
 import os
 import copy
-import deepspeed
 from dataclasses import dataclass, field
 import json
 import logging
 import pathlib
 from typing import Dict, Optional, Sequence, List
-import ast
+from PIL import Image, ImageFile
+from packaging import version
+import numpy as np
+from decord import VideoReader, cpu
 
 import time
 import random
@@ -33,9 +36,11 @@ import torch
 
 import transformers
 import tokenizers
+import deepspeed
 
-from llava.constants import IGNORE_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN, IMAGE_TOKEN_INDEX
+from transformers import AutoConfig
 from torch.utils.data import Dataset
+from llava.constants import IGNORE_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN, IMAGE_TOKEN_INDEX
 from llava.train.llava_trainer import LLaVATrainer
 
 from llava import conversation as conversation_lib
@@ -43,15 +48,9 @@ from llava.model import *
 from llava.mm_utils import process_highres_image, process_anyres_image, process_highres_image_crop_split, tokenizer_image_token
 from llava.utils import rank0_print
 
-from PIL import Image, ImageFile
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
-
-from packaging import version
-
-
 local_rank = None
-
 
 IS_TOKENIZER_GREATER_THAN_0_14 = version.parse(tokenizers.__version__) >= version.parse("0.14")
 
@@ -114,8 +113,12 @@ class DataArguments:
     image_folder: Optional[str] = field(default=None)
     image_aspect_ratio: str = "square"
     image_grid_pinpoints: Optional[str] = field(default=None)
-    image_crop_resolution: int = 224
-    image_split_resolution: int = 224
+    image_crop_resolution: Optional[int] = field(default=None)
+    image_split_resolution: Optional[int] = field(default=None)
+
+    video_folder: Optional[str] = field(default=None)
+    video_fps: Optional[int] = field(default=1)
+    frames_upbound: Optional[int] = field(default=0)
 
 
 @dataclass
@@ -376,6 +379,9 @@ def preprocess_multimodal(sources: Sequence[str], data_args: DataArguments) -> D
             if data_args.mm_use_im_start_end:
                 replace_token = DEFAULT_IM_START_TOKEN + replace_token + DEFAULT_IM_END_TOKEN
             sentence["value"] = sentence["value"].replace(DEFAULT_IMAGE_TOKEN, replace_token)
+
+            # For videoInstruct-100k noisy_data
+            sentence["value"] = sentence["value"].replace("QA_GT_caption_based_noisy", "")
 
     return sources
 
@@ -966,7 +972,7 @@ class LazySupervisedDataset(Dataset):
         length_list = []
         for sample in self.list_data_dict:
             cur_len = sum(len(conv["value"].split()) for conv in sample["conversations"])
-            cur_len = cur_len if "image" in sample else -cur_len
+            cur_len = cur_len if ("image" in sample) or ("video" in sample) else -cur_len
             length_list.append(cur_len)
         return length_list
 
@@ -1006,7 +1012,7 @@ class LazySupervisedDataset(Dataset):
             image = processor.preprocess(image, return_tensors="pt")["pixel_values"][0]
         else:
             image = processor.preprocess(image, return_tensors="pt")["pixel_values"][0]
-        return image, image_size
+        return image, image_size, "image"
 
     def __getitem__(self, i) -> Dict[str, torch.Tensor]:
         # TODO: define number of retries somewhere else
@@ -1035,24 +1041,18 @@ class LazySupervisedDataset(Dataset):
                 print(f"[Try other #{attempt_idx}] Failed to fetch sample {next_index}. Exception:", e)
                 pass
 
-        # still fail, most likely to be path issue or cloud disk issue, retry the same sample for longer
-        # for attempt_idx in range(num_final_retries):
-        #     try:
-        #         sample = self._get_item(i)
-        #         return sample
-        #     except Exception as e:
-        #         # sleep 1s in case it is a cloud disk issue
-        #         print(f"[Final try #{attempt_idx}] Failed to fetch sample {i}. Exception:", e)
-        #         time.sleep(1)
-
-        # Finally raise exception on failing.
-        assert False, "Failed to fetch sample."
+        try:
+            sample = self._get_item(i)
+            return sample
+        except Exception as e:
+            raise e
 
     def _get_item(self, i) -> Dict[str, torch.Tensor]:
         sources = self.list_data_dict[i]
         if isinstance(i, int):
             sources = [sources]
         assert len(sources) == 1, "Don't know why it is wrapped to a list"  # FIXME
+
         if "image" in sources[0]:
             image_file = self.list_data_dict[i]["image"]
             if type(image_file) is list:
@@ -1060,21 +1060,90 @@ class LazySupervisedDataset(Dataset):
             else:
                 image = [self.process_image(image_file)]
             sources = preprocess_multimodal(copy.deepcopy([e["conversations"] for e in sources]), self.data_args)
+
+        elif "video" in sources[0]:
+            video_file = self.list_data_dict[i]["video"]
+            video_folder = self.data_args.video_folder
+            video_file = os.path.join(video_folder, video_file)
+            suffix = video_file.split(".")[-1]
+            if not os.path.exists(video_file):
+                print("File {} not exist!".format(video_file))
+
+            try:
+                # using videoreader
+                if "shareVideoGPTV" not in video_file and "liangke" not in video_file:
+                    vr = VideoReader(video_file, ctx=cpu(0))
+                    total_frame_num = len(vr)
+                    avg_fps = round(vr.get_avg_fps() / self.data_args.video_fps)
+                    frame_idx = [i for i in range(0, total_frame_num, avg_fps)]
+                    if self.data_args.frames_upbound > 0:
+                        if len(frame_idx) > self.data_args.frames_upbound:
+                            uniform_sampled_frames = np.linspace(0, total_frame_num - 1, self.data_args.frames_upbound, dtype=int)
+                            frame_idx = uniform_sampled_frames.tolist()
+                    video = vr.get_batch(frame_idx).asnumpy()
+                    video = np.array(video)
+                else:
+                    if "liangke" in video_file:
+                        video_file = self.list_data_dict[i]["video"]
+                    frame_files = [os.path.join(video_file, f) for f in os.listdir(video_file) if os.path.isfile(os.path.join(video_file, f))]
+                    frame_files.sort()  # Ensure the frames are sorted if they are named sequentially
+
+                    # TODO: Hard CODE: Determine the indices for uniformly sampling 10 frames
+                    num_frames_to_sample = 10
+                    total_frames = len(frame_files)
+                    sampled_indices = np.linspace(0, total_frames - 1, num_frames_to_sample, dtype=int)
+
+                    # Read and store the sampled frames
+                    video = []
+                    for idx in sampled_indices:
+                        frame_path = frame_files[idx]
+                        try:
+                            with Image.open(frame_path) as img:
+                                frame = img.convert("RGB")
+                                video.append(frame)
+                        except IOError:
+                            print(f"Failed to read frame at path: {frame_path}")
+
+                processor = self.data_args.image_processor
+                image = processor.preprocess(video, return_tensors="pt")["pixel_values"]
+                image = [(image, video[0].size, "video")]
+                sources = preprocess_multimodal(copy.deepcopy([e["conversations"] for e in sources]), self.data_args)
+            except Exception as e:
+                print(f"Error: {e}")
+                print(f"Failed to read video file: {video_file}")
+                return self._get_item(i + 1)
         else:
             sources = copy.deepcopy([e["conversations"] for e in sources])
-        data_dict = preprocess(sources, self.tokenizer, has_image=("image" in self.list_data_dict[i]))
+
+        has_image = ("image" in self.list_data_dict[i]) or ("video" in self.list_data_dict[i])
+        data_dict = preprocess(sources, self.tokenizer, has_image=has_image)
+
+        if "prompt" in data_dict:
+            prompt = data_dict["prompt"]
+        else:
+            prompt = None
+
         if isinstance(i, int):
             data_dict = dict(input_ids=data_dict["input_ids"][0], labels=data_dict["labels"][0])
 
         # image exist in the data
         if "image" in self.list_data_dict[i]:
             data_dict["image"] = image
+        elif "video" in self.list_data_dict[i]:
+            # import pdb;pdb.set_trace()
+            data_dict["image"] = image
         elif self.data_args.is_multimodal:
             # image does not exist in the data, but the model is multimodal
             crop_size = self.data_args.image_processor.crop_size
             data_dict["image"] = [
-                (torch.zeros(1, 3, crop_size["height"], crop_size["width"]), (crop_size["width"], crop_size["height"])),
+                (torch.zeros(1, 3, crop_size["height"], crop_size["width"]), (crop_size["width"], crop_size["height"]), "text"),
             ]
+        # prompt exist in the data
+        if prompt is not None:
+            data_dict["prompt"] = prompt
+
+        data_dict["id"] = self.list_data_dict[i]["id"]
+
         return data_dict
 
 
@@ -1094,31 +1163,31 @@ class DataCollatorForSupervisedDataset(object):
 
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
         input_ids, labels = tuple([instance[key] for instance in instances] for key in ("input_ids", "labels"))
+        # input_ids, labels, ids = tuple([instance[key] for instance in instances] for key in ("input_ids", "labels", "id"))
+        # import pdb;pdb.set_trace()
         input_ids = [_input_ids[: self.tokenizer.model_max_length] for _input_ids in input_ids]
         labels = [_labels[: self.tokenizer.model_max_length] for _labels in labels]
-        if self.tokenizer.pad_token_id is None:
-            self.tokenizer.pad_token_id = 0  # FIXME: this could only be triggered for llama3 model.
         input_ids = self.pad_sequence(input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id)
         labels = self.pad_sequence(labels, batch_first=True, padding_value=IGNORE_INDEX)
-        batch = dict(
-            input_ids=input_ids,
-            labels=labels.long() if labels.dtype == torch.int32 else labels,
-            attention_mask=input_ids.ne(self.tokenizer.pad_token_id),
-        )
+        batch = dict(input_ids=input_ids, labels=labels, attention_mask=input_ids.ne(self.tokenizer.pad_token_id))
+        # batch = dict(input_ids=input_ids, labels=labels, attention_mask=input_ids.ne(self.tokenizer.pad_token_id), ids=ids)
 
-        try:
-            if all("image" in instance for instance in instances):
-                images = [instance["image"] for instance in instances]
-                batch["image_sizes"] = [im[1] for im_list in images for im in im_list]
-                images = [im[0] for im_list in images for im in im_list]
-                if all(x is not None and x.shape == images[0].shape for x in images):
-                    batch["images"] = torch.stack(images)
-                else:
-                    batch["images"] = images
-        except Exception as e:
-            print(instances)
-            print(images)
-            print(f"Failed to process images. Exception: {e}")
+        if "image" in instances[0]:
+            images = [instance["image"] for instance in instances]
+
+            batch["image_sizes"] = [im[1] for im_list in images for im in im_list]
+            batch["modalities"] = [im[2] for im_list in images for im in im_list]
+            images = [im[0] for im_list in images for im in im_list]
+
+            if all(x is not None and x.shape == images[0].shape for x in images):
+                # Image: (N, P, C, H, W)
+                # Video: (N, F, C, H, W)
+                batch["images"] = torch.stack(images)
+            else:
+                batch["images"] = images
+
+        if "prompt" in instances[0]:
+            batch["prompts"] = [instance["prompt"] for instance in instances]
 
         return batch
 
@@ -1135,6 +1204,33 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
     if training_args.attn_implementation == "sdpa" and torch.__version__ < "2.1.2":
         raise ValueError("The 'sdpa' attention implementation requires torch version 2.1.2 or higher.")
 
+    cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path)
+    overwrite_config = {}
+    if model_args.rope_scaling_factor is not None and model_args.rope_scaling_type is not None:
+        overwrite_config["rope_scaling"] = {
+            "factor": model_args.rope_scaling_factor,
+            "type": model_args.rope_scaling_type,
+        }
+        if training_args.model_max_length is None:
+            training_args.model_max_length = cfg_pretrained.max_position_embeddings * model_args.rope_scaling_factor
+            overwrite_config["max_sequence_length"] = training_args.model_max_length
+        assert training_args.model_max_length == int(cfg_pretrained.max_position_embeddings * model_args.rope_scaling_factor), print(
+            f"model_max_length: {training_args.model_max_length}, max_position_embeddings: {cfg_pretrained.max_position_embeddings}, rope_scaling_factor: {model_args.rope_scaling_factor}"
+        )
+        # overwrite_config["max_sequence_length"] = model_args.max_sequence_length
+        # overwrite_config["tokenizer_model_max_length"] = model_args.tokenizer_model_max_length
+
+    if model_args.mm_spatial_pool_stride is not None and model_args.mm_spatial_pool_out_channels is not None and model_args.mm_spatial_pool_mode is not None and model_args.mm_resampler_type is not None:
+        overwrite_config["mm_resampler_type"] = model_args.mm_resampler_type
+        overwrite_config["mm_spatial_pool_stride"] = model_args.mm_spatial_pool_stride
+        overwrite_config["mm_spatial_pool_out_channels"] = model_args.mm_spatial_pool_out_channels
+        overwrite_config["mm_spatial_pool_mode"] = model_args.mm_spatial_pool_mode
+
+    if overwrite_config:
+        rank0_print(f"Overwriting config with {overwrite_config}")
+        for k, v in overwrite_config.items():
+            setattr(cfg_pretrained, k, v)
+        
     if model_args.model_class_name is not None:
         actual_model_class_name = f"{model_args.model_class_name}ForCausalLM"
         model_class = getattr(transformers, actual_model_class_name)
@@ -1153,6 +1249,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
                 attn_implementation=training_args.attn_implementation,
+                config=cfg_pretrained,
                 torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                 low_cpu_mem_usage=False,
                 **bnb_model_from_pretrained_args,
@@ -1165,6 +1262,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
                 attn_implementation=training_args.attn_implementation,
+                config=cfg_pretrained,
                 torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                 low_cpu_mem_usage=False,
                 **bnb_model_from_pretrained_args,
@@ -1181,6 +1279,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
                 attn_implementation=training_args.attn_implementation,
+                config=cfg_pretrained,
                 torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                 low_cpu_mem_usage=False,
                 **bnb_model_from_pretrained_args,
@@ -1191,6 +1290,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                     model_args.model_name_or_path,
                     cache_dir=training_args.cache_dir,
                     attn_implementation=training_args.attn_implementation,
+                    config=cfg_pretrained,
                     torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                     low_cpu_mem_usage=False,
                     **bnb_model_from_pretrained_args,
@@ -1203,6 +1303,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                     model_args.model_name_or_path,
                     cache_dir=training_args.cache_dir,
                     attn_implementation=training_args.attn_implementation,
+                    config=cfg_pretrained,
                     torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                     low_cpu_mem_usage=False,
                     **bnb_model_from_pretrained_args,
@@ -1212,6 +1313,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
                 attn_implementation=training_args.attn_implementation,
+                config=cfg_pretrained,
                 torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                 low_cpu_mem_usage=False,
                 **bnb_model_from_pretrained_args,
@@ -1220,7 +1322,13 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
             raise ValueError(f"Unknown model class {model_args}")
     else:
         model = transformers.LlamaForCausalLM.from_pretrained(
-            model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
+            model_args.model_name_or_path,
+            cache_dir=training_args.cache_dir,
+            attn_implementation=training_args.attn_implementation,
+            config=cfg_pretrained,
+            torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
+            low_cpu_mem_usage=False,
+            **bnb_model_from_pretrained_args,
         )
     return model
 
