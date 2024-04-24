@@ -1474,10 +1474,11 @@ def train(attn_implementation=None):
                 # Generate a matrix of tuples from (range_start[0], range_start[1]) to (range_end[0], range_end[1])
                 grid_pinpoints = [(i, j) for i in range(range_start[0], range_end[0] + 1) for j in range(range_start[1], range_end[1] + 1)]
                 # Multiply all elements by patch_size
-                grid_pinpoints = [[dim * patch_size for dim in pair] for pair in grid_pinpoints]
+                data_args.image_grid_pinpoints = [[dim * patch_size for dim in pair] for pair in grid_pinpoints]
             elif isinstance(data_args.image_grid_pinpoints, str):
-                grid_pinpoints = ast.literal_eval(data_args.image_grid_pinpoints)
-        model.config.image_grid_pinpoints = grid_pinpoints
+                data_args.image_grid_pinpoints = ast.literal_eval(data_args.image_grid_pinpoints)
+                
+        model.config.image_grid_pinpoints = data_args.image_grid_pinpoints
         model.config.image_crop_resolution = data_args.image_crop_resolution
         model.config.image_split_resolution = data_args.image_split_resolution
         model.config.tokenizer_padding_side = tokenizer.padding_side
