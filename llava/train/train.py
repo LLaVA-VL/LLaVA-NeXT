@@ -1477,7 +1477,7 @@ def train(attn_implementation=None):
                 data_args.image_grid_pinpoints = [[dim * patch_size for dim in pair] for pair in grid_pinpoints]
             elif isinstance(data_args.image_grid_pinpoints, str):
                 data_args.image_grid_pinpoints = ast.literal_eval(data_args.image_grid_pinpoints)
-                
+
         model.config.image_grid_pinpoints = data_args.image_grid_pinpoints
         model.config.image_crop_resolution = data_args.image_crop_resolution
         model.config.image_split_resolution = data_args.image_split_resolution
