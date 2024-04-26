@@ -1130,7 +1130,6 @@ class LazySupervisedDataset(Dataset):
         if "image" in self.list_data_dict[i]:
             data_dict["image"] = image
         elif "video" in self.list_data_dict[i]:
-            # import pdb;pdb.set_trace()
             data_dict["image"] = image
         elif self.data_args.is_multimodal:
             # image does not exist in the data, but the model is multimodal
