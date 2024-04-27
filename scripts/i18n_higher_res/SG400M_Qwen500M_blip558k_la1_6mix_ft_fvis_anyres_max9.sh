@@ -77,7 +77,7 @@ if [ ! -f "/mnt/bn/${NAS_REGION}/checkpoints/${FINAL_RUN_NAME}/config.json" ];th
         --deepspeed scripts/zero2.json \
         --model_name_or_path $LLM_VERSION \
         --version $PROMPT_VERSION \
-        --data_path "/mnt/bn/${NAS_REGION}/data/llava_instruct/llava_158k_detailv3_reinstall_gpt4v24k_wild15k_mixdocvqa_dca45k_synden40k_cococaps20k_sg40kt2k_ori_rep_ai2d.json" \
+        --data_path "/mnt/bn/${NAS_REGION}/data/llava_instruct/llava_158k_detailv3_reinstall_gpt4v24k_wild15k_mixdocvqa_dca45k_synden40k_cococaps20k_sg40kt2k_ori_fix_ai2d.json" \
         --image_folder /mnt/bn/${NAS_REGION}/data/llava_data \
         --pretrain_mm_mlp_adapter="/mnt/bn/${NAS_REGION}/checkpoints/projectors/${BASE_RUN_NAME}/mm_projector.bin" \
         --mm_tunable_parts="mm_mlp_adapter,mm_language_model" \
