@@ -48,7 +48,7 @@ def convert_format(original_data, dimension="Visual Faithfulness"):
         new_item = {
             'id': item['id'],
             'prompt': item['prompt'],
-            'answer': best_response,
+            'answer': "",
             'image': f"silkie_dpo/{item['id']}.jpg",  # Assuming the video ID is the last part of the original ID
             'chosen': best_response,
             'rejected': worst_response,
