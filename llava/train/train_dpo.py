@@ -1025,7 +1025,6 @@ class DPODataset(Dataset):
         assert len(sources) == 1, "Don't know why it is wrapped to a list"  # FIXME
 
         suffix = None
-        # import pdb;pdb.set_trace()
         if "image" in sources[0]:
             image_file = self.list_data_dict[i]["image"]
             if type(image_file) is list:
@@ -1034,7 +1033,7 @@ class DPODataset(Dataset):
                 image = [self.process_image(image_file)]
             # sources = preprocess_multimodal(copy.deepcopy([e["conversations"] for e in sources]), self.data_args)
 
-        elif "video" in sources[0]:
+        elif "video" in sources[0]: # FIXME: This logic should be largely improved by Yuanhan. It's too messy now.
             video_file = self.list_data_dict[i]["video"]
             video_folder = self.data_args.video_folder
             video_file = os.path.join(video_folder, video_file)
@@ -1050,7 +1049,6 @@ class DPODataset(Dataset):
                 input_prompt = input_prompt.replace(DEFAULT_IMAGE_TOKEN, DEFAULT_IMAGE_TOKEN * self.data_args.video_token)
                 sources, query_prompt = preprocess_multimodal_movie(copy.deepcopy([e["conversations"] for e in sources]), self.data_args, input_prompt)
             else:  # using videoreader
-                # import pdb;pdb.set_trace()
                 if "shareVideoGPTV" not in video_file and "liangke" not in video_file:
                     vr = VideoReader(video_file, ctx=cpu(0))
                     total_frame_num = len(vr)
@@ -1109,14 +1107,11 @@ class DPODataset(Dataset):
         if suffix == "pkl":
             prompt = [query_prompt]
 
-        # if isinstance(i, int):
-        #     data_dict = dict(input_ids=data_dict["input_ids"][0], labels=data_dict["labels"][0])
 
         # image exist in the data
         if "image" in self.list_data_dict[i]:
             data_dict["image"] = image
         elif "video" in self.list_data_dict[i]:
-            # import pdb;pdb.set_trace()
             data_dict["image"] = image
         elif self.data_args.is_multimodal:
             # image does not exist in the data, but the model is multimodal
@@ -1125,9 +1120,7 @@ class DPODataset(Dataset):
                 (torch.zeros(1, 3, crop_size["height"], crop_size["width"]), (crop_size["width"], crop_size["height"]), "text"),
             ]
         # prompt exist in the data
-        # import pdb;pdb.set_trace()
         data_dict["has_image"] = has_image
-
         return data_dict
 
 

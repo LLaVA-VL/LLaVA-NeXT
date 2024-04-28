@@ -188,9 +188,9 @@ class LlavaMetaForCausalLM(ABC):
 
         for idx, feat in enumerate(per_videos_or_images_features):
             if idx in video_idx_in_batch:
-                feat = self.get_2dPool(feat)  # (num_vid * num_frames, 576, 4096) -> (num_vid * num_frames, 144, 4096)
-
-            feat = self.get_model().mm_projector(feat)  # (dim_1_sum, 576, 1024) -> (dim_1_sum, 576, 4096)
+                feat = self.get_2dPool(feat)
+            feat = self.get_model().vision_resampler(feat, images=videos_or_images)
+            feat = self.get_model().mm_projector(feat)
             all_videos_or_images_features.append(feat)
         return all_videos_or_images_features
 

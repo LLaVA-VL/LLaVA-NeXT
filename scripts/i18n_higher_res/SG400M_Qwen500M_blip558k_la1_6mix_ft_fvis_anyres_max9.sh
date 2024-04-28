@@ -129,7 +129,7 @@ python3 -m pip install -e .
 accelerate launch --num_processes 8 --main_process_port 12345 -m lmms_eval \
     --model llava \
     --model_args pretrained="/mnt/bn/${NAS_REGION}/checkpoints/${FINAL_RUN_NAME}",conv_template="$PROMPT_VERSION" \
-    --tasks mme,mmmu,mathvista_testmini,infovqa_val,ai2d,chartqa,docvqa_val,scienceqa_img,vizwiz_vqa_val,pope,ok_vqa \
+    --tasks mme,mmmu,mathvista_testmini,infovqa_val,ai2d,chartqa,docvqa_val \
     --batch_size 1 \
     --log_samples \
     --log_samples_suffix ${FINAL_RUN_NAME} \
