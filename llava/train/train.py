@@ -1168,7 +1168,7 @@ class DataCollatorForSupervisedDataset(object):
         labels = [_labels[: self.tokenizer.model_max_length] for _labels in labels]
         input_ids = self.pad_sequence(input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id)
         labels = self.pad_sequence(labels, batch_first=True, padding_value=IGNORE_INDEX)
-        batch = dict(input_ids=input_ids, labels=labels, attention_mask=input_ids.ne(self.tokenizer.pad_token_id))
+        batch = dict(input_ids=input_ids, labels=labels.long() if labels.dtype == torch.int32 else labels, attention_mask=input_ids.ne(self.tokenizer.pad_token_id))
         # batch = dict(input_ids=input_ids, labels=labels, attention_mask=input_ids.ne(self.tokenizer.pad_token_id), ids=ids)
 
         if "image" in instances[0]:
@@ -1203,9 +1203,12 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
     if training_args.attn_implementation == "sdpa" and torch.__version__ < "2.1.2":
         raise ValueError("The 'sdpa' attention implementation requires torch version 2.1.2 or higher.")
 
-    cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path)
+    customized_kwargs = dict()
+    customized_kwargs.update(bnb_model_from_pretrained_args)
+    
     overwrite_config = {}
     if model_args.rope_scaling_factor is not None and model_args.rope_scaling_type is not None:
+        cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path)
         overwrite_config["rope_scaling"] = {
             "factor": model_args.rope_scaling_factor,
             "type": model_args.rope_scaling_type,
@@ -1230,6 +1233,8 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
         for k, v in overwrite_config.items():
             setattr(cfg_pretrained, k, v)
 
+        customized_kwargs["config"] = cfg_pretrained
+
     if model_args.model_class_name is not None:
         actual_model_class_name = f"{model_args.model_class_name}ForCausalLM"
         model_class = getattr(transformers, actual_model_class_name)
@@ -1240,7 +1245,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
             attn_implementation=training_args.attn_implementation,
             torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
             low_cpu_mem_usage=False,
-            **bnb_model_from_pretrained_args,
+            **customized_kwargs,
         )
     elif model_args.vision_tower is not None:
         if "mixtral" in model_args.model_name_or_path.lower():
@@ -1248,10 +1253,9 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
                 attn_implementation=training_args.attn_implementation,
-                config=cfg_pretrained,
                 torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                 low_cpu_mem_usage=False,
-                **bnb_model_from_pretrained_args,
+                **customized_kwargs,
             )
             from transformers.models.mixtral.modeling_mixtral import MixtralSparseMoeBlock
 
@@ -1261,10 +1265,9 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
                 attn_implementation=training_args.attn_implementation,
-                config=cfg_pretrained,
                 torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                 low_cpu_mem_usage=False,
-                **bnb_model_from_pretrained_args,
+                **customized_kwargs,
             )
         elif (
             "wizardlm-2" in model_args.model_name_or_path.lower()
@@ -1278,10 +1281,9 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
                 attn_implementation=training_args.attn_implementation,
-                config=cfg_pretrained,
                 torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                 low_cpu_mem_usage=False,
-                **bnb_model_from_pretrained_args,
+                **customized_kwargs,
             )
         elif "qwen" in model_args.model_name_or_path.lower() or "quyen" in model_args.model_name_or_path.lower():
             if "moe" in model_args.model_name_or_path.lower():
@@ -1289,10 +1291,9 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                     model_args.model_name_or_path,
                     cache_dir=training_args.cache_dir,
                     attn_implementation=training_args.attn_implementation,
-                    config=cfg_pretrained,
                     torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                     low_cpu_mem_usage=False,
-                    **bnb_model_from_pretrained_args,
+                    **customized_kwargs,
                 )
                 from transformers.models.qwen2_moe.modeling_qwen2_moe import Qwen2MoeSparseMoeBlock
 
@@ -1302,20 +1303,18 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                     model_args.model_name_or_path,
                     cache_dir=training_args.cache_dir,
                     attn_implementation=training_args.attn_implementation,
-                    config=cfg_pretrained,
                     torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                     low_cpu_mem_usage=False,
-                    **bnb_model_from_pretrained_args,
+                    **customized_kwargs,
                 )
         elif "gemma" in model_args.model_name_or_path.lower():
             model = LlavaGemmaForCausalLM.from_pretrained(
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
                 attn_implementation=training_args.attn_implementation,
-                config=cfg_pretrained,
                 torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                 low_cpu_mem_usage=False,
-                **bnb_model_from_pretrained_args,
+                **customized_kwargs,
             )
         else:
             raise ValueError(f"Unknown model class {model_args}")
@@ -1324,10 +1323,9 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
             model_args.model_name_or_path,
             cache_dir=training_args.cache_dir,
             attn_implementation=training_args.attn_implementation,
-            config=cfg_pretrained,
             torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
             low_cpu_mem_usage=False,
-            **bnb_model_from_pretrained_args,
+            **customized_kwargs,
         )
     return model
 
