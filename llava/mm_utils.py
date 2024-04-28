@@ -318,7 +318,7 @@ def process_images(images, image_processor, model_cfg):
         for image in images:
             image = process_highres_image(image, image_processor, model_cfg.image_grid_pinpoints)
             new_images.append(image)
-    elif image_aspect_ratio == "anyres" or "anyres" in image_aspect_ratio:
+    elif image_aspect_ratio == "anyres" or "anyres_max" in image_aspect_ratio:
         for image in images:
             image = process_anyres_image(image, image_processor, model_cfg.image_grid_pinpoints)
             new_images.append(image)
