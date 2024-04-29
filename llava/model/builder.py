@@ -38,7 +38,7 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
     if customized_config is not None:
         kwargs["config"] = customized_config
 
-    if hasattr(kwargs, "multimodal"):
+    if "multimodal" in kwargs:
         if kwargs["multimodal"] is True:
             is_multimodal = True
             kwargs.pop("multimodal")
