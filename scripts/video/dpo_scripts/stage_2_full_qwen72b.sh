@@ -41,7 +41,7 @@ export NCCL_IB_DISABLE=0
 export NCCL_IB_GID_INDEX=3
 # export NCCL_IB_HCA=${ARNOLD_RDMA_DEVICE}
 export NCCL_SOCKET_IFNAME=eth0
-export NCCL_DEBUG=WARN
+export NCCL_DEBUG=INFO
 
 
 PORT=26000
@@ -50,15 +50,12 @@ GPUS="0,1,2,3,4,5,6,7"
 wandb login a651c244635bc6f913ab654af3f0eebaecdc9381
 wandb offline
 
-
 installed_version=$(pip3 show transformers | grep Version | cut -d ' ' -f 2)
 
 # # Check if the installed version is not the latest
 if [ "$installed_version" != "4.39.2" ]; then
     pip3 install transformers==4.39.2
 fi
-
-pip3 install torch==2.1.2 torchvision==0.16.2 --index-url https://download.pytorch.org/whl/cu121
 
 # Get the installed version of deepspeed
 installed_version=$(pip3 show deepspeed | grep Version | cut -d ' ' -f 2)
