@@ -55,7 +55,6 @@ export NCCL_IB_GID_INDEX=3
 export NCCL_SOCKET_IFNAME=eth0
 export NCCL_DEBUG=INFO
 
-
 PORT=26000
 GPUS="0,1,2,3,4,5,6,7"
 
@@ -63,10 +62,9 @@ wandb login a651c244635bc6f913ab654af3f0eebaecdc9381
 wandb online
 
 ################ Arnold Jobs ################
-
-LLM_VERSION="Qwen/Qwen1.5-110B-Chat"
+LLM_VERSION="meta-llama/Meta-Llama-3-70B-Instruct"
 LLM_VERSION_CLEAN="${LLM_VERSION//\//_}"
-VISION_MODEL_VERSION="openai/clip-vit-large-patch14-336"
+VISION_MODEL_VERSION="google/siglip-so400m-patch14-384"
 VISION_MODEL_VERSION_CLEAN="${VISION_MODEL_VERSION//\//_}"
 
 ############### Pretrain ################
@@ -77,7 +75,7 @@ PRETRAIN_DATA_VERSION="blip558k"
 BASE_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-mlp2x_gelu-pretrain_blip558k_plain"
 echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
-PROMPT_VERSION="qwen_1_5"
+PROMPT_VERSION="llava_llama_3"
 FINAL_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-pretrain_blip558k_plain-finetune_la1_6mix_lr1e_5_ufvis2e_6_anyres_d32k_slow_tok"
 echo "FINAL_RUN_NAME: ${FINAL_RUN_NAME}"
 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
@@ -97,7 +95,7 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --mm_use_im_patch_token False \
     --group_by_modality_length True \
     --image_aspect_ratio anyres \
-    --image_grid_pinpoints "[(336, 672), (672, 336), (672, 672), (1008, 336), (336, 1008)]" \
+    --image_grid_pinpoints "[(384, 768), (768, 384), (768, 768), (1152, 384), (384, 1152)]" \
     --mm_patch_merge_type spatial_unpad \
     --bf16 True \
     --run_name $FINAL_RUN_NAME \
@@ -116,7 +114,7 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --lr_scheduler_type "cosine" \
     --logging_steps 1 \
     --tf32 True \
-    --model_max_length 32768 \
+    --model_max_length 8192 \
     --gradient_checkpointing True \
     --dataloader_num_workers 16 \
     --lazy_preprocess True \
