@@ -38,7 +38,14 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
     if customized_config is not None:
         kwargs["config"] = customized_config
 
-    if "llava" in model_name.lower():
+    if "multimodal" in kwargs:
+        if kwargs["multimodal"] is True:
+            is_multimodal = True
+            kwargs.pop("multimodal")
+    else:
+        is_multimodal = False
+    
+    if "llava" in model_name.lower() or is_multimodal:
         # Load LLaVA model
         if "lora" in model_name.lower() and model_base is None:
             warnings.warn(
