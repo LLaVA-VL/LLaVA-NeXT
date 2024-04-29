@@ -69,13 +69,13 @@ echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
 FINAL_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-mlp2x_gelu-finetune_la1_6mix_fvis_direct32k_${RATIO}_haos_baseline"
 echo "FINAL_RUN_NAME: ${FINAL_RUN_NAME}"
-if [ ! -f "/mnt/bn/${NAS_REGION}/checkpoints/${FINAL_RUN_NAME}/config.json" ]; then
-    ACCELERATE_CPU_AFFINITY=1 deepspeed --num_gpus 8 --master_port $PORT \
+if [ ! -f "/mnt/bn/${NAS_REGION}/checkpoints/${FINAL_RUN_NAME}/config.json" ];then
+    torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
         llava/train/train_mem.py \
         --deepspeed scripts/zero2.json \
         --model_name_or_path $LLM_VERSION \
         --version $PROMPT_VERSION \
-        --data_path "/mnt/bn/${NAS_REGION}/data/llava_instruct/llava_158k_detailv3_reinstall_gpt4v24k_wild15k_mixdocvqa_dca45k_synden40k_cococaps20k_sg40kt2k_ori_fix_ai2d.json" \
+        --data_path "/mnt/bn/${NAS_REGION}/data/llava_instruct/{llava_158k_detailv3_reinstall_gpt4v24k_wild15k_mixdocvqa_dca45k_synden40k_cococaps20k_sg40kt2k_ori_fix_ai2d}.json" \
         --image_folder /mnt/bn/${NAS_REGION}/data/llava_data \
         --pretrain_mm_mlp_adapter="/mnt/bn/${NAS_REGION}/checkpoints/projectors/${BASE_RUN_NAME}/mm_projector.bin" \
         --mm_tunable_parts="mm_mlp_adapter,mm_language_model" \
@@ -84,20 +84,21 @@ if [ ! -f "/mnt/bn/${NAS_REGION}/checkpoints/${FINAL_RUN_NAME}/config.json" ]; t
         --mm_vision_select_layer -2 \
         --mm_use_im_start_end False \
         --mm_use_im_patch_token False \
+        --image_aspect_ratio pad \
         --group_by_modality_length True \
         --image_aspect_ratio $RATIO \
-        --image_grid_pinpoints "[[384, 384], [384, 768], [384, 1152], [384, 1536], [768, 768], [384, 1920], [768, 768], [384, 2304], [768, 1152], [384, 2688], [768, 1152], [384, 3072], [768, 1536], [384, 3456], [768, 1536], [1152, 1152], [768, 1920], [1152, 1152], [768, 1920], [1152, 1152], [768, 2304], [1152, 1536], [768, 2304], [1152, 1536], [768, 2688], [1152, 1536], [768, 2688], [1152, 1920], [768, 3072], [1152, 1920], [1536, 1536], [768, 3072], [1152, 1920], [1536, 1536], [768, 3456], [1152, 2304], [1536, 1536], [768, 3456], [1152, 2304], [1536, 1536], [768, 3840], [1152, 2304], [1536, 1920], [768, 3840], [1152, 2688], [1536, 1920], [768, 4224], [1152, 2688], [1536, 1920], [768, 4224], [1152, 2688], [1536, 1920], [768, 4608], [1152, 3072], [1536, 2304], [768, 4608], [1152, 3072], [1536, 2304], [1920, 1920], [768, 4992], [1152, 3072], [1536, 2304], [1920, 1920], [768, 4992], [1152, 3456], [1536, 2304], [1920, 1920], [768, 5376], [1152, 3456], [1536, 2688], [1920, 1920], [768, 5376], [1152, 3456], [1536, 2688], [1920, 1920], [768, 5760], [1152, 3840], [1536, 2688], [1920, 2304], [768, 5760], [1152, 3840], [1536, 2688], [1920, 2304], [768, 6144], [1152, 3840], [1536, 3072], [1920, 2304], [768, 6144], [1152, 4224], [1536, 3072], [1920, 2304], [768, 6528], [1152, 4224], [1536, 3072], [1920, 2304], [768, 6528], [1152, 4224], [1536, 3072], [1920, 2688], [768, 6912], [1152, 4608], [1536, 3456], [1920, 2688], [2304, 2304], [768, 6912], [1152, 4608], [1536, 3456], [1920, 2688], [2304, 2304], [1152, 4608], [1536, 3456], [1920, 2688], [2304, 2304], [1152, 4992], [1536, 3456], [1920, 2688], [2304, 2304], [1152, 4992], [1536, 3840], [1920, 3072], [2304, 2304]]" \
+        --image_grid_pinpoints  "[[384, 384], [384, 768], [384, 1152], [384, 1536], [768, 768], [384, 1920], [768, 768], [384, 2304], [768, 1152], [384, 2688], [768, 1152], [384, 3072], [768, 1536], [384, 3456], [768, 1536], [1152, 1152], [768, 1920], [1152, 1152], [768, 1920], [1152, 1152], [768, 2304], [1152, 1536], [768, 2304], [1152, 1536], [768, 2688], [1152, 1536], [768, 2688], [1152, 1920], [768, 3072], [1152, 1920], [1536, 1536], [768, 3072], [1152, 1920], [1536, 1536], [768, 3456], [1152, 2304], [1536, 1536], [768, 3456], [1152, 2304], [1536, 1536], [768, 3840], [1152, 2304], [1536, 1920], [768, 3840], [1152, 2688], [1536, 1920], [768, 4224], [1152, 2688], [1536, 1920], [768, 4224], [1152, 2688], [1536, 1920], [768, 4608], [1152, 3072], [1536, 2304], [768, 4608], [1152, 3072], [1536, 2304], [1920, 1920], [768, 4992], [1152, 3072], [1536, 2304], [1920, 1920], [768, 4992], [1152, 3456], [1536, 2304], [1920, 1920], [768, 5376], [1152, 3456], [1536, 2688], [1920, 1920], [768, 5376], [1152, 3456], [1536, 2688], [1920, 1920], [768, 5760], [1152, 3840], [1536, 2688], [1920, 2304], [768, 5760], [1152, 3840], [1536, 2688], [1920, 2304], [768, 6144], [1152, 3840], [1536, 3072], [1920, 2304], [768, 6144], [1152, 4224], [1536, 3072], [1920, 2304], [768, 6528], [1152, 4224], [1536, 3072], [1920, 2304], [768, 6528], [1152, 4224], [1536, 3072], [1920, 2688], [768, 6912], [1152, 4608], [1536, 3456], [1920, 2688], [2304, 2304], [768, 6912], [1152, 4608], [1536, 3456], [1920, 2688], [2304, 2304], [1152, 4608], [1536, 3456], [1920, 2688], [2304, 2304], [1152, 4992], [1536, 3456], [1920, 2688], [2304, 2304], [1152, 4992], [1536, 3840], [1920, 3072], [2304, 2304]]" \
         --mm_patch_merge_type spatial_unpad \
         --bf16 True \
         --run_name $FINAL_RUN_NAME \
-        --output_dir /mnt/bn/${NAS_REGION}/workspace/boli01/projects/LLaVA_Next/debug_checkpoints/$FINAL_RUN_NAME \
+        --output_dir /mnt/bn/${NAS_REGION}/checkpoints/$FINAL_RUN_NAME \
         --num_train_epochs 1 \
         --per_device_train_batch_size 2 \
         --per_device_eval_batch_size 4 \
         --gradient_accumulation_steps 4 \
         --evaluation_strategy "no" \
         --save_strategy "steps" \
-        --save_steps 20000 \
+        --save_steps 2000 \
         --save_total_limit 1 \
         --learning_rate 2e-5 \
         --weight_decay 0. \
@@ -109,9 +110,7 @@ if [ ! -f "/mnt/bn/${NAS_REGION}/checkpoints/${FINAL_RUN_NAME}/config.json" ]; t
         --gradient_checkpointing True \
         --dataloader_num_workers 16 \
         --lazy_preprocess True \
-        --report_to wandb \
-        --torch_compile True \
-        --torch_compile_backend "inductor"
+        --report_to wandb
 fi
 
 ############################# Eval ################################

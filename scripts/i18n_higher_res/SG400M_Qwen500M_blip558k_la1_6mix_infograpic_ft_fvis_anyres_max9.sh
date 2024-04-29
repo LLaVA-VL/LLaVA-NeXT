@@ -66,7 +66,7 @@ PRETRAIN_DATA_VERSION="blip558k"
 
 PROMPT_VERSION="qwen_1_5"
 RATIO=anyres_max_9
-BASE_RUN_NAME="llavanext-Qwen_Qwen1.5-0.5B-Chat-google_siglip-so400m-patch14-384-mlp2x_gelu-pretrain_blip558k_plain"
+BASE_RUN_NAME="llavanext-Qwen_Qwen1.5-0.5B-Chat-google_siglip-so400m-patch14-384-mlp2x_gelu-pretrain_blip558k_plain_bo"
 echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
 FINAL_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-mlp2x_gelu-ft_la1_6mix_info_azuregptv_fvis_direct32k_${RATIO}"
@@ -92,7 +92,7 @@ if [ ! -f "/mnt/bn/${NAS_REGION}/checkpoints/${FINAL_RUN_NAME}/config.json" ];th
         --mm_patch_merge_type spatial_unpad \
         --bf16 True \
         --run_name $FINAL_RUN_NAME \
-        --output_dir /mnt/bn/${NAS_REGION}/workspace/boli01/projects/LLaVA_Next/project_checkpoints/$FINAL_RUN_NAME \
+        --output_dir /mnt/bn/${NAS_REGION}/checkpoints/${FINAL_RUN_NAME} \
         --num_train_epochs 1 \
         --per_device_train_batch_size 2 \
         --per_device_eval_batch_size 4 \
@@ -130,7 +130,7 @@ python3 -m pip install -e .
 accelerate launch --num_processes 8 --main_process_port 12345 -m lmms_eval \
     --model llava \
     --model_args pretrained="/mnt/bn/${NAS_REGION}/checkpoints/${FINAL_RUN_NAME}",conv_template="$PROMPT_VERSION" \
-    --tasks mme,mmmu,mathvista_testmini,infovqa_val,ai2d,chartqa,docvqa_val,scienceqa_img,vizwiz_vqa_val,pope,ok_vqa \
+    --tasks ai2d,chartqa,docvqa_val,mme,mmmu,mathvista_testmini,infovqa_val \
     --batch_size 1 \
     --log_samples \
     --log_samples_suffix ${FINAL_RUN_NAME} \
