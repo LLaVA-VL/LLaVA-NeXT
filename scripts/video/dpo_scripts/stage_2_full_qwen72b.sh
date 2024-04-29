@@ -17,7 +17,7 @@ export http_proxy=http://sys-proxy-rd-relay.byted.org:8118;
 export https_proxy=http://sys-proxy-rd-relay.byted.org:8118;
 
 ############### Prepare Envs #################
-cd /mnt/bn/vl-research-cn-boli01-hl/workspace/boli01/projects/llava_next
+cd /mnt/bn/vl-research-cn-boli01-hl/workspace/boli01/projects/LLaVA_Next
 
 git config --global --add safe.directory '*'
 
@@ -153,7 +153,7 @@ export WANDB_PROJECT=LLaVA_v1.6_video
 wandb online
 
 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
-    llava/train/train_mem.py \
+    llava/train/train_dpo.py \
     --deepspeed ./scripts/zero3.json \
     --model_name_or_path $SFT_MODEL \
     --dpo_alpha 1.0 --beta 0.1 --gamma 0 \
