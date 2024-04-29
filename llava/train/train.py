@@ -25,7 +25,6 @@ from typing import Dict, Optional, Sequence, List
 from PIL import Image, ImageFile
 from packaging import version
 import numpy as np
-from decord import VideoReader, cpu
 
 import time
 import random
@@ -48,6 +47,10 @@ from llava.model import *
 from llava.mm_utils import process_highres_image, process_anyres_image, process_highres_image_crop_split, tokenizer_image_token
 from llava.utils import rank0_print
 
+try:
+    from decord import VideoReader, cpu
+except ImportError:
+    rank0_print("Decord is not installed. Please install it via `pip install decord`.")
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 local_rank = None
