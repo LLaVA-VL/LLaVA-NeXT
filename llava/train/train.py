@@ -594,20 +594,23 @@ def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_im
     )
 
 
-def preprocess_llama3(
-    sources,
-    tokenizer: transformers.PreTrainedTokenizer,
-    has_image: bool = False,
-    max_len=2048,
-    system_message: str = "You are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.",
-) -> Dict:
+def preprocess_llama3(sources, tokenizer: transformers.PreTrainedTokenizer, has_image: bool = False, max_len=2048, system_message: str = "You are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.") -> Dict:
     roles = {"human": "<|start_header_id|>user<|end_header_id|>", "gpt": "<|start_header_id|>assistant<|end_header_id|>"}
 
+    bos_token_id = tokenizer.convert_tokens_to_ids("<|begin_of_text|>")
     start_header_id = tokenizer.convert_tokens_to_ids("<|start_header_id|>")
     end_header_id = tokenizer.convert_tokens_to_ids("<|end_header_id|>")
     eot_id = tokenizer.convert_tokens_to_ids("<|eot_id|>")
-    nl_tokens = tokenizer("\n").input_ids
 
+    # After update, calling tokenizer of llama3 will
+    # auto add bos id for the tokens. ヽ(｀⌒´)ﾉ
+    def safe_tokenizer_llama3(text):
+        input_ids = tokenizer(text).input_ids
+        if input_ids[0] == bos_token_id:
+            input_ids = input_ids[1:]
+        return input_ids
+    
+    nl_tokens = safe_tokenizer_llama3("\n")
     # Apply prompt templates
     input_ids, targets = [], []
     for i, source in enumerate(sources):
@@ -615,17 +618,17 @@ def preprocess_llama3(
             source = source[1:]
 
         input_id, target = [], []
-        system = tokenizer("<|begin_of_text|>").input_ids + tokenizer("<|start_header_id|>system<|end_header_id|>").input_ids + nl_tokens * 2 + tokenizer(system_message).input_ids + [eot_id]
+        system = safe_tokenizer_llama3("<|begin_of_text|>") + safe_tokenizer_llama3("<|start_header_id|>system<|end_header_id|>") + nl_tokens * 2 + safe_tokenizer_llama3(system_message) + [eot_id]
         input_id += system
         # Here I just unmask every special token include <|begin_of_text|>, start_header, end_header, nl_tokens, and eot
-        target += tokenizer("<|begin_of_text|>").input_ids + [start_header_id] + [IGNORE_INDEX] * len(tokenizer("system").input_ids) + [end_header_id] + nl_tokens * 2 + [IGNORE_INDEX] * len(tokenizer(system_message).input_ids) + [eot_id]
+        target += safe_tokenizer_llama3("<|begin_of_text|>") + [start_header_id] + [IGNORE_INDEX] * len(safe_tokenizer_llama3("system")) + [end_header_id] + nl_tokens * 2 + [IGNORE_INDEX] * len(safe_tokenizer_llama3(system_message))+ [eot_id]
         for j, sentence in enumerate(source):
             role = roles[sentence["from"]]
             if has_image and "<image>" in sentence["value"]:
                 assert sentence["value"].startswith("<image>"), print(sentence["value"])
-                _input_id = tokenizer(role).input_ids + nl_tokens * 2 + [IMAGE_TOKEN_INDEX] + tokenizer(sentence["value"][len("<image>") :]).input_ids + [eot_id]
+                _input_id = safe_tokenizer_llama3(role) + nl_tokens * 2 + [IMAGE_TOKEN_INDEX] + safe_tokenizer_llama3(sentence["value"][len("<image>") :]) + [eot_id]
             else:
-                _input_id = tokenizer(role).input_ids + nl_tokens * 2 + tokenizer(sentence["value"]).input_ids + [eot_id]
+                _input_id = safe_tokenizer_llama3(role) + nl_tokens * 2 + safe_tokenizer_llama3(sentence["value"]) + [eot_id]
             input_id += _input_id
             if role == "<|start_header_id|>user<|end_header_id|>":
                 # _target = [IGNORE_INDEX] * len(_input_id)
@@ -638,10 +641,12 @@ def preprocess_llama3(
                 # _target = [IGNORE_INDEX if i != start_header_id or i != end_header_id or i != nl_tokens else i for i in _input_id]
                 # print(_target)
             elif role == "<|start_header_id|>assistant<|end_header_id|>":
-                _target = [start_header_id] + [IGNORE_INDEX] + [end_header_id] + _input_id[len(tokenizer(role).input_ids) : -1] + [eot_id]
+                _target = [start_header_id] + [IGNORE_INDEX] * len(safe_tokenizer_llama3("assistant")) + [end_header_id] + _input_id[len(safe_tokenizer_llama3(role)) : -1] + [eot_id]
             else:
                 raise NotImplementedError
             target += _target
+            # print(f"Role : {role}, len : {len(_input_id)}")
+            # print(f"Target : {len(_target)}")
         assert len(input_id) == len(target), f"{len(input_id)} != {len(target)}"
         input_ids.append(input_id)
         targets.append(target)
@@ -652,6 +657,7 @@ def preprocess_llama3(
         input_ids=input_ids,  # tensor(bs x seq_len)
         labels=targets,  # tensor(bs x seq_len)
     )
+
 
 
 def preprocess_v1(sources, tokenizer: transformers.PreTrainedTokenizer, has_image: bool = False) -> Dict:
@@ -1166,9 +1172,10 @@ class DataCollatorForSupervisedDataset(object):
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
         input_ids, labels = tuple([instance[key] for instance in instances] for key in ("input_ids", "labels"))
         # input_ids, labels, ids = tuple([instance[key] for instance in instances] for key in ("input_ids", "labels", "id"))
-        # import pdb;pdb.set_trace()
         input_ids = [_input_ids[: self.tokenizer.model_max_length] for _input_ids in input_ids]
         labels = [_labels[: self.tokenizer.model_max_length] for _labels in labels]
+        if self.tokenizer.pad_token_id is None:
+            self.tokenizer.pad_token_id = self.tokenizer.eos_token_id # FIXME: this could only be triggered for llama3 model.
         input_ids = self.pad_sequence(input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id)
         labels = self.pad_sequence(labels, batch_first=True, padding_value=IGNORE_INDEX)
         batch = dict(input_ids=input_ids, labels=labels.long() if labels.dtype == torch.int32 else labels, attention_mask=input_ids.ne(self.tokenizer.pad_token_id))
