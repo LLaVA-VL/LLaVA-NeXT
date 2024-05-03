@@ -55,6 +55,7 @@ train = [
     "datasets==2.16.1",
     "tyro",
     "scipy",
+    "urllib3<=2.0.0"
 ]
 
 [project.urls]
