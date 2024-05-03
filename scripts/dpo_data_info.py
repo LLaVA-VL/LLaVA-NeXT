@@ -8,13 +8,14 @@ with open(json_path, "r") as f:
 
 data = [json.loads(d) for d in data]
 
+
 def convert_format(original_data, dimension="Visual Faithfulness"):
     converted_data = []
     for item in original_data:
         # Assuming the best response is the one with the highest helpfulness rating
-        best_completion = max(item['completions'], key=lambda x: int(x['annotations']['Helpfulness']['Rating']))
-        best_response = best_completion['response']
-        best_model = best_completion['model']
+        best_completion = max(item["completions"], key=lambda x: int(x["annotations"]["Helpfulness"]["Rating"]))
+        best_response = best_completion["response"]
+        best_model = best_completion["model"]
 
         if "†source" in best_response:
             print(best_response)
@@ -27,8 +28,8 @@ def convert_format(original_data, dimension="Visual Faithfulness"):
             print(best_response)
 
         # Assuming the worst response is the one with the lowest helpfulness rating
-        worst_completion = min(item['completions'], key=lambda x: int(x['annotations']['Helpfulness']['Rating']))
-        worst_response = worst_completion['response']
+        worst_completion = min(item["completions"], key=lambda x: int(x["annotations"]["Helpfulness"]["Rating"]))
+        worst_response = worst_completion["response"]
 
         if "†source" in worst_response:
             print(worst_response)
@@ -41,23 +42,24 @@ def convert_format(original_data, dimension="Visual Faithfulness"):
             print(worst_response)
 
         # Extract scores
-        best_score = int(best_completion['annotations'][dimension]['Rating'])
-        worst_score = int(worst_completion['annotations'][dimension]['Rating'])
+        best_score = int(best_completion["annotations"][dimension]["Rating"])
+        worst_score = int(worst_completion["annotations"][dimension]["Rating"])
 
         # Construct the new format
         new_item = {
-            'id': item['id'],
-            'prompt': item['prompt'],
-            'answer': "",
-            'image': f"silkie_dpo/{item['id']}.jpg",  # Assuming the video ID is the last part of the original ID
-            'chosen': best_response,
-            'rejected': worst_response,
-            'chosen_score': best_score,
-            'rejected_score': worst_score
+            "id": item["id"],
+            "prompt": item["prompt"],
+            "answer": "",
+            "image": f"silkie_dpo/{item['id']}.jpg",  # Assuming the video ID is the last part of the original ID
+            "chosen": best_response,
+            "rejected": worst_response,
+            "chosen_score": best_score,
+            "rejected_score": worst_score,
         }
         converted_data.append(new_item)
-        
+
     return converted_data
+
 
 for dimension in ["Visual Faithfulness", "Helpfulness", "Ethical Considerations"]:
     converted_data = convert_format(data, dimension=dimension)

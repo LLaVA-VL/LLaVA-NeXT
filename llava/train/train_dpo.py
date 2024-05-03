@@ -41,6 +41,9 @@ from llava.train.llava_trainer import LLaVADPOTrainer
 from data_processing.utils import load_jsonl, load_json
 from llava import conversation as conversation_lib
 from llava.model import *
+from llava.model.language_model.llava_qwen import LlavaQwenConfig
+from llava.model.language_model.llava_llama import LlavaConfig
+from llava.model.language_model.llava_mistral import LlavaMistralConfig
 from llava.mm_utils import process_highres_image, process_anyres_image, process_highres_image_crop_split, tokenizer_image_token
 from llava.utils import rank0_print
 from transformers import AutoConfig
@@ -894,11 +897,11 @@ def preprocess(sources: Sequence[str], tokenizer: transformers.PreTrainedTokeniz
     return dict(input_ids=input_ids, labels=targets)
 
 
-def load_data(data_args):
-    if "jsonl" in data_args.data_path:
-        data_list = load_jsonl(data_args.data_path)
+def load_data(data_path):
+    if "jsonl" in data_path:
+        data_list = load_jsonl(data_path)
     else:
-        data_list = load_json(data_args.data_path)
+        data_list = load_json(data_path)
     return data_list
 
 
@@ -907,12 +910,67 @@ class DPODataset(Dataset):
 
     def __init__(self, data_path: str, tokenizer: transformers.PreTrainedTokenizer, data_args: DataArguments):
         super(DPODataset, self).__init__()
-        list_data_dict = load_data(data_args)
-        if data_args.num_sample is not None:
-            list_data_dict = list_data_dict[: data_args.num_sample]
+        # Handle multiple JSON files specified in the data_path
+        if "{" in data_path and "}" in data_path:
+            base_path, file_pattern = re.match(r"^(.*)\{(.*)\}\.json$", data_path).groups()
+            file_names = file_pattern.split(",")
+            rank0_print(f"Loading {file_names} from {base_path}")
+            data_args.dataset_paths = []
+            for file_name in file_names:
+                data_args.dataset_paths.append(f"{base_path}{file_name}.json")
+                full_path = f"{base_path}{file_name}.json"
+                rank0_print(f"Loading {full_path}")
+                cur_data_dict = load_data(full_path)
+                rank0_print(f"Loaded {len(cur_data_dict)} samples from {full_path}")
+                self.list_data_dict.extend(cur_data_dict)
+        elif data_path.endswith(".yaml"):
+            with open(data_path, "r") as file:
+                yaml_data = yaml.safe_load(file)
+                datasets = yaml_data.get("datasets")
+                # file should be in the format of:
+                # datasets:
+                #   - json_path: xxxx1.json
+                #     sampling_strategy: first:1000
+                #   - json_path: xxxx2.json
+                #     sampling_strategy: end:3000
+                #   - json_path: xxxx3.json
+                #     sampling_strategy: random:999
+                data_args.dataset_paths = [dataset.get("json_path") for dataset in datasets]
+                for dataset in datasets:
+                    json_path = dataset.get("json_path")
+                    sampling_strategy = dataset.get("sampling_strategy", "all")
+                    sampling_number = None
+
+                    rank0_print(f"Loading {json_path} with {sampling_strategy} sampling strategy")
+                    cur_data_dict = load_data(json_path)
+
+                    if ":" in sampling_strategy:
+                        sampling_strategy, sampling_number = sampling_strategy.split(":")
+                        if "%" in sampling_number:
+                            sampling_number = math.ceil(int(sampling_number.split("%")[0]) * len(cur_data_dict) / 100)
+                        else:
+                            sampling_number = int(sampling_number)
+
+                    # Apply the sampling strategy
+                    if sampling_strategy == "first" and sampling_number is not None:
+                        cur_data_dict = cur_data_dict[:sampling_number]
+                    elif sampling_strategy == "end" and sampling_number is not None:
+                        cur_data_dict = cur_data_dict[-sampling_number:]
+                    elif sampling_strategy == "random" and sampling_number is not None:
+                        random.shuffle(cur_data_dict)
+                        cur_data_dict = cur_data_dict[:sampling_number]
+
+                    rank0_print(f"Loaded {len(cur_data_dict)} samples from {json_path}")
+                    self.list_data_dict.extend(cur_data_dict)
+        else:
+            data_args.dataset_paths = [data_path]
+            rank0_print(f"Loading {data_path}")
+            cur_data_dict = load_data(data_path)
+            rank0_print(f"Loaded {len(cur_data_dict)} samples from {data_path}")
+            self.list_data_dict.extend(cur_data_dict)
+                
         rank0_print("Formatting inputs...Skip in lazy mode")
         self.tokenizer = tokenizer
-        self.list_data_dict = list_data_dict
         self.data_args = data_args
 
     def __len__(self):
@@ -1033,7 +1091,7 @@ class DPODataset(Dataset):
                 image = [self.process_image(image_file)]
             # sources = preprocess_multimodal(copy.deepcopy([e["conversations"] for e in sources]), self.data_args)
 
-        elif "video" in sources[0]: # FIXME: This logic should be largely improved by Yuanhan. It's too messy now.
+        elif "video" in sources[0]:  # FIXME: This logic should be largely improved by Yuanhan. It's too messy now.
             video_file = self.list_data_dict[i]["video"]
             video_folder = self.data_args.video_folder
             video_file = os.path.join(video_folder, video_file)
@@ -1106,7 +1164,6 @@ class DPODataset(Dataset):
 
         if suffix == "pkl":
             prompt = [query_prompt]
-
 
         # image exist in the data
         if "image" in self.list_data_dict[i]:
@@ -1257,9 +1314,28 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
     if training_args.attn_implementation == "sdpa" and torch.__version__ < "2.1.2":
         raise ValueError("The 'sdpa' attention implementation requires torch version 2.1.2 or higher.")
 
-    cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path)
+    ######################### Overwrite config #########################
+    customized_kwargs = dict()
+    customized_kwargs.update(bnb_model_from_pretrained_args)
     overwrite_config = {}
-    if model_args.rope_scaling_factor is not None and model_args.rope_scaling_type is not None:
+    cfg_pretrained = None
+    if "qwen" in model_args.model_name_or_path.lower():
+        cfg_pretrained = LlavaQwenConfig.from_pretrained(model_args.model_name_or_path)
+    elif "mistral" in model_args.model_name_or_path.lower() or "zephyr" in model_args.model_name_or_path.lower():
+        cfg_pretrained = LlavaMistralConfig.from_pretrained(model_args.model_name_or_path)
+    elif (
+        "wizardlm-2" in model_args.model_name_or_path.lower()
+        or "vicuna" in model_args.model_name_or_path.lower()
+        or "llama" in model_args.model_name_or_path.lower()
+        or "yi" in model_args.model_name_or_path.lower()
+        or "nous-hermes" in model_args.model_name_or_path.lower()
+        and "wizard-2" in model_args.model_name_or_path.lower()
+    ):
+        cfg_pretrained = LlavaConfig.from_pretrained(model_args.model_name_or_path)
+    else:
+        cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path)
+
+    if model_args.rope_scaling_factor is not None and model_args.rope_scaling_type is not None and cfg_pretrained is not None:
         overwrite_config["rope_scaling"] = {
             "factor": model_args.rope_scaling_factor,
             "type": model_args.rope_scaling_type,
@@ -1273,29 +1349,20 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
         # overwrite_config["max_sequence_length"] = model_args.max_sequence_length
         # overwrite_config["tokenizer_model_max_length"] = model_args.tokenizer_model_max_length
 
-    if model_args.mm_spatial_pool_stride is not None and model_args.mm_spatial_pool_out_channels is not None and model_args.mm_spatial_pool_mode is not None and model_args.mm_resampler_type is not None:
+    if model_args.mm_spatial_pool_stride is not None and model_args.mm_spatial_pool_out_channels is not None and model_args.mm_spatial_pool_mode is not None and model_args.mm_resampler_type is not None and cfg_pretrained is not None:
         overwrite_config["mm_resampler_type"] = model_args.mm_resampler_type
         overwrite_config["mm_spatial_pool_stride"] = model_args.mm_spatial_pool_stride
         overwrite_config["mm_spatial_pool_out_channels"] = model_args.mm_spatial_pool_out_channels
         overwrite_config["mm_spatial_pool_mode"] = model_args.mm_spatial_pool_mode
 
-        # if "224" in model_args.vision_tower:
-        #     # suppose the length of text tokens is around 1000, from bo's report
-        #     least_token_number = data_args.frames_upbound*(16//model_args.mm_spatial_pool_stride)**2 + 1000
-        # else:
-        #     least_token_number = data_args.frames_upbound*(24//model_args.mm_spatial_pool_stride)**2 + 1000
-
-        # scaling_factor = math.ceil(least_token_number/4096)
-        # if scaling_factor >= 2:
-        #     overwrite_config["rope_scaling"] = {"factor": float(scaling_factor), "type": "linear"}
-        #     overwrite_config["max_sequence_length"] = 4096 * scaling_factor
-        #     overwrite_config["tokenizer_model_max_length"] = 4096 * scaling_factor
-        #     training_args.model_max_length = 4096 * scaling_factor
-
     if overwrite_config:
         rank0_print(f"Overwriting config with {overwrite_config}")
         for k, v in overwrite_config.items():
             setattr(cfg_pretrained, k, v)
+
+        customized_kwargs["config"] = cfg_pretrained
+    
+    ######################### Finish Overwrite ###########################
 
     ref_model = None
     if model_args.model_class_name is not None:
@@ -1308,7 +1375,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
             attn_implementation=training_args.attn_implementation,
             torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
             low_cpu_mem_usage=False,
-            **bnb_model_from_pretrained_args,
+            **customized_kwargs,
         )
     elif model_args.vision_tower is not None:
         if "mixtral" in model_args.model_name_or_path.lower():
@@ -1316,10 +1383,9 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
                 attn_implementation=training_args.attn_implementation,
-                config=cfg_pretrained,
                 torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                 low_cpu_mem_usage=False,
-                **bnb_model_from_pretrained_args,
+                **customized_kwargs,
             )
             from transformers.models.mixtral.modeling_mixtral import MixtralSparseMoeBlock
 
@@ -1329,10 +1395,9 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
                 attn_implementation=training_args.attn_implementation,
-                config=cfg_pretrained,
                 torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                 low_cpu_mem_usage=False,
-                **bnb_model_from_pretrained_args,
+                **customized_kwargs,
             )
         elif (
             "wizardlm-2" in model_args.model_name_or_path.lower()
@@ -1346,10 +1411,9 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
                 attn_implementation=training_args.attn_implementation,
-                config=cfg_pretrained,
                 torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                 low_cpu_mem_usage=False,
-                **bnb_model_from_pretrained_args,
+                **customized_kwargs,
             )
 
             if "zero3" in training_args.deepspeed:
@@ -1358,10 +1422,9 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                     model_args.model_name_or_path,
                     cache_dir=training_args.cache_dir,
                     attn_implementation=training_args.attn_implementation,
-                    config=cfg_pretrained,
                     torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                     low_cpu_mem_usage=False,
-                    **bnb_model_from_pretrained_args,
+                    **customized_kwargs,
                 )
 
         elif "qwen" in model_args.model_name_or_path.lower() or "quyen" in model_args.model_name_or_path.lower():
@@ -1370,10 +1433,9 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                     model_args.model_name_or_path,
                     cache_dir=training_args.cache_dir,
                     attn_implementation=training_args.attn_implementation,
-                    config=cfg_pretrained,
                     torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                     low_cpu_mem_usage=False,
-                    **bnb_model_from_pretrained_args,
+                    **customized_kwargs,
                 )
                 from transformers.models.qwen2_moe.modeling_qwen2_moe import Qwen2MoeSparseMoeBlock
 
@@ -1383,10 +1445,9 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                     model_args.model_name_or_path,
                     cache_dir=training_args.cache_dir,
                     attn_implementation=training_args.attn_implementation,
-                    config=cfg_pretrained,
                     torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                     low_cpu_mem_usage=False,
-                    **bnb_model_from_pretrained_args,
+                    **customized_kwargs,
                 )
 
             if "zero3" in training_args.deepspeed:
@@ -1395,10 +1456,9 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                     model_args.model_name_or_path,
                     cache_dir=training_args.cache_dir,
                     attn_implementation=training_args.attn_implementation,
-                    config=cfg_pretrained,
                     torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                     low_cpu_mem_usage=False,
-                    **bnb_model_from_pretrained_args,
+                    **customized_kwargs,
                 )
 
         elif "gemma" in model_args.model_name_or_path.lower():
@@ -1406,16 +1466,15 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 model_args.model_name_or_path,
                 cache_dir=training_args.cache_dir,
                 attn_implementation=training_args.attn_implementation,
-                config=cfg_pretrained,
                 torch_dtype=(torch.bfloat16 if training_args.bf16 else None),
                 low_cpu_mem_usage=False,
-                **bnb_model_from_pretrained_args,
+                **customized_kwargs,
             )
         else:
             raise ValueError(f"Unknown model class {model_args}")
     else:
         model = transformers.LlamaForCausalLM.from_pretrained(
-            model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **bnb_model_from_pretrained_args
+            model_args.model_name_or_path, cache_dir=training_args.cache_dir, attn_implementation=training_args.attn_implementation, torch_dtype=(torch.bfloat16 if training_args.bf16 else None), **customized_kwargs
         )
     return model, ref_model
 

@@ -594,7 +594,13 @@ def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_im
     )
 
 
-def preprocess_llama3(sources, tokenizer: transformers.PreTrainedTokenizer, has_image: bool = False, max_len=2048, system_message: str = "You are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.") -> Dict:
+def preprocess_llama3(
+    sources,
+    tokenizer: transformers.PreTrainedTokenizer,
+    has_image: bool = False,
+    max_len=2048,
+    system_message: str = "You are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.",
+) -> Dict:
     roles = {"human": "<|start_header_id|>user<|end_header_id|>", "gpt": "<|start_header_id|>assistant<|end_header_id|>"}
 
     bos_token_id = tokenizer.convert_tokens_to_ids("<|begin_of_text|>")
@@ -609,7 +615,7 @@ def preprocess_llama3(sources, tokenizer: transformers.PreTrainedTokenizer, has_
         if input_ids[0] == bos_token_id:
             input_ids = input_ids[1:]
         return input_ids
-    
+
     nl_tokens = safe_tokenizer_llama3("\n")
     # Apply prompt templates
     input_ids, targets = [], []
@@ -621,7 +627,9 @@ def preprocess_llama3(sources, tokenizer: transformers.PreTrainedTokenizer, has_
         system = safe_tokenizer_llama3("<|begin_of_text|>") + safe_tokenizer_llama3("<|start_header_id|>system<|end_header_id|>") + nl_tokens * 2 + safe_tokenizer_llama3(system_message) + [eot_id]
         input_id += system
         # Here I just unmask every special token include <|begin_of_text|>, start_header, end_header, nl_tokens, and eot
-        target += safe_tokenizer_llama3("<|begin_of_text|>") + [start_header_id] + [IGNORE_INDEX] * len(safe_tokenizer_llama3("system")) + [end_header_id] + nl_tokens * 2 + [IGNORE_INDEX] * len(safe_tokenizer_llama3(system_message))+ [eot_id]
+        target += (
+            safe_tokenizer_llama3("<|begin_of_text|>") + [start_header_id] + [IGNORE_INDEX] * len(safe_tokenizer_llama3("system")) + [end_header_id] + nl_tokens * 2 + [IGNORE_INDEX] * len(safe_tokenizer_llama3(system_message)) + [eot_id]
+        )
         for j, sentence in enumerate(source):
             role = roles[sentence["from"]]
             if has_image and "<image>" in sentence["value"]:
@@ -657,7 +665,6 @@ def preprocess_llama3(sources, tokenizer: transformers.PreTrainedTokenizer, has_
         input_ids=input_ids,  # tensor(bs x seq_len)
         labels=targets,  # tensor(bs x seq_len)
     )
-
 
 
 def preprocess_v1(sources, tokenizer: transformers.PreTrainedTokenizer, has_image: bool = False) -> Dict:
@@ -1175,7 +1182,7 @@ class DataCollatorForSupervisedDataset(object):
         input_ids = [_input_ids[: self.tokenizer.model_max_length] for _input_ids in input_ids]
         labels = [_labels[: self.tokenizer.model_max_length] for _labels in labels]
         if self.tokenizer.pad_token_id is None:
-            self.tokenizer.pad_token_id = self.tokenizer.eos_token_id # FIXME: this could only be triggered for llama3 model.
+            self.tokenizer.pad_token_id = self.tokenizer.eos_token_id  # FIXME: this could only be triggered for llama3 model.
         input_ids = self.pad_sequence(input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id)
         labels = self.pad_sequence(labels, batch_first=True, padding_value=IGNORE_INDEX)
         batch = dict(input_ids=input_ids, labels=labels.long() if labels.dtype == torch.int32 else labels, attention_mask=input_ids.ne(self.tokenizer.pad_token_id))
@@ -1215,7 +1222,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
 
     customized_kwargs = dict()
     customized_kwargs.update(bnb_model_from_pretrained_args)
-    
+
     overwrite_config = {}
     if model_args.rope_scaling_factor is not None and model_args.rope_scaling_type is not None:
         cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path)

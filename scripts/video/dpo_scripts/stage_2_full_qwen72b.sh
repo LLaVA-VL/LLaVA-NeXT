@@ -1,5 +1,5 @@
 #!/bin/bash
-NAS_REGION="vl-research-cn-boli01-hl";
+NAS_REGION="vl-research";
 USER_PROJECT="boli01"
 
 export WANDB_API_KEY=a651c244635bc6f913ab654af3f0eebaecdc9381
@@ -13,11 +13,8 @@ export HF_HOME=/mnt/bn/${NAS_REGION}/workspace/.cache/huggingface
 export HF_TOKEN="HF_Token"
 export HF_HUB_ENABLE_HF_TRANSFER="1"
 
-export http_proxy=http://sys-proxy-rd-relay.byted.org:8118;
-export https_proxy=http://sys-proxy-rd-relay.byted.org:8118;
-
 ############### Prepare Envs #################
-cd /mnt/bn/vl-research-cn-boli01-hl/workspace/boli01/projects/LLaVA_Next
+cd /mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next
 
 git config --global --add safe.directory '*'
 
@@ -138,8 +135,8 @@ echo $((16 / ARNOLD_WORKER_NUM))
 
 
 ################## project ##################
-PROJECT_NAME=llava-Qwen_72B-mlp2x_gelu-llava_558k-336px-frames_upbound_${FRAMES_UPBOUND}-stride_${STRIDE}-model_max_length_${MODEL_MAX_LENGTH}-dpo-dist${ARNOLD_WORKER_NUM}-trial2
-SFT_MODEL=/mnt/bn/vl-research-cn-boli01-hl/workspace/boli01/projects/llava_next/work_dirs/llava-Qwen_72B-mlp2x_gelu-pretrain_blip558k_plain-336px-ft-video_image_mix-frames_upbound_32-pool_stride_2-model_max_length_32768-dist8
+PROJECT_NAME=llava-Qwen_72B-mlp2x_gelu-llava_558k-336px-frames_upbound_${FRAMES_UPBOUND}-stride_${STRIDE}-model_max_length_${MODEL_MAX_LENGTH}-dpo-dist${ARNOLD_WORKER_NUM}-trial3
+SFT_MODEL=/mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/project_checkpoints/llavanext-Qwen_Qwen1.5-72B-Chat-openai_clip-vit-large-patch14-336-pretrain_blip558k_plain-ft_la1_6mix_2e5-lr1e_5_ufvis_lr2e6_d32k_trial2
 # wandb configure
 wandb login $WANDB_API_KEY
 
@@ -155,9 +152,9 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --model_name_or_path $SFT_MODEL \
     --dpo_alpha 1.0 --beta 0.1 --gamma 0 \
     --version $CONV_MODE \
-    --data_path  /mnt/bn/vl-research-cn-boli01-hl/data/llava_video/shareVideoGPTV/dpo/sft_dpo_17k.jsonl \
-    --image_folder /mnt/bn/vl-research-cn-boli01-hl/data/llava_data/ \
-    --video_folder /mnt/bn/vl-research-cn-boli01-hl/data/llava_video/shareVideoGPTV/frames/all_frames/ \
+    --data_path  /mnt/bn/vl-research/data/llava_video/shareVideoGPTV/dpo/sft_dpo_17k.jsonl \
+    --image_folder /mnt/bn/vl-research/data/llava_data/ \
+    --video_folder /mnt/bn/vl-research/data/llava_video/shareVideoGPTV/frames/all_frames/ \
     --vision_tower  openai/clip-vit-large-patch14-336 \
     --mm_projector_type mlp2x_gelu \
     --mm_vision_select_layer -2 \
@@ -167,7 +164,7 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --frames_upbound ${FRAMES_UPBOUND:-0} \
     --group_by_modality_length False \
     --bf16 True \
-    --output_dir ./work_dirs/$PROJECT_NAME \
+    --output_dir /mnt/bn/vl-research/checkpoints/$PROJECT_NAME \
     --num_train_epochs 3 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 4 \
