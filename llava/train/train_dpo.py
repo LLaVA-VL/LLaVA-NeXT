@@ -911,6 +911,8 @@ class DPODataset(Dataset):
     def __init__(self, data_path: str, tokenizer: transformers.PreTrainedTokenizer, data_args: DataArguments):
         super(DPODataset, self).__init__()
         # Handle multiple JSON files specified in the data_path
+        self.list_data_dict = []
+        
         if "{" in data_path and "}" in data_path:
             base_path, file_pattern = re.match(r"^(.*)\{(.*)\}\.json$", data_path).groups()
             file_names = file_pattern.split(",")
