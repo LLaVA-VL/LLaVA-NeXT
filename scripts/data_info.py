@@ -116,8 +116,8 @@ def main():
     ax2.set_title(f"dist_{llava_instruct_name}_tokenized_length", fontsize=8)
 
     plt.tight_layout()
-    plt.savefig(f"./dist_{llava_instruct_name}_combined.png")
-    print(f"Plots saved to ./dist_{llava_instruct_name}_combined.png")
+    plt.savefig(f"/mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/notebooks/sft_data/dist_{llava_instruct_name}_combined.png")
+    print(f"Plots saved to /mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/notebooks/sft_data/dist_{llava_instruct_name}_combined.png")
 
 
 if __name__ == "__main__":

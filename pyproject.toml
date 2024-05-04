@@ -20,15 +20,13 @@ classifiers = [
 standalone = [
     "shortuuid",
     "httpx==0.24.0",
-    "accelerate>=0.29.1",
-    "tokenizers~=0.15.2",
+    "einops",
     "ftfy",
-    "open_clip_torch"
 ]
 
 train = [
     "llava[standalone]",
-    "einops",
+    "open_clip_torch",
     "fastapi",
     "gradio==3.35.2",
     "markdown2[all]",
@@ -41,6 +39,8 @@ train = [
     "wandb==0.16.5",
     "deepspeed==0.12.2",
     "peft==0.4.0",
+    "accelerate>=0.29.1",
+    "tokenizers~=0.15.2",
     "transformers@git+https://github.com/huggingface/transformers.git@1c39974a4c4036fd641bc1191cc32799f85715a4",
     "bitsandbytes==0.41.0",
     "scikit-learn==1.2.2",
