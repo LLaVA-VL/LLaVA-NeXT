@@ -284,9 +284,9 @@ class Conversation:
 conv_vicuna_v0 = Conversation(
     system="A chat between a curious human and an artificial intelligence assistant. " "The assistant gives helpful, detailed, and polite answers to the human's questions.",
     roles=("Human", "Assistant"),
-    messages=(
-        ("Human", "What are the key differences between renewable and non-renewable energy sources?"),
-        (
+    messages=[
+        ["Human", "What are the key differences between renewable and non-renewable energy sources?"],
+        [
             "Assistant",
             "Renewable energy sources are those that can be replenished naturally in a relatively "
             "short amount of time, such as solar, wind, hydro, geothermal, and biomass. "
@@ -306,8 +306,8 @@ conv_vicuna_v0 = Conversation(
             "situations and needs, while non-renewable sources are more rigid and inflexible.\n"
             "6. Sustainability: Renewable energy sources are more sustainable over the long term, while "
             "non-renewable sources are not, and their depletion can lead to economic and social instability.\n",
-        ),
-    ),
+        ],
+    ],
     offset=2,
     sep_style=SeparatorStyle.SINGLE,
     sep="###",
@@ -317,7 +317,7 @@ conv_vicuna_v1 = Conversation(
     system="A chat between a curious user and an artificial intelligence assistant. " "The assistant gives helpful, detailed, and polite answers to the user's questions.",
     roles=("USER", "ASSISTANT"),
     version="v1",
-    messages=(),
+    messages=[],
     offset=0,
     sep_style=SeparatorStyle.TWO,
     sep=" ",
@@ -330,7 +330,7 @@ conv_llama_2 = Conversation(
 If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct. If you don't know the answer to a question, please don't share false information.""",
     roles=("USER", "ASSISTANT"),
     version="llama_v2",
-    messages=(),
+    messages=[],
     offset=0,
     sep_style=SeparatorStyle.LLAMA_2,
     sep="<s>",
@@ -341,7 +341,7 @@ conv_llava_llama_2 = Conversation(
     system="You are a helpful language and vision assistant. " "You are able to understand the visual content that the user provides, " "and assist the user with a variety of tasks using natural language.",
     roles=("USER", "ASSISTANT"),
     version="llama_v2",
-    messages=(),
+    messages=[],
     offset=0,
     sep_style=SeparatorStyle.LLAMA_2,
     sep="<s>",
@@ -352,10 +352,11 @@ conv_llava_llama_3 = Conversation(
     system="You are a helpful language and vision assistant. " "You are able to understand the visual content that the user provides, " "and assist the user with a variety of tasks using natural language.",
     roles=("<|start_header_id|>user", "<|start_header_id|>assistant"),
     version="llama_v3",
-    messages=(),
+    messages=[],
     offset=0,
     sep_style=SeparatorStyle.LLAMA_3,
     tokenizer_id="meta-llama/Meta-Llama-3-8B-Instruct",
+    tokenizer=AutoTokenizer.from_pretrained("meta-llama/Meta-Llama-3-8B-Instruct"),
     stop_token_ids=[128009],
 )
 
@@ -363,7 +364,7 @@ conv_mistral_instruct = Conversation(
     system="",
     roles=("USER", "ASSISTANT"),
     version="llama_v2",
-    messages=(),
+    messages=[],
     offset=0,
     sep_style=SeparatorStyle.LLAMA_2,
     sep="",
@@ -374,7 +375,7 @@ conv_llava_llama_2_simple = Conversation(
     system="Answer the questions about the visual content that the user provides.",
     roles=("USER", "ASSISTANT"),
     version="llama_v2",
-    messages=(),
+    messages=[],
     offset=0,
     sep_style=SeparatorStyle.LLAMA_2,
     sep="<s>",
@@ -385,7 +386,7 @@ conv_llava_llama_2_mmtag = Conversation(
     system="Answer the questions about the visual content that the user provides." "The visual content will be provided with the following format: <Image>visual content</Image>.",
     roles=("USER", "ASSISTANT"),
     version="llama_v2_mmtag",
-    messages=(),
+    messages=[],
     offset=0,
     sep_style=SeparatorStyle.LLAMA_2,
     sep="<s>",
@@ -397,7 +398,7 @@ conv_mpt = Conversation(
 A conversation between a user and an LLM-based AI assistant. The assistant gives helpful and honest answers.""",
     roles=("<|im_start|>user\n", "<|im_start|>assistant\n"),
     version="mpt",
-    messages=(),
+    messages=[],
     offset=0,
     sep_style=SeparatorStyle.MPT,
     sep="<|im_end|>",
@@ -408,18 +409,18 @@ conv_qwen = Conversation(
 You are a helpful assistant.""",
     roles=("<|im_start|>user", "<|im_start|>assistant"),
     version="qwen",
-    messages=(),
+    messages=[],
     offset=0,
     sep_style=SeparatorStyle.CHATML,
     sep="<|im_end|>",
 )
 
-conv_gemma_instruct = Conversation(system="", roles=("<start_of_turn>user\n", "<start_of_turn>model\n"), version="gemma", messages=(), offset=0, sep_style=SeparatorStyle.GEMMA, sep="<end_of_turn>\n")
+conv_gemma_instruct = Conversation(system="", roles=("<start_of_turn>user\n", "<start_of_turn>model\n"), version="gemma", messages=[], offset=0, sep_style=SeparatorStyle.GEMMA, sep="<end_of_turn>\n")
 
 conv_llava_plain = Conversation(
     system="",
     roles=("", ""),
-    messages=(),
+    messages=[],
     offset=0,
     sep_style=SeparatorStyle.PLAIN,
     sep="\n",
@@ -428,7 +429,7 @@ conv_llava_plain = Conversation(
 conv_llava_v0 = Conversation(
     system="A chat between a curious human and an artificial intelligence assistant. " "The assistant gives helpful, detailed, and polite answers to the human's questions.",
     roles=("Human", "Assistant"),
-    messages=(),
+    messages=[],
     offset=0,
     sep_style=SeparatorStyle.SINGLE,
     sep="###",
@@ -439,7 +440,7 @@ conv_llava_v0_mmtag = Conversation(
     "The assistant is able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language."
     "The visual content will be provided with the following format: <Image>visual content</Image>.",
     roles=("Human", "Assistant"),
-    messages=(),
+    messages=[],
     offset=0,
     sep_style=SeparatorStyle.SINGLE,
     sep="###",
@@ -450,7 +451,7 @@ conv_llava_v1 = Conversation(
     system="A chat between a curious human and an artificial intelligence assistant. " "The assistant gives helpful, detailed, and polite answers to the human's questions.",
     roles=("USER", "ASSISTANT"),
     version="v1",
-    messages=(),
+    messages=[],
     offset=0,
     sep_style=SeparatorStyle.TWO,
     sep=" ",
@@ -462,7 +463,7 @@ conv_llava_v1_mmtag = Conversation(
     "The assistant is able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language."
     "The visual content will be provided with the following format: <Image>visual content</Image>.",
     roles=("USER", "ASSISTANT"),
-    messages=(),
+    messages=[],
     offset=0,
     sep_style=SeparatorStyle.TWO,
     sep=" ",
@@ -475,7 +476,7 @@ conv_mistral_orca = Conversation(
 You are MistralOrca, a large language model trained by Alignment Lab AI. Write out your reasoning step-by-step to be sure you get the right answers!""",
     roles=("<|im_start|>user\n", "<|im_start|>assistant\n"),
     version="mpt",
-    messages=(),
+    messages=[],
     offset=0,
     sep_style=SeparatorStyle.MPT,
     sep="<|im_end|>",
@@ -486,7 +487,7 @@ conv_mistral_zephyr = Conversation(
 You are a helpful AI assistant.""",
     roles=("<|user|>\n", "<|assistant|>\n"),
     version="mpt",
-    messages=(),
+    messages=[],
     offset=0,
     sep_style=SeparatorStyle.MPT,
     sep="</s>",
@@ -497,7 +498,7 @@ conv_mistral_direct = Conversation(
 Answer the questions.""",
     roles=("<|im_start|>user\n", "<|im_start|>assistant\n"),
     version="mpt",
-    messages=(),
+    messages=[],
     offset=0,
     sep_style=SeparatorStyle.MPT,
     sep="<|im_end|>",
@@ -508,7 +509,7 @@ conv_chatml_direct = Conversation(
 Answer the questions.""",
     roles=("<|im_start|>user\n", "<|im_start|>assistant\n"),
     version="mpt",
-    messages=(),
+    messages=[],
     offset=0,
     sep_style=SeparatorStyle.MPT,
     sep="<|im_end|>",
