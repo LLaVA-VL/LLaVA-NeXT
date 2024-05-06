@@ -10,8 +10,9 @@
 
 1. **Clone this repository and navigate to the LLaVA folder:**
 ```bash
-git clone https://github.com/LLaVA-VL/LLaVA-NeXT-Video
-cd llava-next-video
+git clone https://github.com/LLaVA-VL/LLaVA-NeXT
+cd LLaVA-NeXT
+git checkout video_inference
 ```
 
 2. **Install the package:**
@@ -26,7 +27,7 @@ pip install -e .
 
 1. **Example model:** `lmms-lab/LLaVA-NeXT-Video-7B-DPO`
 
-2. **Prompt mode:** `vicuna_v1` (use `mistral_direct` for `lmms-lab/LLaVA-NeXT-Video-7B-DPO`)
+2. **Prompt mode:** `vicuna_v1` (use `mistral_direct` for `lmms-lab/LLaVA-NeXT-Video-34B-DPO`)
 
 3. **Sampled frames:** `32` (Defines how many frames to sample from the video.)
 
@@ -55,7 +56,7 @@ Please download the evaluation data and its metadata from the following links:
 
 Organize the downloaded data into the following structure:
 ```
-LLaVA-NeXT-Video
+LLaVA-NeXT
 ├── llava
 ├── scripts
 └── data
