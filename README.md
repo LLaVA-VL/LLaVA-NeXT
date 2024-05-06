@@ -10,7 +10,7 @@
 
 1. **Clone this repository and navigate to the LLaVA folder:**
 ```bash
-git clone https://code.byted.org/ic-research/llava-next-video.git
+git clone https://github.com/LLaVA-VL/LLaVA-NeXT-Video
 cd llava-next-video
 ```
 
@@ -24,7 +24,7 @@ pip install -e .
 
 ## Demo
 
-1. **Example model:** `liuhaotian/llava-v1.6-vicuna-7b`
+1. **Example model:** `lmms-lab/LLaVA-NeXT-Video-7B-DPO`
 
 2. **Prompt mode:** `vicuna_v1` (use `mistral_direct` for `liuhaotian/llava-v1.6-34b`)
 
@@ -40,7 +40,7 @@ bash scripts/video/demo/video_demo.sh ${Example model} ${Prompt mode} ${Sampled 
 ```
 Example:
 ```bash
-bash scripts/video/demo/video_demo.sh liuhaotian/llava-v1.6-vicuna-7b vicuna_v1 32 2 True ./data/llava_video/video-chatgpt/evaluation/Test_Videos/v_Lf_7RurLgp0.mp4
+bash scripts/video/demo/video_demo.sh lmms-lab/LLaVA-NeXT-Video-7B-DPO vicuna_v1 32 2 True ./data/llava_video/video-chatgpt/evaluation/Test_Videos/v_Lf_7RurLgp0.mp4
 ```
 
 ## Evaluation
