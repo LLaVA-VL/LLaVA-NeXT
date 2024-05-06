@@ -18,7 +18,7 @@ classifiers = [
 
 dependencies = [
     "torch==2.1.0", "torchvision==0.16.0",
-    "transformers==4.36.2", "tokenizers==0.15.2", "sentencepiece==0.1.99", "shortuuid",
+    "transformers==4.39.2", "tokenizers==0.15.2", "sentencepiece==0.1.99", "shortuuid",
     "accelerate==0.27.2", "peft==0.4.0", "bitsandbytes==0.41.0",
     "pydantic<2,>=1", "markdown2[all]", "numpy", "scikit-learn==1.2.2",
     "gradio==3.35.2", "gradio_client==0.2.9",
@@ -28,7 +28,7 @@ dependencies = [
 
 [project.urls]
 "Homepage" = "https://llava-vl.github.io"
-"Bug Tracker" = "https://github.com/LLaVA-VL/LLaVA-NeXT-Video/issues"
+"Bug Tracker" = "https://github.com/haotian-liu/LLaVA/issues"
 
 [tool.setuptools.packages.find]
 exclude = [
@@ -41,6 +41,9 @@ exclude = [
     "tests*",
     "checkpoints*",
     "project_checkpoints*",
+    "work_dirs*",
+    "data*",
+    "trl*",
 ]
 
 [tool.wheel]
@@ -54,4 +57,7 @@ exclude = [
     "tests*",
     "checkpoints*",
     "project_checkpoints*",
+    "work_dirs*",
+    "data*",
+    "trl*",
 ]

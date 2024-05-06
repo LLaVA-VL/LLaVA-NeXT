@@ -1,10 +1,12 @@
 #!/bin/bash
-ROOT_DIR="root to LLaVA-NeXT-Video"
+ROOT_DIR="/mnt/bn/vl-research/workspace/yhzhang/llava-next-video"
 
 if [ ! -e $ROOT_DIR ]; then
     echo "The root dir does not exist. Exiting the script."
     exit 1
 fi
+
+cd $ROOT_DIR
 
 export PYTHONWARNINGS=ignore
 export TOKENIZERS_PARALLELISM=false
@@ -24,7 +26,7 @@ else
     SAVE_DIR=$(basename $CKPT)_${CONV_MODE}_frames_${FRAMES}_stride_${POOL_STRIDE}
 fi
     
-torchrun playground/demo/video_demo.py \
+python3 playground/demo/video_demo.py \
     --model-path $CKPT \
     --video_path ${VIDEO_PATH} \
     --output_dir ./work_dirs/video_demo/$SAVE_DIR \

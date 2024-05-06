@@ -17,7 +17,7 @@ FRAMES=$3
 POOL_STRIDE=$4
 OVERWRITE=$5
 CHUNKS=${6:-1}
-DO_CENTER_CROP=${7:-True}
+DO_CENTER_CROP=${7:-False}
 
 echo "Using $CHUNKS GPUs"
 

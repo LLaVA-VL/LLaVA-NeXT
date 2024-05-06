@@ -1,11 +1,11 @@
 import argparse
 import torch
 
-from llavavid.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
-from llavavid.conversation import conv_templates, SeparatorStyle
-from llavavid.model.builder import load_pretrained_model
-from llavavid.utils import disable_torch_init
-from llavavid.mm_utils import tokenizer_image_token, get_model_name_from_path, KeywordsStoppingCriteria
+from llava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
+from llava.conversation import conv_templates, SeparatorStyle
+from llava.model.builder import load_pretrained_model
+from llava.utils import disable_torch_init
+from llava.mm_utils import tokenizer_image_token, get_model_name_from_path, KeywordsStoppingCriteria
 
 import json
 import os
@@ -15,6 +15,7 @@ from decord import VideoReader, cpu
 
 from transformers import AutoConfig
 
+import time
 
 import numpy as np
 
@@ -87,6 +88,7 @@ def run_inference(args):
 
         cfg_pretrained = AutoConfig.from_pretrained(args.model_path)
 
+        
         if "224" in cfg_pretrained.mm_vision_tower:
             # suppose the length of text tokens is around 1000, from bo's report
             least_token_number = args.for_get_frames_num*(16//args.mm_spatial_pool_stride)**2 + 1000
@@ -95,8 +97,9 @@ def run_inference(args):
 
         scaling_factor = math.ceil(least_token_number/4096)
         if scaling_factor >= 2:
-            print(float(scaling_factor))
-            overwrite_config["rope_scaling"] = {"factor": float(scaling_factor), "type": "linear"}
+            if "vicuna" in cfg_pretrained._name_or_path.lower():
+                print(float(scaling_factor))
+                overwrite_config["rope_scaling"] = {"factor": float(scaling_factor), "type": "linear"}
             overwrite_config["max_sequence_length"] = 4096 * scaling_factor
             overwrite_config["tokenizer_model_max_length"] = 4096 * scaling_factor
 
@@ -114,7 +117,8 @@ def run_inference(args):
 
     video_path = args.video_path
     sample_set = {}
-    question = "Please provide a detailed description of the video, focusing on the main subjects, their actions, and the background scenes"
+    # question = "Please provide a detailed description of the video, focusing on the main subjects, their actions, and the background scenes"
+    question = "What does this video describe? A. Buiding B.Forest C.coutryside D.Moon \nAnswer with the option's letter from the given choices directly."
     sample_set["Q"] = question
     sample_set["video_name"] = args.video_path
 
@@ -150,7 +154,11 @@ def run_inference(args):
     with torch.inference_mode():
         model.update_prompt([[cur_prompt]])
         # import pdb;pdb.set_trace()
+        start_time = time.time()
         output_ids = model.generate(inputs=input_ids, images=video, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, max_new_tokens=1024, use_cache=True, stopping_criteria=[stopping_criteria])
+        end_time = time.time()
+        print(f"Time taken for inference: {end_time - start_time} seconds")
+        # import pdb;pdb.set_trace()
         # output_ids = model.generate(inputs=input_ids, images=video, attention_mask=attention_masks, modalities="video", do_sample=True, temperature=0.2, use_cache=True, stopping_criteria=[stopping_criteria])
 
     outputs = tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0].strip()
