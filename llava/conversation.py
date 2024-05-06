@@ -103,7 +103,7 @@ class Conversation:
                         message = "<image>" * len(images) + message
                     chat_template_messages.append({"role": role, "content": message})
 
-            print(chat_template_messages)
+            # print(chat_template_messages)
             return self.tokenizer.apply_chat_template(chat_template_messages, tokenize=False, add_generation_prompt=True)
             # ret = "" if self.system == "" else self.system + self.sep + "\n"
             # for role, message in messages:
