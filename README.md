@@ -26,7 +26,7 @@ pip install -e .
 
 1. **Example model:** `lmms-lab/LLaVA-NeXT-Video-7B-DPO`
 
-2. **Prompt mode:** `vicuna_v1` (use `mistral_direct` for `liuhaotian/llava-v1.6-34b`)
+2. **Prompt mode:** `vicuna_v1` (use `mistral_direct` for `lmms-lab/LLaVA-NeXT-Video-7B-DPO`)
 
 3. **Sampled frames:** `32` (Defines how many frames to sample from the video.)
 
