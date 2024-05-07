@@ -912,7 +912,7 @@ class DPODataset(Dataset):
         super(DPODataset, self).__init__()
         # Handle multiple JSON files specified in the data_path
         self.list_data_dict = []
-        
+
         if "{" in data_path and "}" in data_path:
             base_path, file_pattern = re.match(r"^(.*)\{(.*)\}\.json$", data_path).groups()
             file_names = file_pattern.split(",")
@@ -970,7 +970,7 @@ class DPODataset(Dataset):
             cur_data_dict = load_data(data_path)
             rank0_print(f"Loaded {len(cur_data_dict)} samples from {data_path}")
             self.list_data_dict.extend(cur_data_dict)
-                
+
         rank0_print("Formatting inputs...Skip in lazy mode")
         self.tokenizer = tokenizer
         self.data_args = data_args
@@ -1363,7 +1363,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
             setattr(cfg_pretrained, k, v)
 
         customized_kwargs["config"] = cfg_pretrained
-    
+
     ######################### Finish Overwrite ###########################
 
     ref_model = None
