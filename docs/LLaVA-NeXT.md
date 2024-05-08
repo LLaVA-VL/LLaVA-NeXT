@@ -4,6 +4,7 @@
 
 **Install the evaluation package:**
 ```bash
+# make sure you installed the LLaVA-NeXT model files via outside REAME.md
 pip install git+https://github.com/EvolvingLMMs-Lab/lmms-eval.git
 ```
 

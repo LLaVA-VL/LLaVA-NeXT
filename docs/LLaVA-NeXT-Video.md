@@ -7,6 +7,8 @@
 
 ## Demo
 
+> make sure you installed the LLaVA-NeXT model files via outside REAME.md
+
 1. **Example model:** `lmms-lab/LLaVA-NeXT-Video-7B-DPO`
 
 2. **Prompt mode:** `vicuna_v1` (use `mistral_direct` for `lmms-lab/LLaVA-NeXT-Video-34B-DPO`)
