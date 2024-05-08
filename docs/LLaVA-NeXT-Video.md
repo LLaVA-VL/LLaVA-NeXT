@@ -12,7 +12,6 @@
 ```bash
 git clone https://github.com/LLaVA-VL/LLaVA-NeXT
 cd LLaVA-NeXT
-git checkout video_inference
 ```
 
 2. **Install the package:**

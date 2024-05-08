@@ -43,4 +43,4 @@ logs
 scripts/dist_*
 logs/
 submissions/
-work_dirs
+# work_dirs
