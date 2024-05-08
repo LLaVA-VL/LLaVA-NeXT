@@ -1,11 +1,18 @@
+<p align="center" width="100%">
+<img src="https://i.postimg.cc/pL17YtG4/WX20240508-220230-2x.png"  width="80%" height="80%">
+</p>
+
 # LLaVA-NeXT: A series of Multimodal models with stronger capabilities
 
-[![Code License](https://img.shields.io/badge/Code%20License-Apache_2.0-green.svg)](https://github.com/tatsu-lab/stanford_alpaca/blob/main/LICENSE)
+[![llava_next-demo](https://img.shields.io/badge/llava_next-image_demo-red)](https://llava-vl.github.io/blog/2024-05-10-llava-next-stronger-llms/)
+[![llava_next-video_demo](https://img.shields.io/badge/llava_next-video_demo-red)](https://llava-vl.github.io/blog/2024-05-10-llava-next-stronger-llms/)
+[![llava_next-image_checkpoints](https://img.shields.io/badge/llava_next-image_checkpoints-blue)](https://huggingface.co/collections/lmms-lab/llava-next-6623288e2d61edba3ddbf5ff)
+[![llava_next-video_checkpoints](https://img.shields.io/badge/llava_next-video_checkpoints-blue)](https://huggingface.co/collections/lmms-lab/llava-next-video-661e86f5e8dabc3ff793c944)
 
 ## Release
 - [2024/05/10] 🔥 Releasing new **LLaVA-NeXT** (Stronger) models with support of LLama-3 and Qwen-1.5 models, we now have Llama-3-LLaVA-NeXT-8B and LLaVA-Next-72B/110B model. You could check our [results](https://llava-vl.github.io/blog/2024-05-10-llava-next-stronger-llms/) and [checkpoints](https://huggingface.co/collections/lmms-lab/llava-next-6623288e2d61edba3ddbf5ff) to see improved performance!
 - [2024/05/10] 🔥 Releasing new **LLaVA-NeXT** (Video) models with support of LLama-3 and Qwen-1.5 models, ..... [TBD]
-- [2024/03/10] ❄️ Releasing **LMMs-Eval**, a highly efficient evaluation pipeline we used when developing LLaVA-NeXT. It supports the evaluation of LMMs on dozens of public datasets and allows new dataset onboarding, making the dev of new LMMs much faster. [[Blog](https://lmms-lab.github.io/lmms-eval-blog/lmms-eval-0.1/)] [[Codebase](https://github.com/EvolvingLMMs-Lab/lmms-eval)]
+- [2024/03/10] 🔥 Releasing **LMMs-Eval**, a highly efficient evaluation pipeline we used when developing LLaVA-NeXT. It supports the evaluation of LMMs on dozens of public datasets and allows new dataset onboarding, making the dev of new LMMs much faster. [[Blog](https://lmms-lab.github.io/lmms-eval-blog/lmms-eval-0.1/)] [[Codebase](https://github.com/EvolvingLMMs-Lab/lmms-eval)]
 - [2024/1/30] 🔥 **LLaVA-NeXT (LLaVA-1.6)** is out! With additional scaling to LLaVA-1.5, LLaVA-NeXT-34B outperforms Gemini Pro on some benchmarks. It can now process 4x more pixels and perform more tasks/applications than before. Check out the [blog post](https://llava-vl.github.io/blog/2024-01-30-llava-next/), and explore the [demo](https://llava.hliu.cc/)! Models are available in [Model Zoo](https://github.com/haotian-liu/LLaVA/blob/main/docs/MODEL_ZOO.md). Training/eval data and scripts coming soon.
 
 <details>
