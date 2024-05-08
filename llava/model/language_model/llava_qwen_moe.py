@@ -1,4 +1,4 @@
-#    Copyright 2023 Haotian Liu
+#    Copyright 2024 Hao Zhang
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -13,45 +13,46 @@
 #    limitations under the License.
 
 
-from typing import List, Optional, Tuple, Union
-
+from typing import List, Optional, Tuple, Union, Dict
 import torch
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 
-from transformers import AutoConfig, AutoModelForCausalLM, MistralConfig, MistralModel, MistralForCausalLM, GenerationConfig
+import transformers
+from transformers import AutoConfig, AutoModelForCausalLM
 
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.generation.utils import GenerateOutput
 
-from ..llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
+# from ...constants import IGNORE_INDEX, IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
+from llava.model.llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
+from transformers import Qwen2MoeConfig, Qwen2MoeModel, Qwen2MoeForCausalLM
+
+# from .qwen.modeling_qwen import QWenLMHeadModel, QWenModel
+# from .qwen.configuration_qwen import QWenConfig
 
 
-class LlavaMistralConfig(MistralConfig):
-    model_type = "llava_mistral"
-    temperature: float = 0.0  # reset to 0.0, previously 0.9 for Vicuna
-    max_new_tokens: int = 1024
-    do_sample: bool = False
-    top_p: Optional[float] = None
+class LlavaQwenMoeConfig(Qwen2MoeConfig):
+    model_type = "llava_qwen_moe"
 
 
-class LlavaMistralModel(LlavaMetaModel, MistralModel):
-    config_class = LlavaMistralConfig
+class LlavaQwenMoeModel(LlavaMetaModel, Qwen2MoeModel):
+    config_class = LlavaQwenMoeConfig
 
-    def __init__(self, config: MistralConfig):
-        super(LlavaMistralModel, self).__init__(config)
+    def __init__(self, config: Qwen2MoeConfig):
+        super(LlavaQwenMoeModel, self).__init__(config)
 
 
-class LlavaMistralForCausalLM(MistralForCausalLM, LlavaMetaForCausalLM):
-    config_class = LlavaMistralConfig
+class LlavaQwenMoeForCausalLM(Qwen2MoeForCausalLM, LlavaMetaForCausalLM):
+    config_class = LlavaQwenMoeConfig
 
     def __init__(self, config):
-        super(MistralForCausalLM, self).__init__(config)
-
-        config.model_type = "llava_mistral"
+        # super(Qwen2MoeForCausalLM, self).__init__(config)
+        Qwen2MoeForCausalLM.__init__(self, config)
+        config.model_type = "llava_qwen_moe"
         config.rope_scaling = None
 
-        self.model = LlavaMistralModel(config)
+        self.model = LlavaQwenMoeModel(config)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
         # Initialize weights and apply final processing
         self.post_init()
@@ -123,5 +124,5 @@ class LlavaMistralForCausalLM(MistralForCausalLM, LlavaMetaForCausalLM):
         return inputs
 
 
-AutoConfig.register("llava_mistral", LlavaMistralConfig)
-AutoModelForCausalLM.register(LlavaMistralConfig, LlavaMistralForCausalLM)
+AutoConfig.register("llava_qwen_moe", LlavaQwenMoeConfig)
+AutoModelForCausalLM.register(LlavaQwenMoeConfig, LlavaQwenMoeForCausalLM)

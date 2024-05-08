@@ -1,4 +1,4 @@
-#    Copyright 2023 Haotian Liu
+#    Copyright 2024 Duc Q. Nguyen, Haotian Liu and Bo Li
 #
 #    Licensed under the Apache License, Version 2.0 (the "License");
 #    you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ import torch
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 
-from transformers import AutoConfig, AutoModelForCausalLM, MistralConfig, MistralModel, MistralForCausalLM, GenerationConfig
+from transformers import AutoConfig, AutoModelForCausalLM, GemmaConfig, GemmaModel, GemmaForCausalLM
 
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.generation.utils import GenerateOutput
@@ -27,32 +27,26 @@ from transformers.generation.utils import GenerateOutput
 from ..llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
 
 
-class LlavaMistralConfig(MistralConfig):
-    model_type = "llava_mistral"
-    temperature: float = 0.0  # reset to 0.0, previously 0.9 for Vicuna
-    max_new_tokens: int = 1024
-    do_sample: bool = False
-    top_p: Optional[float] = None
+class LlavaGemmaConfig(GemmaConfig):
+    model_type = "llava_gemma"
 
 
-class LlavaMistralModel(LlavaMetaModel, MistralModel):
-    config_class = LlavaMistralConfig
+class LlavaGemmaModel(LlavaMetaModel, GemmaModel):
+    config_class = LlavaGemmaConfig
 
-    def __init__(self, config: MistralConfig):
-        super(LlavaMistralModel, self).__init__(config)
+    def __init__(self, config: GemmaConfig):
+        super(LlavaGemmaModel, self).__init__(config)
 
 
-class LlavaMistralForCausalLM(MistralForCausalLM, LlavaMetaForCausalLM):
-    config_class = LlavaMistralConfig
+class LlavaGemmaForCausalLM(GemmaForCausalLM, LlavaMetaForCausalLM):
+    config_class = LlavaGemmaConfig
 
     def __init__(self, config):
-        super(MistralForCausalLM, self).__init__(config)
+        super(GemmaForCausalLM, self).__init__(config)
+        self.model = LlavaGemmaModel(config)
 
-        config.model_type = "llava_mistral"
-        config.rope_scaling = None
-
-        self.model = LlavaMistralModel(config)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -73,7 +67,7 @@ class LlavaMistralForCausalLM(MistralForCausalLM, LlavaMetaForCausalLM):
         images: Optional[torch.FloatTensor] = None,
         image_sizes: Optional[List[List[int]]] = None,
         return_dict: Optional[bool] = None,
-        cache_position=None,
+        cache_position: Optional[torch.LongTensor] = None,
     ) -> Union[Tuple, CausalLMOutputWithPast]:
 
         if inputs_embeds is None:
@@ -90,6 +84,7 @@ class LlavaMistralForCausalLM(MistralForCausalLM, LlavaMetaForCausalLM):
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
+            cache_position=cache_position,
         )
 
     @torch.no_grad()
@@ -123,5 +118,5 @@ class LlavaMistralForCausalLM(MistralForCausalLM, LlavaMetaForCausalLM):
         return inputs
 
 
-AutoConfig.register("llava_mistral", LlavaMistralConfig)
-AutoModelForCausalLM.register(LlavaMistralConfig, LlavaMistralForCausalLM)
+AutoConfig.register("llava_gemma", LlavaGemmaConfig)
+AutoModelForCausalLM.register(LlavaGemmaConfig, LlavaGemmaForCausalLM)

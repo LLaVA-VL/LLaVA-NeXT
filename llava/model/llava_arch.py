@@ -15,8 +15,6 @@
 
 from abc import ABC, abstractmethod
 
-import torch.distributed as dist
-
 import torch
 import torch.nn as nn
 
@@ -27,26 +25,22 @@ from .multimodal_projector.builder import build_vision_projector
 from llava.constants import IGNORE_INDEX, IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 
 from llava.mm_utils import get_anyres_image_grid_shape
-
-import math
+from llava.utils import rank0_print
 
 
 class LlavaMetaModel:
 
     def __init__(self, config):
         super(LlavaMetaModel, self).__init__(config)
-        # import pdb; pdb.set_trace()
+
         if hasattr(config, "mm_vision_tower"):
-            # import pdb; pdb.set_trace()
-            self.vision_tower = build_vision_tower(config, delay_load=True)
+            delay_load = getattr(config, "delay_load", False)
+            self.vision_tower = build_vision_tower(config, delay_load=delay_load)
             self.vision_resampler = build_vision_resampler(config, vision_tower=self.vision_tower)
             self.mm_projector = build_vision_projector(config, vision_cfg=self.vision_tower.config)
-            self.vision_resampler.mm_projector = self.mm_projector
-            
-            if 'unpad' in getattr(config, 'mm_patch_merge_type', ''):
-                self.image_newline = nn.Parameter(
-                    torch.empty(config.hidden_size, dtype=self.dtype)
-                )
+
+            if "unpad" in getattr(config, "mm_patch_merge_type", ""):
+                self.image_newline = nn.Parameter(torch.empty(config.hidden_size, dtype=self.dtype))
 
     def get_vision_tower(self):
         vision_tower = getattr(self, "vision_tower", None)
@@ -62,6 +56,8 @@ class LlavaMetaModel:
         mm_patch_merge_type = model_args.mm_patch_merge_type
 
         self.config.mm_vision_tower = vision_tower
+        self.config.vision_tower_pretrained = getattr(model_args, "vision_tower_pretrained", "")
+
         if self.get_vision_tower() is None:
             vision_tower = build_vision_tower(model_args)
             vision_resampler = build_vision_resampler(model_args, vision_tower=vision_tower)
@@ -94,8 +90,6 @@ class LlavaMetaModel:
         self.config.mm_vision_select_feature = mm_vision_select_feature
         self.config.mm_patch_merge_type = mm_patch_merge_type
 
-        self.config.patchify_video_feature = getattr(model_args, "patchify_video_feature", False)
-
         if getattr(self, "mm_projector", None) is None:
             self.mm_projector = build_vision_projector(self.config, vision_cfg=vision_tower.config)
 
@@ -113,14 +107,10 @@ class LlavaMetaModel:
             def get_w(weights, keyword):
                 return {k.split(keyword + ".")[1]: v for k, v in weights.items() if keyword in k}
 
-            # import pdb; pdb.set_trace()
-            self.mm_projector.load_state_dict(get_w(mm_projector_weights, "mm_projector"))
+            incompatible_keys = self.mm_projector.load_state_dict(get_w(mm_projector_weights, "mm_projector"))
+            rank0_print(f"Loaded mm projector weights from {pretrain_mm_mlp_adapter}. Incompatible keys: {incompatible_keys}")
             incompatible_keys = self.vision_resampler.load_state_dict(get_w(mm_projector_weights, "vision_resampler"), strict=False)
-            print(incompatible_keys)
-        
-        num_trainable_parameters = sum(p.numel() for p in self.vision_resampler.parameters() if p.requires_grad) / 1e6
-        print(f"Number of trainable parameters in vision resampler: {num_trainable_parameters}M")
-
+            rank0_print(f"Loaded vision resampler weights from {pretrain_mm_mlp_adapter}. Incompatible keys: {incompatible_keys}")
 
 
 def unpad_image(tensor, original_size):
@@ -167,80 +157,28 @@ class LlavaMetaForCausalLM(ABC):
     def get_vision_tower(self):
         return self.get_model().get_vision_tower()
 
-    def encode_images(self, images, input_modality="image", prompts=None, image_counts=None, long_video=False):
+    def encode_images(self, images):
         image_features = self.get_model().get_vision_tower()(images)
-
-
-        if input_modality == "video":
-            image_features = self.get_model().vision_resampler(image_features, images=images)
-
+        image_features = self.get_model().vision_resampler(image_features, images=images)
         image_features = self.get_model().mm_projector(image_features)
-
         return image_features
 
-    def update_prompt(self, prompts=None):
-        self.prompts = prompts
-
-    def prepare_inputs_labels_for_multimodal(
-        self, input_ids, position_ids, attention_mask, past_key_values, labels,
-        images, modalities, image_sizes=None,prompts=None
-    ):
+    def prepare_inputs_labels_for_multimodal(self, input_ids, position_ids, attention_mask, past_key_values, labels, images, image_sizes=None):
         vision_tower = self.get_vision_tower()
         if vision_tower is None or images is None or input_ids.shape[1] == 1:
             return input_ids, position_ids, attention_mask, past_key_values, None, labels
 
-        # pre-process images for long video
-        if images[0].shape[-1] > 1000:
-            long_video = True
-        else:
-            long_video = False
-
-        if isinstance(modalities, str):
-            modalities = [modalities]
-
-        image_idx_in_batch = []
-        for _ in range(len(modalities)):
-            # if modalities[_] != "video":
-            if modalities[_] == "image":
-                image_idx_in_batch.append(_)
-        # import pdb; pdb.set_trace()
         if type(images) is list or images.ndim == 5:
-            # not reseshape for long video
-
-            if not long_video:
-                images_list = []
-                for image in images:
-                    if image.ndim == 4:
-                        images_list.append(image)
-                    else:
-                        images_list.append(image.unsqueeze(0))
-
-            image_counts = [image.shape[0] for image in images_list]
-            try:
-                concat_images = torch.cat(images_list, dim=0)
-            except Exception as e:
-                print(e)
-                for _ in images_list:
-                    print(_.shape)
-                import pdb
-
-                pdb.set_trace()
-
-            image_features_samplers = self.encode_images(concat_images, "video", prompts, image_counts, long_video=long_video)
-            image_features = self.encode_images(concat_images)  # , prompts)#, image_counts, long_video=long_video)
-            split_sizes = [image.shape[0] for image in images_list]
+            if type(images) is list:
+                images = [x.unsqueeze(0) if x.ndim == 3 else x for x in images]
+            concat_images = torch.cat([image for image in images], dim=0)
+            image_features = self.encode_images(concat_images)
+            split_sizes = [image.shape[0] for image in images]
             image_features = torch.split(image_features, split_sizes, dim=0)
-
-            image_features_samplers = torch.split(image_features_samplers, split_sizes, dim=0)
-            image_features = [image_features[i] if i in image_idx_in_batch else image_features_samplers[i] for i in range(len(images_list))]
-
-            # import pdb; pdb.set_trace()
             mm_patch_merge_type = getattr(self.config, "mm_patch_merge_type", "flat")
             image_aspect_ratio = getattr(self.config, "image_aspect_ratio", "square")
             if mm_patch_merge_type == "flat":
-                new_image_features = []
-                for image_idx, image_feature in enumerate(image_features):
-                    new_image_features.append(image_feature.flatten(0, 1))
+                image_features = [x.flatten(0, 1) for x in image_features]
             elif mm_patch_merge_type.startswith("spatial"):
                 new_image_features = []
                 for image_idx, image_feature in enumerate(image_features):
@@ -249,18 +187,17 @@ class LlavaMetaForCausalLM(ABC):
                     # currently image_feature is a tensor of shape (4, num_patches, hidden_size)
                     # we want to first unflatten it to (2, 2, h, w, hidden_size)
 
-                    if image_idx not in image_idx_in_batch:
-                        new_image_features.append(image_feature.flatten(0, 1))
-                        continue
-
                     if image_feature.shape[0] > 1:
                         base_image_feature = image_feature[0]
                         image_feature = image_feature[1:]
                         height = width = self.get_vision_tower().num_patches_per_side
-                        # import pdb; pdb.set_trace()
                         assert height * width == base_image_feature.shape[0]
                         if image_aspect_ratio == "anyres":
-                            num_patch_width, num_patch_height = get_anyres_image_grid_shape(image_sizes[image_idx], self.config.image_grid_pinpoints, self.get_vision_tower().config.image_size)
+                            if hasattr(self.get_vision_tower(), "image_size"):
+                                vision_tower_image_size = self.get_vision_tower().image_size
+                            else:
+                                raise ValueError("vision_tower_image_size is not found in the vision tower.")
+                            num_patch_width, num_patch_height = get_anyres_image_grid_shape(image_sizes[image_idx], self.config.image_grid_pinpoints, vision_tower_image_size)
                             image_feature = image_feature.view(num_patch_height, num_patch_width, height, width, -1)
                         else:
                             image_feature = image_feature.view(2, 2, height, width, -1)
@@ -270,8 +207,6 @@ class LlavaMetaForCausalLM(ABC):
                             image_feature = nn.functional.max_pool2d(image_feature, 2)
                             image_feature = image_feature.flatten(1, 2).transpose(0, 1)
                         elif "unpad" in mm_patch_merge_type:
-                            # import pdb; pdb.set_trace()
-                            #
                             image_feature = image_feature.permute(4, 0, 2, 1, 3).contiguous()
                             image_feature = image_feature.flatten(1, 2).flatten(2, 3)
                             image_feature = unpad_image(image_feature, image_sizes[image_idx])
@@ -324,20 +259,11 @@ class LlavaMetaForCausalLM(ABC):
         new_labels = []
         cur_image_idx = 0
         for batch_idx, cur_input_ids in enumerate(input_ids):
-            # import pdb; pdb.set_trace()
-            cur_labels = labels[batch_idx]
-
             num_images = (cur_input_ids == IMAGE_TOKEN_INDEX).sum()
             if num_images == 0:
                 cur_image_features = image_features[cur_image_idx]
-                if cur_image_features.ndim == 3:
-                    cur_image_features = cur_image_features.squeeze(0)
                 cur_input_embeds_1 = self.get_model().embed_tokens(cur_input_ids)
-                try:
-                    cur_input_embeds = torch.cat([cur_input_embeds_1, cur_image_features[0:0]], dim=0)
-                except:
-                    import pdb
-                    pdb.set_trace()
+                cur_input_embeds = torch.cat([cur_input_embeds_1, cur_image_features[0:0]], dim=0)
                 new_input_embeds.append(cur_input_embeds)
                 new_labels.append(labels[batch_idx])
                 cur_image_idx += 1
@@ -345,6 +271,7 @@ class LlavaMetaForCausalLM(ABC):
 
             image_token_indices = [-1] + torch.where(cur_input_ids == IMAGE_TOKEN_INDEX)[0].tolist() + [cur_input_ids.shape[0]]
             cur_input_ids_noim = []
+            cur_labels = labels[batch_idx]
             cur_labels_noim = []
             for i in range(len(image_token_indices) - 1):
                 cur_input_ids_noim.append(cur_input_ids[image_token_indices[i] + 1 : image_token_indices[i + 1]])
@@ -354,17 +281,12 @@ class LlavaMetaForCausalLM(ABC):
             cur_input_embeds_no_im = torch.split(cur_input_embeds, split_sizes, dim=0)
             cur_new_input_embeds = []
             cur_new_labels = []
-            
-            # import pdb; pdb.set_trace()
+
             for i in range(num_images + 1):
                 cur_new_input_embeds.append(cur_input_embeds_no_im[i])
                 cur_new_labels.append(cur_labels_noim[i])
                 if i < num_images:
-                    # import pdb; pdb.set_trace()
                     cur_image_features = image_features[cur_image_idx]
-                    if cur_image_features.ndim == 3:
-                        hidden_size = cur_image_features.shape[-1]
-                        cur_image_features = cur_image_features.reshape(-1, hidden_size)
                     cur_image_idx += 1
                     cur_new_input_embeds.append(cur_image_features)
                     cur_new_labels.append(torch.full((cur_image_features.shape[0],), IGNORE_INDEX, device=cur_labels.device, dtype=cur_labels.dtype))
@@ -372,20 +294,16 @@ class LlavaMetaForCausalLM(ABC):
             cur_new_input_embeds = [x.to(self.device) for x in cur_new_input_embeds]
 
             cur_new_input_embeds = torch.cat(cur_new_input_embeds)
-            # import pdb; pdb.set_trace()
             cur_new_labels = torch.cat(cur_new_labels)
 
             new_input_embeds.append(cur_new_input_embeds)
-            # import pdb; pdb.set_trace()
             new_labels.append(cur_new_labels)
 
         # Truncate sequences to max length as image embeddings can make the sequence longer
-        # import pdb; pdb.set_trace()
         tokenizer_model_max_length = getattr(self.config, "tokenizer_model_max_length", None)
         if tokenizer_model_max_length is not None:
             new_input_embeds = [x[:tokenizer_model_max_length] for x in new_input_embeds]
             new_labels = [x[:tokenizer_model_max_length] for x in new_labels]
-        # import pdb; pdb.set_trace()
 
         # Combine them
         max_len = max(x.shape[0] for x in new_input_embeds)
@@ -425,16 +343,6 @@ class LlavaMetaForCausalLM(ABC):
 
         if _position_ids is None:
             position_ids = None
-        
-        gpu_rank = new_input_embeds.device.index if new_input_embeds.is_cuda else None
-    
-        # if dist.is_available() and dist.is_initialized():
-        #     dist.barrier()
-        # print(f"{gpu_rank}\n")
-        # dist.barrier()
-        # print(f"{gpu_rank}_{modalities}_{new_input_embeds.shape}\n")
-        # print(f"all finished\n")
-        # import pdb; pdb.set_trace()
 
         return None, position_ids, attention_mask, past_key_values, new_input_embeds, new_labels
 

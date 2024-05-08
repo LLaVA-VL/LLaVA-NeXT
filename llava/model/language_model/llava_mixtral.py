@@ -19,7 +19,7 @@ import torch
 import torch.nn as nn
 from torch.nn import CrossEntropyLoss
 
-from transformers import AutoConfig, AutoModelForCausalLM, MistralConfig, MistralModel, MistralForCausalLM, GenerationConfig
+from transformers import AutoConfig, AutoModelForCausalLM, MixtralConfig, MixtralModel, MixtralForCausalLM, GenerationConfig
 
 from transformers.modeling_outputs import CausalLMOutputWithPast
 from transformers.generation.utils import GenerateOutput
@@ -27,31 +27,26 @@ from transformers.generation.utils import GenerateOutput
 from ..llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
 
 
-class LlavaMistralConfig(MistralConfig):
-    model_type = "llava_mistral"
-    temperature: float = 0.0  # reset to 0.0, previously 0.9 for Vicuna
-    max_new_tokens: int = 1024
-    do_sample: bool = False
-    top_p: Optional[float] = None
+class LlavaMixtralConfig(MixtralConfig):
+    model_type = "llava_mixtral"
 
 
-class LlavaMistralModel(LlavaMetaModel, MistralModel):
-    config_class = LlavaMistralConfig
+class LlavaMixtralModel(LlavaMetaModel, MixtralModel):
+    config_class = LlavaMixtralConfig
 
-    def __init__(self, config: MistralConfig):
-        super(LlavaMistralModel, self).__init__(config)
+    def __init__(self, config: MixtralConfig):
+        super(LlavaMixtralModel, self).__init__(config)
 
 
-class LlavaMistralForCausalLM(MistralForCausalLM, LlavaMetaForCausalLM):
-    config_class = LlavaMistralConfig
+class LlavaMixtralForCausalLM(MixtralForCausalLM, LlavaMetaForCausalLM):
+    config_class = LlavaMixtralConfig
 
     def __init__(self, config):
-        super(MistralForCausalLM, self).__init__(config)
+        super(MixtralForCausalLM, self).__init__(config)
 
-        config.model_type = "llava_mistral"
+        config.model_type = "llava_mixtral"
         config.rope_scaling = None
-
-        self.model = LlavaMistralModel(config)
+        self.model = LlavaMixtralModel(config)
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
         # Initialize weights and apply final processing
         self.post_init()
@@ -123,5 +118,5 @@ class LlavaMistralForCausalLM(MistralForCausalLM, LlavaMetaForCausalLM):
         return inputs
 
 
-AutoConfig.register("llava_mistral", LlavaMistralConfig)
-AutoModelForCausalLM.register(LlavaMistralConfig, LlavaMistralForCausalLM)
+AutoConfig.register("llava_mixtral", LlavaMixtralConfig)
+AutoModelForCausalLM.register(LlavaMixtralConfig, LlavaMixtralForCausalLM)

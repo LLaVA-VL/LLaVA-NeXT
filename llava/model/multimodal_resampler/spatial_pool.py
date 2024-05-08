@@ -9,7 +9,6 @@ class SpatialPool(nn.Module):
 
         self.mode = model_args.mm_spatial_pool_mode
         self.stride = model_args.mm_spatial_pool_stride
-        # import pdb; pdb.set_trace()
         self.out_channels = getattr(model_args, "mm_spatial_pool_out_channels", vision_tower.hidden_size)
 
         if self.mode == "average":
@@ -22,7 +21,6 @@ class SpatialPool(nn.Module):
             raise ValueError(f"Unknown pooling mode: {self.pool}.")
 
     def forward(self, image_features, images, *args, **kwargs):
-        # import pdb; pdb.set_trace()
         ori_W = int(math.sqrt(image_features.shape[1] * images.shape[3] // images.shape[2]))
         ori_H = int(ori_W * images.shape[2] // images.shape[3])
 
