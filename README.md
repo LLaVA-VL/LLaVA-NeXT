@@ -3,7 +3,7 @@
 </p>
 
 # LLaVA-NeXT: A series of Multimodal models with stronger capabilities
-
+[![llava_next-blog](https://img.shields.io/badge/llava_next-blog-green)](https://llava-vl.github.io/blog/)
 [![llava_next-demo](https://img.shields.io/badge/llava_next-image_demo-red)](https://llava-vl.github.io/blog/2024-05-10-llava-next-stronger-llms/)
 [![llava_next-video_demo](https://img.shields.io/badge/llava_next-video_demo-red)](https://llava-vl.github.io/blog/2024-05-10-llava-next-stronger-llms/)
 [![llava_next-image_checkpoints](https://img.shields.io/badge/llava_next-image_checkpoints-blue)](https://huggingface.co/collections/lmms-lab/llava-next-6623288e2d61edba3ddbf5ff)
