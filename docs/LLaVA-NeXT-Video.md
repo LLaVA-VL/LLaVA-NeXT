@@ -2,25 +2,8 @@
 # LLaVA-NeXT: A Strong Zero-shot Video Understanding Model
 
 ## Contents
-- [Install](#install)
 - [Demo](#demo)
 - [Evaluation](#evaluation)
-
-## Install
-
-1. **Clone this repository and navigate to the LLaVA folder:**
-```bash
-git clone https://github.com/LLaVA-VL/LLaVA-NeXT
-cd LLaVA-NeXT
-```
-
-2. **Install the package:**
-```bash
-conda create -n llava python=3.10 -y
-conda activate llava
-pip install --upgrade pip  # Enable PEP 660 support.
-pip install -e .
-```
 
 ## Demo
 
