@@ -69,10 +69,10 @@ accelerate launch --num_processes=8 \
 accelerate launch --num_processes=1 \
   -m lmms_eval \
   --model llava \
-  --model_args pretrained=lmms-lab/llava-next-72b,conv_template=qwen_1_5,model_name=qwen_1_5 \
+  --model_args pretrained=lmms-lab/llava-next-72b,conv_template=qwen_1_5,model_name=llava_qwen,device_map=auto \
   --tasks ai2d,docvqa_val,infovqa_val,mme,mmbench_en_dev \
   --batch_size 1 \
   --log_samples \
-  --log_samples_suffix llava_next_0420 \
+  --log_samples_suffix llava_next \
   --output_path ./logs/
 ```
