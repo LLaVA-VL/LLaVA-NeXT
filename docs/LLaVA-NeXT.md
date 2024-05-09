@@ -61,7 +61,9 @@ pip install git+https://github.com/EvolvingLMMs-Lab/lmms-eval.git
 ```
 
 ### Check the evaluation results with [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval)
-Our models' evaluation results can be fully reproduced by using the [`lmms-eval`](https://github.com/EvolvingLMMs-Lab/lmms-eval) toolkit. After you install lmms-eval and llava, you can run the evaluation using the following commands. Please note that different torch versions might causing the results to vary.
+Our models' evaluation results can be fully reproduced by using the [`lmms-eval`](https://github.com/EvolvingLMMs-Lab/lmms-eval) toolkit. After you install lmms-eval and llava, you can run the evaluation using the following commands. To run following commands, you will have to install [`flash-attn`](https://github.com/Dao-AILab/flash-attention). If you do not want to install it, you can disable the flash-attn by specifying it in `--model_args pretrained=lmms-lab/llama3-llava-next-8b,conv_template=llava_llama_3,attn_implementation=None`.
+
+Please note that different torch versions might causing the results to vary.
 
 ```shell
 # Evaluating Llama-3-LLaVA-NeXT-8B on multiple datasets
