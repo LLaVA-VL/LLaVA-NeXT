@@ -74,7 +74,7 @@ Please checkout the following page for more inference & evaluation details.
 
 ## Citation
 
-If you find LLaVA useful for your research and applications, please cite using this BibTeX:
+If you find it useful for your research and applications, please cite related papers/blogs using this BibTeX:
 ```bibtex
 @misc{li2024llavanext-strong,
     title={LLaVA-NeXT: Stronger LLMs Supercharge Multimodal Capabilities in the Wild},
