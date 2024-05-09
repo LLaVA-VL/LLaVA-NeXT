@@ -65,7 +65,7 @@ cd LLaVA-NeXT
 conda create -n llava python=3.10 -y
 conda activate llava
 pip install --upgrade pip  # Enable PEP 660 support.
-pip install -e .
+pip install -e ".[train]"
 ```
 
 Please checkout the following page for more inference & evaluation details.
