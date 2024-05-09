@@ -1,14 +1,6 @@
 # LLaVA-NeXT: Stronger LLMs Supercharge Multimodal Capabilities in the Wild
 
-## Install to Evaluate and Try Demo
-
-**Install the evaluation package:**
-```bash
-# make sure you installed the LLaVA-NeXT model files via outside REAME.md
-pip install git+https://github.com/EvolvingLMMs-Lab/lmms-eval.git
-```
-
-### Quick Start With HuggingFace
+## Quick Start With HuggingFace
 
 Here is a quick inference code using [`llavanext-llama3-8B`](https://huggingface.co/lmms-lab/llama3-llava-next-8b) as an example. You will need to install [`flash-attn`](https://github.com/Dao-AILab/flash-attention) to use this code snippet. If you don't want to install it, you can set `attn_implementation=None` when load_pretrained_model
 ```python
@@ -58,6 +50,14 @@ cont = model.generate(
 text_outputs = tokenizer.batch_decode(cont, skip_special_tokens=True)
 print(text_outputs)
 # The image shows a radar chart, also known as a spider chart or a web chart, which is a type of graph used to display multivariate data in the form of a two-dimensional chart of three or more quantitative variables represented on axes starting from the same point. Each axis represents a different variable, and the values are plotted along each axis and connected to form a polygon.\n\nIn this particular radar chart, there are several axes labeled with different variables, such as "MM-Vet," "LLaVA-Bench," "SEED-Bench," "MMBench-CN," "MMBench," "TextVQA," "VizWiz," "GQA," "BLIP-2," "InstructBLIP," "Owen-VL-Chat," and "LLaVA-1.5." These labels suggest that the chart is comparing the performance of different models or systems across various benchmarks or tasks, such as machine translation, visual question answering, and text-based question answering.\n\nThe chart is color-coded, with each color representing a different model or system. The points on the chart are connected to form a polygon, which shows the relative performance of each model across the different benchmarks. The closer the point is to the outer edge of the
+```
+
+## Evaluation
+
+**Install the evaluation package:**
+```bash
+# make sure you installed the LLaVA-NeXT model files via outside REAME.md
+pip install git+https://github.com/EvolvingLMMs-Lab/lmms-eval.git
 ```
 
 ### Check the evaluation results with [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval)
