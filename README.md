@@ -54,13 +54,13 @@
 
 ### Installation
 
-1. **Clone this repository and navigate to the LLaVA folder:**
+#### 1. **Clone this repository and navigate to the LLaVA folder:**
 ```bash
 git clone https://github.com/LLaVA-VL/LLaVA-NeXT
 cd LLaVA-NeXT
 ```
 
-2. **Install the inference package:**
+#### 2. **Install the inference package:**
 ```bash
 conda create -n llava python=3.10 -y
 conda activate llava
@@ -68,9 +68,14 @@ pip install --upgrade pip  # Enable PEP 660 support.
 pip install -e ".[train]"
 ```
 
+### Project Navigation
 Please checkout the following page for more inference & evaluation details.
 
-- [LLaVA-NeXT](./docs/LLaVA-NeXT.md): for demo inference and evaluation with [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval).
+#### - **LLaVA-NeXT: Stronger LLMs Supercharge Multimodal Capabilities in the Wild**
+- [LLaVA-NeXT-Image](./docs/LLaVA-NeXT.md): for image demo inference and evaluation of stronger LMMs using [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval).
+
+
+#### - LLaVA-NeXT: A Strong Zero-shot Video Understanding Model
 - [LLaVA-NeXT-Video](./docs/LLaVA-NeXT-Video.md): for video inference and evaluation scripts.
 
 ## Citation
