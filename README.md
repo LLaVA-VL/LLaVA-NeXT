@@ -2,7 +2,7 @@
 <img src="https://i.postimg.cc/pL17YtG4/WX20240508-220230-2x.png"  width="80%" height="80%">
 </p>
 
-# LLaVA-NeXT: A series of Multimodal Models with Stronger Capabilities
+# LLaVA-NeXT: Open Large Multimodal Models
 [![llava_next-blog](https://img.shields.io/badge/llava_next-blog-green)](https://llava-vl.github.io/blog/)
 [![llava_next-demo](https://img.shields.io/badge/llava_next-image_demo-red)](https://llava-vl.github.io/blog/2024-05-10-llava-next-stronger-llms/)
 [![llava_next-video_demo](https://img.shields.io/badge/llava_next-video_demo-red)](https://llava-vl.github.io/blog/2024-05-10-llava-next-stronger-llms/)
