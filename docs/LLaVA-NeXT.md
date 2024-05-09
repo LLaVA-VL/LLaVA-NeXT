@@ -102,7 +102,7 @@ print(text_outputs)
 ```
 
 ### Check the evaluation results with [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval)
-
+Our models' evaluation results can be fully reproduced by using the [`lmms-eval`](https://github.com/EvolvingLMMs-Lab/lmms-eval) toolkit. After you install lmms-eval and llava, you can run the evaluation using the following commands. Please note that different torch versions might causing the results to vary.
 
 ```shell
 # Evaluating Llama-3-LLaVA-NeXT-8B on multiple datasets
