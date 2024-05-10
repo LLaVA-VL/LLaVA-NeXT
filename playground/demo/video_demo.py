@@ -96,8 +96,10 @@ def run_inference(args):
             least_token_number = args.for_get_frames_num*(24//args.mm_spatial_pool_stride)**2 + 1000
 
         scaling_factor = math.ceil(least_token_number/4096)
+        # import pdb;pdb.set_trace()
+
         if scaling_factor >= 2:
-            if "vicuna" in cfg_pretrained._name_or_path.lower():
+            if "mistral" not in cfg_pretrained._name_or_path.lower() and "7b" in cfg_pretrained._name_or_path.lower():
                 print(float(scaling_factor))
                 overwrite_config["rope_scaling"] = {"factor": float(scaling_factor), "type": "linear"}
             overwrite_config["max_sequence_length"] = 4096 * scaling_factor
