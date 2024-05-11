@@ -66,7 +66,7 @@ def main(args):
     batch_size = args.parallel
     for batch_start in tqdm.tqdm(range(0, len(shard_files), batch_size)):
         batch_end = min(batch_start + batch_size, len(shard_files))
-        if batch_start <= progress_data["last_index"]:
+        if batch_start + start_index <= progress_data["last_index"]:
             continue
         batch_arguments = [{"image_file": image_file} for image_file in shard_files[batch_start:batch_end]]
         # Run batch

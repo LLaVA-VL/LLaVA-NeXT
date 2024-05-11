@@ -18,19 +18,19 @@ class EvaClipVisionTower(nn.Module):
         self.config = get_model_config(vision_tower)
 
         if not delay_load:
+            rank0_print(f"Loading EVA ViT: {self.vision_tower_name}")
             self.load_model()
         elif getattr(args, "unfreeze_mm_vision_tower", False):
             # TODO: better detector is needed.
-            print(f"The checkpoint seems to contain `vision_tower` weights: `unfreeze_mm_vision_tower`: True.")
+            rank0_print(f"The checkpoint seems to contain `vision_tower` weights: `unfreeze_mm_vision_tower`: True.")
             self.load_model()
         elif hasattr(args, "mm_tunable_parts") and "mm_vision_tower" in args.mm_tunable_parts:
-            print(f"The checkpoint seems to contain `vision_tower` weights: `mm_tunable_parts` contains `mm_vision_tower`.")
+            rank0_print(f"The checkpoint seems to contain `vision_tower` weights: `mm_tunable_parts` contains `mm_vision_tower`.")
             self.load_model()
         else:
             self.cfg_only = self.config
 
     def load_model(self, device_map=None):
-        rank0_print(f"Loading EVA ViT: {self.vision_tower_name}")
         rank0_print(f"Pretrained: {self.vision_tower_pretrained}")
         self.image_processor = EvaClipImageTrainProcessor(self.config["vision_cfg"]["image_size"])
         self.vision_tower = EVAEncoderWrapper(self.vision_tower_pretrained, self.config)

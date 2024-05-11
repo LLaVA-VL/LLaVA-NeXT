@@ -20,7 +20,7 @@ def build_vision_tower(vision_tower_cfg, **kwargs):
             return CLIPVisionTower(vision_tower, args=vision_tower_cfg, **kwargs)
     elif "siglip" in vision_tower:
         return SigLipVisionTower(vision_tower, vision_tower_cfg=vision_tower_cfg, **kwargs)
-    elif "internal-eva" in vision_tower.lower():
+    elif "internal-eva" in vision_tower.lower() or "eva02" in vision_tower.lower():
         return EvaClipVisionTower(vision_tower, args=vision_tower_cfg, **kwargs)
     elif vision_tower in ["EVA-CLIP-8B"]:
         return EvaViTWrapper(vision_tower, args=vision_tower_cfg, **kwargs)

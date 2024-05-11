@@ -9,7 +9,7 @@ import requests
 from llava.constants import LOGDIR
 
 server_error_msg = "**NETWORK ERROR DUE TO HIGH TRAFFIC. PLEASE REGENERATE OR REFRESH THIS PAGE.**"
-moderation_msg = "YOUR INPUT VIOLATES OUR CONTENT MODERATION GUIDELINES. PLEASE TRY AGAIN."
+moderation_msg = "I am sorry. Your input may violate our content moderation guidelines. Please avoid using harmful or offensive content."
 
 handler = None
 
@@ -123,8 +123,10 @@ def violates_moderation(text):
         ret = requests.post(url, headers=headers, data=data, timeout=5)
         flagged = ret.json()["results"][0]["flagged"]
     except requests.exceptions.RequestException as e:
+        print(f"######################### Moderation Error: {e} #########################")
         flagged = False
     except KeyError as e:
+        print(f"######################### Moderation Error: {e} #########################")
         flagged = False
 
     return flagged
