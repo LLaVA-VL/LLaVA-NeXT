@@ -743,15 +743,14 @@ def load_state_dict(checkpoint_path: str, map_location: str = "cpu", model_key: 
 
 def load_clip_visual_state_dict(checkpoint_path: str, map_location: str = "cpu", is_openai: bool = False, skip_list: list = []):
     state_dict = load_state_dict(checkpoint_path, map_location=map_location, is_openai=is_openai, skip_list=skip_list)
-
-    for k in list(state_dict.keys()):
-        if not k.startswith("visual."):
-            del state_dict[k]
-    for k in list(state_dict.keys()):
-        if k.startswith("visual."):
-            new_k = k[7:]
-            state_dict[new_k] = state_dict[k]
-            del state_dict[k]
+    # for k in list(state_dict.keys()):
+    #     if not k.startswith("visual."):
+    #         del state_dict[k]
+    # for k in list(state_dict.keys()):
+    #     if k.startswith("visual."):
+    #         new_k = k[7:]
+    #         state_dict[new_k] = state_dict[k]
+    #         del state_dict[k]
     return state_dict
 
 
