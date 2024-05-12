@@ -12,6 +12,9 @@ export HF_HOME=/mnt/bn/${NAS_REGION}/workspace/.cache/huggingface
 export HF_TOKEN="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"
 export HF_HUB_ENABLE_HF_TRANSFER="1"
 
+export http_proxy=http://sys-proxy-rd-relay.byted.org:8118;
+export https_proxy=http://sys-proxy-rd-relay.byted.org:8118;
+
 ############### Prepare Envs #################
 cd /mnt/bn/${NAS_REGION}/workspace/boli01/projects/LLaVA_Next
 python3 -m pip install --upgrade pip;
