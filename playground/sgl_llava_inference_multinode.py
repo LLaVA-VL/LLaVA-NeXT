@@ -28,13 +28,28 @@ def save_progress(progress_file, progress_data):
         json.dump(progress_data, f, indent=2)
 
 
-def find_images_in_subfolders(folder_path):
-    image_extensions = (".png", ".jpg", ".jpeg", ".gif", ".bmp")
+from multiprocessing import Pool
+def find_images_in_subfolder(args):
+    folder_path, image_extensions = args
     image_files = []
     for root, dirs, files in os.walk(folder_path):
         for file in files:
             if file.endswith(image_extensions):
                 image_files.append(os.path.join(root, file))
+    return image_files
+
+def find_images_in_subfolders(folder_path):
+    image_extensions = (".png", ".jpg", ".jpeg", ".gif", ".bmp")
+    # Get all subdirectories including the root
+    all_folders = [os.path.join(folder_path, name) for name in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, name))]
+    all_folders.append(folder_path)  # Include the root directory
+
+    # Use multiprocessing to process each folder in parallel
+    with Pool(168) as pool:
+        results = pool.map(find_images_in_subfolder, [(folder, image_extensions) for folder in all_folders])
+
+    # Flatten the list of lists into a single list
+    image_files = [file for sublist in results for file in sublist]
     return image_files
 
 
