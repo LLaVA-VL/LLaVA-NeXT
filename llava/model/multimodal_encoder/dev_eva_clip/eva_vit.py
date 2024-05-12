@@ -7,8 +7,6 @@
 # --------------------------------------------------------'
 # not tested yet
 import math
-from functools import partial
-
 from transformers import CLIPImageProcessor
 
 import torch

@@ -149,7 +149,7 @@ def _build_vision_tower(embed_dim: int, vision_cfg: CLIPVisionCfg, quick_gelu: b
             mlp_ratio=vision_cfg.mlp_ratio,
             qkv_bias=vision_cfg.qkv_bias,
             drop_path_rate=vision_cfg.drop_path_rate,
-            norm_layer=partial(FusedLayerNorm, eps=1e-6) if vision_cfg.fusedLN else partial(norm_layer, eps=1e-6),
+            norm_layer=partial(norm_layer, eps=1e-6),
             xattn=vision_cfg.xattn,
             rope=vision_cfg.rope,
             postnorm=vision_cfg.postnorm,
