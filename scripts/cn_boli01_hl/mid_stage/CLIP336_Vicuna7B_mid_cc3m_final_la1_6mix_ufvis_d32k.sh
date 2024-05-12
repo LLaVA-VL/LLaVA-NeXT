@@ -1,5 +1,5 @@
 #!/bin/bash
-NAS_REGION="vl-research"
+NAS_REGION="vl-research-cn-boli01-hl"
 # set up wandb
 export WANDB_API_KEY=a651c244635bc6f913ab654af3f0eebaecdc9381
 export WANDB_ENTITY=llava-vl
@@ -29,6 +29,7 @@ nvidia-smi
 ports=($(echo $METIS_WORKER_0_PORT | tr ',' ' '))
 port=${ports[0]}
 port_in_cmd="$(echo "${METIS_WORKER_0_PORT:-2222}" | awk -F',' '{print $1}')"
+random_port_in_cmd="$(shuf -i 26000-27000 -n 1)"
 
 echo "total workers: ${ARNOLD_WORKER_NUM}"
 echo "cur worker id: ${ARNOLD_ID}"
@@ -65,17 +66,17 @@ BASE_RUN_NAME="ds_llava-vicuna-7b-v1-5-clip_large_336px-mlp2x_gelu-pretrain_blip
 echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
 # Stage 1.5
-MID_STAGE_DATA="blip558k_stage1.5_finetune"
+MID_STAGE_DATA="cc3m"
 PROMPT_VERSION="vicuna_v1"
-MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-mid_${MID_STAGE_DATA}_${PROMPT_VERSION}_ufvis_d32k"
+MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-mid_${MID_STAGE_DATA}_${PROMPT_VERSION}_ufvis_d4k"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
-torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
+torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${random_port_in_cmd}" \
     llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
     --model_name_or_path $LLM_VERSION \
     --version $PROMPT_VERSION \
-    --data_path /mnt/bn/${NAS_REGION}/data/llava_instruct/blip558k_stage1.5_finetune.json \
-    --image_folder /mnt/bn/${NAS_REGION}/data/llava_data/blip_558k/images \
+    --data_path /mnt/bn/vl-research-cn-boli01-hl/data/llava_instruct/cc3m_llava34b_recap_2421640.json \
+    --image_folder /mnt/bn/vl-research-cn-boli01-hl/data/llava_data/cc3m/images \
     --pretrain_mm_mlp_adapter="/mnt/bn/${NAS_REGION}/checkpoints/projectors/${BASE_RUN_NAME}/mm_projector.bin" \
     --mm_tunable_parts="mm_vision_tower,mm_mlp_adapter,mm_language_model" \
     --mm_vision_tower_lr=2e-6 \
@@ -94,7 +95,7 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --num_train_epochs 1 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 2 \
+    --gradient_accumulation_steps 1 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
     --save_steps 20000 \
@@ -104,7 +105,7 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --warmup_ratio 0.03 \
     --lr_scheduler_type "cosine" \
     --logging_steps 1 \
-    --model_max_length 32768 \
+    --model_max_length 4096 \
     --tf32 True \
     --gradient_checkpointing True \
     --dataloader_num_workers 16 \
@@ -113,9 +114,9 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
 
 # Stage 2
 PROMPT_VERSION="vicuna_v1"
-FINAL_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-mid_${MID_STAGE_DATA}_${PROMPT_VERSION}_final_la1_6mix_ufvis_d32k"
+FINAL_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-mid_${MID_STAGE_DATA}_${PROMPT_VERSION}_final_la1_6mix_ufvis_d4k"
 echo "FINAL_RUN_NAME: ${FINAL_RUN_NAME}"
-torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
+torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${random_port_in_cmd}" \
     llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
     --model_name_or_path /mnt/bn/${NAS_REGION}/checkpoints/${MID_RUN_NAME} \
@@ -139,7 +140,7 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --num_train_epochs 1 \
     --per_device_train_batch_size 4 \
     --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 2 \
+    --gradient_accumulation_steps 1 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
     --save_steps 20000 \
@@ -149,7 +150,7 @@ torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}"
     --warmup_ratio 0.03 \
     --lr_scheduler_type "cosine" \
     --logging_steps 1 \
-    --model_max_length 32768 \
+    --model_max_length 4096 \
     --tf32 True \
     --gradient_checkpointing True \
     --dataloader_num_workers 16 \
@@ -166,7 +167,7 @@ function azcopy_upload() {
     /mnt/bn/${NAS_REGION}/software/azcopy copy "$SRC" "https://chunyldev.blob.core.windows.net/output/$TGT$SAS_TOKEN" --recursive --overwrite=ifSourceNewer
 }
 
-azcopy_upload "/mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/project_checkpoints/${MID_RUN_NAME}" "projects/llava_data/checkpoints/"
+azcopy_upload "/mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/project_checkpoints/${FINAL_RUN_NAME}" "projects/llava_data/checkpoints/"
 
 ################ Evaluation ################
 # sh /mnt/bn/${NAS_REGION}/workspace/boli01/projects/lmms-eval/scripts/configure_envs.sh
