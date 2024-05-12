@@ -3,7 +3,6 @@
 # --------------------------------------------------------
 import math
 import os
-from functools import partial
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -539,15 +538,15 @@ class EVAVisionTransformer(nn.Module):
         x = self.pos_drop(x)
 
         # a patch_dropout of 0. would mean it is disabled and this function would do nothing but return what was passed in
-        if os.getenv("RoPE") == "1":
-            if self.training and not isinstance(self.patch_dropout, nn.Identity):
-                x, patch_indices_keep = self.patch_dropout(x)
-                self.rope.forward = partial(self.rope.forward, patch_indices_keep=patch_indices_keep)
-            else:
-                self.rope.forward = partial(self.rope.forward, patch_indices_keep=None)
-                x = self.patch_dropout(x)
-        else:
-            x = self.patch_dropout(x)
+        # if os.getenv("RoPE") == "1":
+        #     if self.training and not isinstance(self.patch_dropout, nn.Identity):
+        #         x, patch_indices_keep = self.patch_dropout(x)
+        #         self.rope.forward = partial(self.rope.forward, patch_indices_keep=patch_indices_keep)
+        #     else:
+        #         self.rope.forward = partial(self.rope.forward, patch_indices_keep=None)
+        #         x = self.patch_dropout(x)
+        # else:
+        x = self.patch_dropout(x)
 
         rel_pos_bias = self.rel_pos_bias() if self.rel_pos_bias is not None else None
         for blk in self.blocks:

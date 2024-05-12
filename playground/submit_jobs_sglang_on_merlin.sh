@@ -14,13 +14,13 @@ export HF_HUB_ENABLE_HF_TRANSFER="1"
 # source ~/.bashrc;
 
 cd /mnt/bn/${NAS_REGION}/workspace/${USER_PROJECT}/projects/sglang;
-# python3 -m pip install --upgrade pip
-# python3 -m pip install -e "python[all]"
-# pip install outlines==0.0.27
-# installing vllm on cn machines is quite tricky since CN images filtered out certain packages. 
-# cd /mnt/bn/${NAS_REGION}/workspace/${USER_PROJECT}/projects/vllm
-# python3 -m pip install -r requirements.txt
-# python3 -m pip install --no-index --no-build-isolation -e .
+python3 -m pip install --upgrade pip
+python3 -m pip install -e "python[all]"
+pip install outlines==0.0.27
+installing vllm on cn machines is quite tricky since CN images filtered out certain packages. 
+cd /mnt/bn/${NAS_REGION}/workspace/${USER_PROJECT}/projects/vllm
+python3 -m pip install -r requirements.txt
+python3 -m pip install --no-index --no-build-isolation -e .
 python3 -m pip install hf_transfer
 
 nvidia-smi
