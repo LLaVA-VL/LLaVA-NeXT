@@ -59,3 +59,17 @@ scripts/i18n/*
 playground/.nfs028b000000010add00000001
 HIP
 playground/.nfs028b0000017bff2c00000012
+scripts/video
+scripts/qwen
+scripts/vicuna
+scripts/mistral
+scripts/baseline_rep
+scripts/cn_boli01_hl
+scripts/cn_boli01_lf
+scripts/cn_lf
+scripts/cn_lq
+scripts/cn_yg
+scripts/cn_yg_hao
+scripts/eva_encoder
+scripts/i18n
+scripts/i18n_higher_res
