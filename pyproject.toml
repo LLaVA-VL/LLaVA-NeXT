@@ -63,6 +63,7 @@ train = [
 "Bug Tracker" = "https://github.com/haotian-liu/LLaVA/issues"
 
 [tool.setuptools.packages.find]
+include = ["llava*", "trl*"]
 exclude = [
     "assets*",
     "benchmark*",
