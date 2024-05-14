@@ -4,7 +4,7 @@ import torchvision
 import torch.utils.checkpoint as checkpoint
 from transformers import CLIPImageProcessor
 from llava.utils import rank0_print
-
+from llava.utils import rank0_print
 try:
     import open_clip
     from open_clip.transformer import _expand_token
@@ -12,6 +12,9 @@ except ImportError:
     print("OpenCLIP not installed")
     open_clip = None
 
+HIDDEN_SIZE_DICT = {
+    "ViT-H-14-378-quickgelu": 1280, 
+}
 
 class OpenCLIPVisionTower(nn.Module):
     def __init__(self, vision_tower, args, delay_load=False):
@@ -24,6 +27,14 @@ class OpenCLIPVisionTower(nn.Module):
         self.select_feature = getattr(args, "mm_vision_select_feature", "patch")
 
         if not delay_load:
+            rank0_print(f"Loading vision tower: {vision_tower}")
+            self.load_model()
+        elif getattr(args, "unfreeze_mm_vision_tower", False):
+            # TODO: better detector is needed.
+            rank0_print(f"The checkpoint seems to contain `vision_tower` weights: `unfreeze_mm_vision_tower`: True.")
+            self.load_model()
+        elif hasattr(args, "mm_tunable_parts") and "mm_vision_tower" in args.mm_tunable_parts:
+            rank0_print(f"The checkpoint seems to contain `vision_tower` weights: `mm_tunable_parts` contains `mm_vision_tower`.")
             self.load_model()
 
     def load_model(self, device_map="auto"):
@@ -131,11 +142,10 @@ class OpenCLIPVisionTower(nn.Module):
 
     @property
     def hidden_size(self):
-        if hasattr(self.vision_tower, "ln_post"):
-            return self.vision_tower.ln_post.weight.shape[0]
-        if hasattr(self.vision_tower, "trunk"):
-            return self.vision_tower.trunk.num_features
-        raise NotImplementedError
+        if self.model_name in HIDDEN_SIZE_DICT:
+            return HIDDEN_SIZE_DICT[self.model_name]
+        else:
+            raise NotImplementedError
 
     @property
     def num_patches(self):
@@ -148,3 +158,8 @@ class OpenCLIPVisionTower(nn.Module):
     @property
     def image_size(self):
         return self.resize_transform_size
+
+    @property
+    def num_patches_per_side(self):
+        return self.resize_transform_size // self.patch_size
+
