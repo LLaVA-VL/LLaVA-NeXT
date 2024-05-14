@@ -109,8 +109,7 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
             rank0_print("Merging LoRA weights...")
             model = model.merge_and_unload()
             rank0_print("Model is loaded...")
-        elif model_base is not None:
-            # this may be mm projector only
+        elif model_base is not None: # this may be mm projector only, loading projector with preset language mdoel
             rank0_print(f"Loading LLaVA from base model {model_base}...")
             if "mixtral" in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
@@ -155,8 +154,22 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
         else:
             rank0_print(f"Loaded LLaVA model: {model_path}")
             if "mixtral" in model_name.lower():
+                from llava.model.language_model.llava_mixtral import LlavaMixtralConfig
+
+                tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+                if customized_config is None:
+                    llava_cfg = LlavaMixtralConfig.from_pretrained(model_path)
+                else:
+                    llava_cfg = customized_config
+
+                if overwrite_config is not None:
+                    rank0_print(f"Overwriting config with {overwrite_config}")
+                    for k, v in overwrite_config.items():
+                        setattr(llava_cfg, k, v)
+
                 tokenizer = AutoTokenizer.from_pretrained(model_path)
-                model = LlavaMixtralForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, **kwargs)
+                model = LlavaMixtralForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, config=llava_cfg, **kwargs)
+                
             elif "mistral" in model_name.lower() or "zephyr" in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_path)
                 model = LlavaMistralForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, **kwargs)
@@ -183,8 +196,9 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                     rank0_print(f"Overwriting config with {overwrite_config}")
                     for k, v in overwrite_config.items():
                         setattr(llava_cfg, k, v)
-                # import pdb;pdb.set_trace()
+
                 model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, config=llava_cfg, **kwargs)
+                
             elif "qwen" in model_name.lower() or "quyen" in model_name.lower():
                 from llava.model.language_model.llava_qwen import LlavaQwenConfig
 
