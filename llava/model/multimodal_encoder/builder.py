@@ -22,7 +22,7 @@ def build_vision_tower(vision_tower_cfg, **kwargs):
         return SigLipVisionTower(vision_tower, vision_tower_cfg=vision_tower_cfg, **kwargs)
     elif "internal-eva" in vision_tower.lower() or "eva02" in vision_tower.lower():
         return EvaClipVisionTower(vision_tower, args=vision_tower_cfg, **kwargs)
-    elif vision_tower in ["EVA-CLIP-8B"]:
+    elif vision_tower in ["EVA-CLIP-8B", "EVA-CLIP-8B-plus"]:
         return EvaViTWrapper(vision_tower, args=vision_tower_cfg, **kwargs)
     elif vision_tower.startswith("hf:"):
         return HFVisionTower(vision_tower, args=vision_tower_cfg, **kwargs)
