@@ -27,7 +27,6 @@ class EvaViTWrapper(nn.Module):
         super().__init__()
 
         self.is_loaded = False
-
         self.vision_tower_name = vision_tower
         self.pretrained = args.vision_tower_pretrained
         self.args = args
@@ -40,15 +39,23 @@ class EvaViTWrapper(nn.Module):
         self.model_config = get_model_config(self.vision_tower_name)
 
         if not delay_load:
+            rank0_print(f"Loading vision tower: {vision_tower}")
+            self.load_model()
+        elif getattr(args, "unfreeze_mm_vision_tower", False):
+            # TODO: better detector is needed.
+            rank0_print(f"The checkpoint seems to contain `vision_tower` weights: `unfreeze_mm_vision_tower`: True.")
+            self.load_model()
+        elif hasattr(args, "mm_tunable_parts") and "mm_vision_tower" in args.mm_tunable_parts:
+            rank0_print(f"The checkpoint seems to contain `vision_tower` weights: `mm_tunable_parts` contains `mm_vision_tower`.")
             self.load_model()
 
     def load_model(self):
-        rank0_print(f"Loading EVA ViT: {self.vision_tower_name}")
+        rank0_print(f"Loading: {self.vision_tower_name}")
         rank0_print(f"Pretrained: {self.pretrained}")
         time_start = time.time()
         model, _, image_processor = create_model_and_transforms(self.vision_tower_name, self.pretrained, force_custom_clip=True, precision="bf16")
         time_end = time.time()
-        rank0_print(f"Loaded EVA ViT: {self.vision_tower_name} in {time_end - time_start:.2f}s")
+        rank0_print(f"Loaded: {self.vision_tower_name} in {time_end - time_start:.2f}s")
         model = model.to("cuda")
         self.device = next(model.parameters()).device
         self.dtype = next(model.parameters()).dtype
