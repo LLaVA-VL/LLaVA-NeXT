@@ -3,6 +3,7 @@ import logging
 import logging.handlers
 import os
 import sys
+import numpy as np
 
 import requests
 
@@ -15,6 +16,33 @@ handler = None
 
 import torch.distributed as dist
 
+try:
+    import av
+except ImportError:
+    print("Please install pyav to use video processing functions.")
+
+def process_video_with_pyav(video_file, data_args):
+    container = av.open(video_file)
+    stream = container.streams.video[0]
+    stream.codec_context.skip_frame = 'NONKEY'  # Optional: Skip non-key frames to speed up
+
+    total_frame_num = stream.frames
+    avg_fps = round(stream.average_rate / data_args.video_fps)
+    frame_idx = [i for i in range(0, total_frame_num, avg_fps)]
+    if data_args.frames_upbound > 0:
+        if len(frame_idx) > data_args.frames_upbound:
+            uniform_sampled_frames = np.linspace(0, total_frame_num - 1, data_args.frames_upbound, dtype=int)
+            frame_idx = uniform_sampled_frames.tolist()
+
+    video_frames = []
+    for frame in container.decode(video=0):
+        if frame.index in frame_idx:
+            video_frames.append(frame.to_rgb().to_ndarray())
+            if len(video_frames) == len(frame_idx):  # Stop decoding once we have all needed frames
+                break
+
+    video = np.stack(video_frames)
+    return video
 
 def rank0_print(*args):
     if dist.is_initialized():
