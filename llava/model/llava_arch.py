@@ -28,7 +28,7 @@ from llava.constants import IGNORE_INDEX, IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_PATCH
 
 from llava.mm_utils import get_anyres_image_grid_shape
 from llava.utils import rank0_print
-
+import random
 
 class LlavaMetaModel:
 
@@ -421,7 +421,13 @@ class LlavaMetaForCausalLM(ABC):
 
         if _position_ids is None:
             position_ids = None
-
+        if getattr(self.config, "use_pos_skipping", False) and self.training:
+            position_ids = torch.arange(new_input_embeds.size(1), device=new_input_embeds.device).unsqueeze(0).to(new_input_embeds.device)
+            split_position = random.randint(0, new_input_embeds.size(1))
+            left_add = random.randint(0, self.config.pos_skipping_range)
+            right_add = random.randint(left_add, self.config.pos_skipping_range)
+            position_ids[:, :split_position] += left_add
+            position_ids[:, split_position:] += right_add
         # import pdb; pdb.set_trace()
         return None, position_ids, attention_mask, past_key_values, new_input_embeds, new_labels
 

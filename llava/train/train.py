@@ -106,7 +106,9 @@ class ModelArguments:
 
     s2: Optional[bool] = field(default=False)
     s2_scales: Optional[str] = field(default="336,672,1008")
-
+    
+    use_pos_skipping: Optional[bool] = field(default=False)
+    pos_skipping_range: Optional[int] = field(default=4096)
 
 @dataclass
 class DataArguments:
@@ -1222,11 +1224,24 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
 
     customized_kwargs = dict()
     customized_kwargs.update(bnb_model_from_pretrained_args)
-
-    overwrite_config = {}
     cfg_pretrained = None
-    if model_args.rope_scaling_factor is not None and model_args.rope_scaling_type is not None:
+    
+    overwrite_config = {}
+    if any([
+        model_args.rope_scaling_factor is not None,
+        model_args.rope_scaling_type is not None,
+        model_args.mm_spatial_pool_stride is not None,
+        model_args.mm_spatial_pool_out_channels is not None,
+        model_args.mm_spatial_pool_mode is not None,
+        model_args.mm_resampler_type is not None
+    ]):
         cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path)
+
+    if model_args.use_pos_skipping is not None and model_args.pos_skipping_range is not None:
+        overwrite_config["use_pos_skipping"] = model_args.use_pos_skipping
+        overwrite_config["pos_skipping_range"] = model_args.pos_skipping_range
+
+    if model_args.rope_scaling_factor is not None and model_args.rope_scaling_type is not None:
         overwrite_config["rope_scaling"] = {
             "factor": model_args.rope_scaling_factor,
             "type": model_args.rope_scaling_type,
@@ -1247,8 +1262,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
         overwrite_config["mm_spatial_pool_mode"] = model_args.mm_spatial_pool_mode
 
     if overwrite_config:
-        if cfg_pretrained is None:
-            cfg_pretrained = AutoConfig.from_pretrained(model_args.model_name_or_path)
+        assert cfg_pretrained is not None, "cfg_pretrained is None"
             
         rank0_print(f"Overwriting config with {overwrite_config}")
         for k, v in overwrite_config.items():
