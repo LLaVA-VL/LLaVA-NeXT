@@ -12,8 +12,9 @@ except ImportError:
     open_clip = None
 
 HIDDEN_SIZE_DICT = {
-    "ViT-H-14-378-quickgelu": 1280, 
+    "ViT-H-14-378-quickgelu": 1280,
 }
+
 
 class OpenCLIPVisionTower(nn.Module):
     def __init__(self, vision_tower, args, delay_load=False):
@@ -161,4 +162,3 @@ class OpenCLIPVisionTower(nn.Module):
     @property
     def num_patches_per_side(self):
         return self.resize_transform_size // self.patch_size
-

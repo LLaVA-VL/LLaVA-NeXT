@@ -29,6 +29,8 @@ def save_progress(progress_file, progress_data):
 
 
 from multiprocessing import Pool
+
+
 def find_images_in_subfolder(args):
     folder_path, image_extensions = args
     image_files = []
@@ -37,6 +39,7 @@ def find_images_in_subfolder(args):
             if file.endswith(image_extensions):
                 image_files.append(os.path.join(root, file))
     return image_files
+
 
 def find_images_in_subfolders(folder_path):
     image_extensions = (".png", ".jpg", ".jpeg", ".gif", ".bmp")
