@@ -30,6 +30,7 @@ from llava.mm_utils import get_anyres_image_grid_shape
 from llava.utils import rank0_print
 import random
 
+
 class LlavaMetaModel:
 
     def __init__(self, config):
