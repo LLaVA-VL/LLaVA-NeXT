@@ -51,7 +51,7 @@ train = [
     "pydantic==1.10.8",
     "timm",
     "hf_transfer",
-    "decord",
+    "pyav",
     "datasets==2.16.1",
     "tyro",
     "scipy",
