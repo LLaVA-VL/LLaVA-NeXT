@@ -46,6 +46,7 @@ from llava import conversation as conversation_lib
 from llava.model import *
 from llava.mm_utils import process_highres_image, process_anyres_image, process_highres_image_crop_split, tokenizer_image_token
 from llava.utils import rank0_print, process_video_with_pyav
+torch.multiprocessing.set_sharing_strategy('file_system')
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 local_rank = None
@@ -1084,9 +1085,19 @@ class LazySupervisedDataset(Dataset):
                 print("File {} not exist!".format(video_file))
 
             try:
+                video = process_video_with_pyav(video_file, self.data_args)
                 # using videoreader
                 # if "shareVideoGPTV" not in video_file and "liangke" not in video_file:
-                video = process_video_with_pyav(video_file, self.data_args)
+                    # vr = VideoReader(video_file, ctx=cpu(0))
+                    # total_frame_num = len(vr)
+                    # avg_fps = round(vr.get_avg_fps() / self.data_args.video_fps)
+                    # frame_idx = [i for i in range(0, total_frame_num, avg_fps)]
+                    # if self.data_args.frames_upbound > 0:
+                    #     if len(frame_idx) > self.data_args.frames_upbound:
+                    #         uniform_sampled_frames = np.linspace(0, total_frame_num - 1, self.data_args.frames_upbound, dtype=int)
+                    #         frame_idx = uniform_sampled_frames.tolist()
+                    # video = vr.get_batch(frame_idx).asnumpy()
+                    # video = np.array(video)
                 # else:
                 #     if "liangke" in video_file:
                 #         video_file = self.list_data_dict[i]["video"]

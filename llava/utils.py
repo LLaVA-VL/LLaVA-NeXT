@@ -35,8 +35,8 @@ def process_video_with_pyav(video_file, data_args):
             frame_idx = uniform_sampled_frames.tolist()
 
     video_frames = []
-    for frame in container.decode(video=0):
-        if frame.index in frame_idx:
+    for index, frame in enumerate(container.decode(video=0)):
+        if index in frame_idx:
             video_frames.append(frame.to_rgb().to_ndarray())
             if len(video_frames) == len(frame_idx):  # Stop decoding once we have all needed frames
                 break
