@@ -77,6 +77,14 @@ class HFVisionTower(nn.Module):
     def dummy_feature(self):
         return torch.zeros(1, self.hidden_size, device=self.device, dtype=self.dtype)
 
+    # @property
+    # def dtype(self):
+    #     return self.vision_tower.dtype
+
+    # @property
+    # def device(self):
+    #     return self.vision_tower.device
+
     @property
     def hidden_size(self):
         try:
@@ -93,3 +101,11 @@ class HFVisionTower(nn.Module):
         if "cls_patch" in self.select_feature:
             _num_patches += 1
         return _num_patches
+
+    @property
+    def num_patches_per_side(self):
+        return self.config.image_size // self.config.patch_size
+
+    @property
+    def image_size(self):
+        return self.config.image_size
