@@ -46,7 +46,8 @@ from llava import conversation as conversation_lib
 from llava.model import *
 from llava.mm_utils import process_highres_image, process_anyres_image, process_highres_image_crop_split, tokenizer_image_token
 from llava.utils import rank0_print, process_video_with_pyav
-torch.multiprocessing.set_sharing_strategy('file_system')
+
+torch.multiprocessing.set_sharing_strategy("file_system")
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 local_rank = None
@@ -371,7 +372,11 @@ def preprocess_multimodal(sources: Sequence[str], data_args: DataArguments) -> D
 
     for source in sources:
         for sentence in source:
-            if DEFAULT_IMAGE_TOKEN in sentence["value"] and not sentence["value"].startswith(DEFAULT_IMAGE_TOKEN):
+            # TODO maybe this should be changed for interleaved data?
+            # if DEFAULT_IMAGE_TOKEN in sentence["value"] and not sentence["value"].startswith(DEFAULT_IMAGE_TOKEN):
+            # only check for num_im=1
+            num_im = len(re.findall(DEFAULT_IMAGE_TOKEN, sentence["value"]))
+            if num_im == 1 and DEFAULT_IMAGE_TOKEN in sentence["value"] and not sentence["value"].startswith(DEFAULT_IMAGE_TOKEN):
                 sentence["value"] = sentence["value"].replace(DEFAULT_IMAGE_TOKEN, "").strip()
                 sentence["value"] = DEFAULT_IMAGE_TOKEN + "\n" + sentence["value"]
                 sentence["value"] = sentence["value"].strip()
@@ -382,7 +387,7 @@ def preprocess_multimodal(sources: Sequence[str], data_args: DataArguments) -> D
                 replace_token = DEFAULT_IM_START_TOKEN + replace_token + DEFAULT_IM_END_TOKEN
             sentence["value"] = sentence["value"].replace(DEFAULT_IMAGE_TOKEN, replace_token)
 
-            # For videoInstruct-100k noisy_data
+            # For videoInstruct-100k noisy_data. TODO: Ask Yuanhan to clean the data instead of leaving the noise code here.
             sentence["value"] = sentence["value"].replace("QA_GT_caption_based_noisy", "")
 
     return sources
@@ -565,9 +570,13 @@ def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_im
         for j, sentence in enumerate(source):
             role = roles[sentence["from"]]
             if has_image and "<image>" in sentence["value"]:
-                assert sentence["value"].startswith("<image>"), print(sentence["value"])
-
-                _input_id = tokenizer(role).input_ids + nl_tokens + [IMAGE_TOKEN_INDEX] + nl_tokens + tokenizer(sentence["value"][len("<image>") :]).input_ids + [im_end] + nl_tokens
+                num_im = len(re.findall(DEFAULT_IMAGE_TOKEN, sentence["value"]))
+                # multi image can start with text first
+                if num_im == 1:
+                    assert sentence["value"].startswith("<image>"), print(sentence["value"])
+                matches = re.findall("<image>", sentence["value"])
+                num_image = len(matches)
+                _input_id = tokenizer(role).input_ids + nl_tokens + [IMAGE_TOKEN_INDEX] * num_image + nl_tokens + tokenizer(sentence["value"][len("<image>") * num_image :]).input_ids + [im_end] + nl_tokens
             else:
                 _input_id = tokenizer(role).input_ids + nl_tokens + tokenizer(sentence["value"]).input_ids + [im_end] + nl_tokens
             input_id += _input_id
@@ -1088,16 +1097,16 @@ class LazySupervisedDataset(Dataset):
                 video = process_video_with_pyav(video_file, self.data_args)
                 # using videoreader
                 # if "shareVideoGPTV" not in video_file and "liangke" not in video_file:
-                    # vr = VideoReader(video_file, ctx=cpu(0))
-                    # total_frame_num = len(vr)
-                    # avg_fps = round(vr.get_avg_fps() / self.data_args.video_fps)
-                    # frame_idx = [i for i in range(0, total_frame_num, avg_fps)]
-                    # if self.data_args.frames_upbound > 0:
-                    #     if len(frame_idx) > self.data_args.frames_upbound:
-                    #         uniform_sampled_frames = np.linspace(0, total_frame_num - 1, self.data_args.frames_upbound, dtype=int)
-                    #         frame_idx = uniform_sampled_frames.tolist()
-                    # video = vr.get_batch(frame_idx).asnumpy()
-                    # video = np.array(video)
+                # vr = VideoReader(video_file, ctx=cpu(0))
+                # total_frame_num = len(vr)
+                # avg_fps = round(vr.get_avg_fps() / self.data_args.video_fps)
+                # frame_idx = [i for i in range(0, total_frame_num, avg_fps)]
+                # if self.data_args.frames_upbound > 0:
+                #     if len(frame_idx) > self.data_args.frames_upbound:
+                #         uniform_sampled_frames = np.linspace(0, total_frame_num - 1, self.data_args.frames_upbound, dtype=int)
+                #         frame_idx = uniform_sampled_frames.tolist()
+                # video = vr.get_batch(frame_idx).asnumpy()
+                # video = np.array(video)
                 # else:
                 #     if "liangke" in video_file:
                 #         video_file = self.list_data_dict[i]["video"]
@@ -1320,7 +1329,7 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
                 low_cpu_mem_usage=False,
                 **customized_kwargs,
             )
-        elif "qwen" in model_args.model_name_or_path.lower() or "quyen" in model_args.model_name_or_path.lower():
+        elif "qwen" in model_args.model_name_or_path.lower():
             if "moe" in model_args.model_name_or_path.lower():
                 model = LlavaQwenMoeForCausalLM.from_pretrained(
                     model_args.model_name_or_path,
