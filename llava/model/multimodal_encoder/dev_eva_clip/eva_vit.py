@@ -53,12 +53,13 @@ class EvaViTWrapper(nn.Module):
         rank0_print(f"Loading: {self.vision_tower_name}")
         rank0_print(f"Pretrained: {self.pretrained}")
         time_start = time.time()
-        model, _, image_processor = create_model_and_transforms(self.vision_tower_name, self.pretrained, force_custom_clip=True, precision="bf16")
+        model, _, image_processor = create_model_and_transforms(self.vision_tower_name, self.pretrained, force_custom_clip=True, precision="fp16")
         time_end = time.time()
         rank0_print(f"Loaded: {self.vision_tower_name} in {time_end - time_start:.2f}s")
-        model = model.to("cuda")
         self.device = next(model.parameters()).device
         self.dtype = next(model.parameters()).dtype
+        if self.device.type != "meta":
+            model = model.to("cuda")
         self.vision_tower = model.visual
         resize_transform = [t for t in image_processor.transforms if isinstance(t, torchvision.transforms.Resize)][0]
         normalize_transform = [t for t in image_processor.transforms if isinstance(t, torchvision.transforms.Normalize)][0]

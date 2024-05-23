@@ -427,7 +427,7 @@ def create_model(
             logging.info(f"convert precision to {precision}")
             model = model.to(torch.bfloat16) if "bf16" in precision else model.to(torch.float16)
 
-        model.to(device=device)
+        # model.to(device=device)
 
         # set image / mean metadata from pretrained_cfg if available, or use default
         model.visual.image_mean = pretrained_cfg.get("mean", None) or OPENAI_DATASET_MEAN
