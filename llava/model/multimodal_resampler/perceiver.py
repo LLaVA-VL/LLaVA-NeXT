@@ -139,7 +139,7 @@ class PerceiverResampler(nn.Module):
         self.perceiver = PerceiverResamplerModule(dim=vision_tower.hidden_size, depth=self.depth, num_latents=self.num_latents, ff_mult=self.ff_mult)
 
         if self.pretrained is not None:
-            self.load_state_dict(torch.load(self.pretrained))
+            self.load_state_dict(torch.load(self.pretrained),  assign=True)
 
     def forward(self, image_features, *args, **kwargs):
         return self.perceiver(image_features[:, None, None]).squeeze(1)

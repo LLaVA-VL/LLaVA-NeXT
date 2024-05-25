@@ -21,6 +21,7 @@ dist
 .DS_Store
 wandb
 output
+venv
 
 checkpoints
 project_checkpoints
