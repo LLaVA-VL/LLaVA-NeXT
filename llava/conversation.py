@@ -348,6 +348,12 @@ conv_llava_llama_2 = Conversation(
     sep2="</s>",
 )
 
+try:
+    llama3_tokenizer = AutoTokenizer.from_pretrained("meta-llama/Meta-Llama-3-8B-Instruct")
+except Exception as e:
+    print("Error loading llama3 tokenizer")
+    print(e)
+
 conv_llava_llama_3 = Conversation(
     system="You are a helpful language and vision assistant. " "You are able to understand the visual content that the user provides, " "and assist the user with a variety of tasks using natural language.",
     roles=("<|start_header_id|>user", "<|start_header_id|>assistant"),
@@ -356,7 +362,7 @@ conv_llava_llama_3 = Conversation(
     offset=0,
     sep_style=SeparatorStyle.LLAMA_3,
     tokenizer_id="meta-llama/Meta-Llama-3-8B-Instruct",
-    tokenizer=AutoTokenizer.from_pretrained("meta-llama/Meta-Llama-3-8B-Instruct"),
+    tokenizer=llama3_tokenizer,
     stop_token_ids=[128009],
 )
 
