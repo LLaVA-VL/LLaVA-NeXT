@@ -1,11 +1,11 @@
 import torch
 import torch.nn as nn
-import torchvision
 from transformers import CLIPImageProcessor
 from llava.utils import rank0_print
 
 try:
     import open_clip
+    import torchvision
     from open_clip.transformer import _expand_token
 except ImportError:
     print("OpenCLIP not installed")
