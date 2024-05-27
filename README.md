@@ -77,6 +77,34 @@ Please checkout the following page for more inference & evaluation details.
 #### - LLaVA-NeXT: A Strong Zero-shot Video Understanding Model
 - [LLaVA-NeXT-Video](./docs/LLaVA-NeXT-Video.md): for video inference and evaluation scripts.
 
+
+## Sglang
+
+### LLaVA-NeXT (Video)
+
+1. **Prepare Environment**:
+   Following the instruction in the [sglang](https://github.com/sgl-project/sglang?tab=readme-ov-file#install)
+
+2. **Launch and Run on (K) Nodes**:
+   - Go to sglang project
+     ```
+     cd PATH_TO/sglang
+     ```
+   - First node:
+     ```sh
+     bash examples/usage/llava_video/srt_example_llava_v.sh K 0 YOUR_VIDEO_PATH YOUR_MODEL_PATH FRAMES_PER_VIDEO
+     (e.g. bash examples/usage/llava_video/srt_example_llava_v.sh K 0 examples/usage/llava_video/videos/Q98Z4OTh8RwmDonc.mp4 lmms-lab/LLaVA-NeXT-Video-7B-DPO 16)
+     ```
+   - Second node:
+     ```sh
+     bash examples/usage/llava_video/srt_example_llava_v.sh K 1 YOUR_VIDEO_PATH YOUR_MODEL_PATH FRAMES_PER_VIDEO
+     ```
+   - The K node:
+     ```sh
+     bash examples/usage/llava_video/srt_example_llava_v.sh K K-1 YOUR_VIDEO_PATH YOUR_MODEL_PATH FRAMES_PER_VIDEO
+     ```
+
+
 ## Citation
 
 If you find it useful for your research and applications, please cite related papers/blogs using this BibTeX:
