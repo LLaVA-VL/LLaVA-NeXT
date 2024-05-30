@@ -108,3 +108,7 @@ class CLIPVisionTower(nn.Module):
         if "cls_patch" in self.select_feature:
             _num_patches += 1
         return _num_patches
+
+    @property
+    def image_size(self):
+        return self.config.image_size
