@@ -119,8 +119,8 @@ def run_inference(args):
 
     video_path = args.video_path
     sample_set = {}
-    # question = "Please provide a detailed description of the video, focusing on the main subjects, their actions, and the background scenes"
-    question = "What does this video describe? A. Buiding B.Forest C.coutryside D.Moon \nAnswer with the option's letter from the given choices directly."
+    question = "Please provide a detailed description of the video, focusing on the main subjects, their actions, and the background scenes"
+    # question = "What does this video describe? A. Buiding B.Forest C.coutryside D.Moon \nAnswer with the option's letter from the given choices directly."
     sample_set["Q"] = question
     sample_set["video_name"] = args.video_path
 
