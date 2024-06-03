@@ -624,7 +624,7 @@ def preprocess_llama3(
             input_ids = input_ids[1:]
         return input_ids
 
-    nl_tokens = safe_tokenizer_llama3("\n")
+    nl_tokens = safe_tokenizer_llama3("\n\n")
     # Apply prompt templates
     input_ids, targets = [], []
     for i, source in enumerate(sources):
@@ -632,19 +632,19 @@ def preprocess_llama3(
             source = source[1:]
 
         input_id, target = [], []
-        system = safe_tokenizer_llama3("<|begin_of_text|>") + safe_tokenizer_llama3("<|start_header_id|>system<|end_header_id|>") + nl_tokens * 2 + safe_tokenizer_llama3(system_message) + [eot_id]
+        system = safe_tokenizer_llama3("<|begin_of_text|>") + safe_tokenizer_llama3("<|start_header_id|>system<|end_header_id|>") + nl_tokens + safe_tokenizer_llama3(system_message) + [eot_id]
         input_id += system
         # Here I just unmask every special token include <|begin_of_text|>, start_header, end_header, nl_tokens, and eot
         target += (
-            safe_tokenizer_llama3("<|begin_of_text|>") + [start_header_id] + [IGNORE_INDEX] * len(safe_tokenizer_llama3("system")) + [end_header_id] + nl_tokens * 2 + [IGNORE_INDEX] * len(safe_tokenizer_llama3(system_message)) + [eot_id]
+            safe_tokenizer_llama3("<|begin_of_text|>") + [start_header_id] + [IGNORE_INDEX] * len(safe_tokenizer_llama3("system")) + [end_header_id] + nl_tokens + [IGNORE_INDEX] * len(safe_tokenizer_llama3(system_message)) + [eot_id]
         )
         for j, sentence in enumerate(source):
             role = roles[sentence["from"]]
             if has_image and "<image>" in sentence["value"]:
                 assert sentence["value"].startswith("<image>"), print(sentence["value"])
-                _input_id = safe_tokenizer_llama3(role) + nl_tokens * 2 + [IMAGE_TOKEN_INDEX] + safe_tokenizer_llama3(sentence["value"][len("<image>") :]) + [eot_id]
+                _input_id = safe_tokenizer_llama3(role) + nl_tokens + [IMAGE_TOKEN_INDEX] + safe_tokenizer_llama3(sentence["value"][len("<image>") :]) + [eot_id]
             else:
-                _input_id = safe_tokenizer_llama3(role) + nl_tokens * 2 + safe_tokenizer_llama3(sentence["value"]) + [eot_id]
+                _input_id = safe_tokenizer_llama3(role) + nl_tokens + safe_tokenizer_llama3(sentence["value"]) + [eot_id]
             input_id += _input_id
             if role == "<|start_header_id|>user<|end_header_id|>":
                 # _target = [IGNORE_INDEX] * len(_input_id)
