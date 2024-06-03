@@ -505,7 +505,7 @@ Answer the questions.""",
     version="mpt",
     messages=[],
     offset=0,
-    sep_style=SeparatorStyle.MPT,
+    sep_style=SeparatorStyle.CHATML,
     sep="<|im_end|>",
 )
 
