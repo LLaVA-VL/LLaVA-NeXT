@@ -128,6 +128,7 @@ class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
         modalities: Optional[List[str]] = ["image"],
         **kwargs,
     ) -> Union[GenerateOutput, torch.LongTensor]:
+        modalities = kwargs.pop("modalities", None) if "modalities" in kwargs and modalities is None else modalities
         position_ids = kwargs.pop("position_ids", None)
         attention_mask = kwargs.pop("attention_mask", None)
         if "inputs_embeds" in kwargs:
