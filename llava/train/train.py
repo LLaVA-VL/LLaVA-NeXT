@@ -624,7 +624,7 @@ def preprocess_llama3(
             input_ids = input_ids[1:]
         return input_ids
 
-    nl_tokens = safe_tokenizer_llama3("\n")
+    nl_tokens = safe_tokenizer_llama3("\n\n")
     # Apply prompt templates
     input_ids, targets = [], []
     for i, source in enumerate(sources):
@@ -632,19 +632,19 @@ def preprocess_llama3(
             source = source[1:]
 
         input_id, target = [], []
-        system = safe_tokenizer_llama3("<|begin_of_text|>") + safe_tokenizer_llama3("<|start_header_id|>system<|end_header_id|>") + nl_tokens * 2 + safe_tokenizer_llama3(system_message) + [eot_id]
+        system = safe_tokenizer_llama3("<|begin_of_text|>") + safe_tokenizer_llama3("<|start_header_id|>system<|end_header_id|>") + nl_tokens + safe_tokenizer_llama3(system_message) + [eot_id]
         input_id += system
         # Here I just unmask every special token include <|begin_of_text|>, start_header, end_header, nl_tokens, and eot
         target += (
-            safe_tokenizer_llama3("<|begin_of_text|>") + [start_header_id] + [IGNORE_INDEX] * len(safe_tokenizer_llama3("system")) + [end_header_id] + nl_tokens * 2 + [IGNORE_INDEX] * len(safe_tokenizer_llama3(system_message)) + [eot_id]
+            safe_tokenizer_llama3("<|begin_of_text|>") + [start_header_id] + [IGNORE_INDEX] * len(safe_tokenizer_llama3("system")) + [end_header_id] + nl_tokens + [IGNORE_INDEX] * len(safe_tokenizer_llama3(system_message)) + [eot_id]
         )
         for j, sentence in enumerate(source):
             role = roles[sentence["from"]]
             if has_image and "<image>" in sentence["value"]:
                 assert sentence["value"].startswith("<image>"), print(sentence["value"])
-                _input_id = safe_tokenizer_llama3(role) + nl_tokens * 2 + [IMAGE_TOKEN_INDEX] + safe_tokenizer_llama3(sentence["value"][len("<image>") :]) + [eot_id]
+                _input_id = safe_tokenizer_llama3(role) + nl_tokens + [IMAGE_TOKEN_INDEX] + safe_tokenizer_llama3(sentence["value"][len("<image>") :]) + [eot_id]
             else:
-                _input_id = safe_tokenizer_llama3(role) + nl_tokens * 2 + safe_tokenizer_llama3(sentence["value"]) + [eot_id]
+                _input_id = safe_tokenizer_llama3(role) + nl_tokens + safe_tokenizer_llama3(sentence["value"]) + [eot_id]
             input_id += _input_id
             if role == "<|start_header_id|>user<|end_header_id|>":
                 # _target = [IGNORE_INDEX] * len(_input_id)
@@ -1191,7 +1191,8 @@ class DataCollatorForSupervisedDataset(object):
         input_ids = [_input_ids[: self.tokenizer.model_max_length] for _input_ids in input_ids]
         labels = [_labels[: self.tokenizer.model_max_length] for _labels in labels]
         if self.tokenizer.pad_token_id is None:
-            self.tokenizer.pad_token_id = self.tokenizer.eos_token_id  # FIXME: this could only be triggered for llama3 model.
+            # self.tokenizer.pad_token_id = self.tokenizer.eos_token_id  # FIXME: this could only be triggered for llama3 model.
+            self.tokenizer.pad_token_id = 0 # This gets the best result. Don't know why.
         input_ids = self.pad_sequence(input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id)
         labels = self.pad_sequence(labels, batch_first=True, padding_value=IGNORE_INDEX)
         batch = dict(input_ids=input_ids, labels=labels.long() if labels.dtype == torch.int32 else labels, attention_mask=input_ids.ne(self.tokenizer.pad_token_id))
