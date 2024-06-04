@@ -359,6 +359,7 @@ conv_llava_llama_3 = Conversation(
     version="llama_v3",
     messages=[],
     offset=0,
+    sep="<|eot_id|>",
     sep_style=SeparatorStyle.LLAMA_3,
     tokenizer_id="meta-llama/Meta-Llama-3-8B-Instruct",
     tokenizer=AutoTokenizer.from_pretrained("meta-llama/Meta-Llama-3-8B-Instruct"),
