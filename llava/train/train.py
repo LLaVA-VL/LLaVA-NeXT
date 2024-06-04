@@ -609,12 +609,19 @@ def preprocess_llama3(
     max_len=2048,
     system_message: str = "You are a helpful language and vision assistant. You are able to understand the visual content that the user provides, and assist the user with a variety of tasks using natural language.",
 ) -> Dict:
-    roles = {"human": "<|start_header_id|>user<|end_header_id|>", "gpt": "<|start_header_id|>assistant<|end_header_id|>"}
+    # roles = {"human": "<|start_header_id|>user<|end_header_id|>", "gpt": "<|start_header_id|>assistant<|end_header_id|>"}
+    roles = {"human": "user", "gpt": "assistant"}
 
+    # Add image tokens to tokenizer as a special tokens
+    tokenizer.add_tokens(["<image>"], special_tokens=True)
+    image_token_index = tokenizer.convert_tokens_to_ids("<image>")
     bos_token_id = tokenizer.convert_tokens_to_ids("<|begin_of_text|>")
     start_header_id = tokenizer.convert_tokens_to_ids("<|start_header_id|>")
     end_header_id = tokenizer.convert_tokens_to_ids("<|end_header_id|>")
     eot_id = tokenizer.convert_tokens_to_ids("<|eot_id|>")
+
+    unmask_tokens = ["<|begin_of_text|>", "<|start_header_id|>", "<|end_header_id|>", "<|eot_id|>", "\n\n"]
+    unmask_tokens_idx = [tokenizer.convert_tokens_to_ids(tok) for tok in unmask_tokens]
 
     # After update, calling tokenizer of llama3 will
     # auto add bos id for the tokens. ヽ(｀⌒´)ﾉ
@@ -624,7 +631,7 @@ def preprocess_llama3(
             input_ids = input_ids[1:]
         return input_ids
 
-    nl_tokens = safe_tokenizer_llama3("\n\n")
+    nl_tokens = tokenizer.convert_tokens_to_ids("\n\n")
     # Apply prompt templates
     input_ids, targets = [], []
     for i, source in enumerate(sources):
@@ -632,38 +639,40 @@ def preprocess_llama3(
             source = source[1:]
 
         input_id, target = [], []
-        system = safe_tokenizer_llama3("<|begin_of_text|>") + safe_tokenizer_llama3("<|start_header_id|>system<|end_header_id|>") + nl_tokens + safe_tokenizer_llama3(system_message) + [eot_id]
-        input_id += system
-        # Here I just unmask every special token include <|begin_of_text|>, start_header, end_header, nl_tokens, and eot
-        target += (
-            safe_tokenizer_llama3("<|begin_of_text|>") + [start_header_id] + [IGNORE_INDEX] * len(safe_tokenizer_llama3("system")) + [end_header_id] + nl_tokens + [IGNORE_INDEX] * len(safe_tokenizer_llama3(system_message)) + [eot_id]
-        )
-        for j, sentence in enumerate(source):
-            role = roles[sentence["from"]]
-            if has_image and "<image>" in sentence["value"]:
-                assert sentence["value"].startswith("<image>"), print(sentence["value"])
-                _input_id = safe_tokenizer_llama3(role) + nl_tokens + [IMAGE_TOKEN_INDEX] + safe_tokenizer_llama3(sentence["value"][len("<image>") :]) + [eot_id]
+
+        # New version, use apply chat template
+        # Build system message for each sentence
+        input_id += tokenizer.apply_chat_template([{"role" : "system", "content" : system_message}])
+        target += [IGNORE_INDEX] * len(input_id)
+
+        for conv in source:
+            # Make sure llava data can load
+            try:
+                role = conv["role"]
+                content = conv["content"]
+            except:
+                role = conv["from"]
+                content = conv["value"]
+
+            role =  roles.get(role, role)
+            
+            conv = [{"role" : role, "content" : content}]
+            # First is bos token we don't need here
+            encode_id = tokenizer.apply_chat_template(conv)[1:]
+            input_id += encode_id
+            if role in ["user", "system"]:
+                target += [IGNORE_INDEX] * len(encode_id)
             else:
-                _input_id = safe_tokenizer_llama3(role) + nl_tokens + safe_tokenizer_llama3(sentence["value"]) + [eot_id]
-            input_id += _input_id
-            if role == "<|start_header_id|>user<|end_header_id|>":
-                # _target = [IGNORE_INDEX] * len(_input_id)
-                _target = []
-                for i in _input_id:
-                    if i in [start_header_id, end_header_id, nl_tokens[0], eot_id]:
-                        _target.append(i)
-                    else:
-                        _target.append(IGNORE_INDEX)
-                # _target = [IGNORE_INDEX if i != start_header_id or i != end_header_id or i != nl_tokens else i for i in _input_id]
-                # print(_target)
-            elif role == "<|start_header_id|>assistant<|end_header_id|>":
-                _target = [start_header_id] + [IGNORE_INDEX] * len(safe_tokenizer_llama3("assistant")) + [end_header_id] + _input_id[len(safe_tokenizer_llama3(role)) : -1] + [eot_id]
-            else:
-                raise NotImplementedError
-            target += _target
-            # print(f"Role : {role}, len : {len(_input_id)}")
-            # print(f"Target : {len(_target)}")
+                target += encode_id
+        
+
+                    
         assert len(input_id) == len(target), f"{len(input_id)} != {len(target)}"
+        for idx, encode_id in enumerate(input_id):
+            if encode_id in unmask_tokens_idx:
+                target[idx] = encode_id
+            if encode_id == image_token_index:
+                input_id[idx] = IMAGE_TOKEN_INDEX
         input_ids.append(input_id)
         targets.append(target)
     input_ids = torch.tensor(input_ids, dtype=torch.long)
