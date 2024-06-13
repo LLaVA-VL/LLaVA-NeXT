@@ -3,6 +3,7 @@ import os
 from random import random
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
+import yaml
 
 def check_image_existence(args):
     image_root, data = args
@@ -22,7 +23,7 @@ def process_json_file(json_path, image_root):
         list(tqdm(pool.imap(check_image_existence, args), total=len(data)))
 
 
-mode = "json"
+mode = "yaml"
 image_root = "/mnt/bn/vl-research/data/llava_data"
 
 if mode == "json":
@@ -34,9 +35,10 @@ if mode == "json":
         process_json_file(json_path, image_root)
 
 elif mode == "yaml":
-    yaml_path = "/mnt/bn/vl-research/workspace/zzz/projects/llava_next/scripts/cn_boli01_hl/config/final_stage.yaml"
+    yaml_path = "/mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/scripts/i18n/scale_llms/mid_stage_original.yaml"
     with open(yaml_path, "r") as f:
         data = yaml.safe_load(f)
-        dd_json_path = d["json_path"]
-        print(f"Processing {dd_json_path}")
-        process_json_file(dd_json_path, image_root)
+        for d in data["datasets"]:
+            dd_json_path = d["json_path"]
+            print(f"Processing {dd_json_path}")
+            process_json_file(dd_json_path, image_root)
