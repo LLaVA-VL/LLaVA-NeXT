@@ -613,7 +613,11 @@ def preprocess_llama3(
     roles = {"human": "user", "gpt": "assistant"}
 
     # Add image tokens to tokenizer as a special tokens
-    tokenizer.add_tokens(["<image>"], special_tokens=True)
+    # Use a deepcopy of tokenizer so that we don't modify on the tokenizer
+    tokenizer = copy.deepcopy(tokenizer)
+    # When there is actually an image, we add the image tokens as a special token
+    if has_image:
+        tokenizer.add_tokens(["<image>"], special_tokens=True)
     image_token_index = tokenizer.convert_tokens_to_ids("<image>")
     bos_token_id = tokenizer.convert_tokens_to_ids("<|begin_of_text|>")
     start_header_id = tokenizer.convert_tokens_to_ids("<|start_header_id|>")
