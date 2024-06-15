@@ -4,7 +4,6 @@ from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
 import yaml
 
-
 def check_image_existence(args):
     image_root, data = args
     if "image" in data:
