@@ -57,7 +57,7 @@ elif mode == "yaml":
             sampling_strategy = d["sampling_strategy"]
             try:
                 if sampling_strategy != "all":
-                    percentage = sampling_strategy.split(":")[-1].replace("%", "") / 100.0
+                    percentage = float(sampling_strategy.split(":")[-1].replace("%", "")) / 100.0
                     print(f"Sampling strategy: {sampling_strategy}")
                     print(f"Sampling percentage: {percentage}")
                     print(f"Sampling count: {int(current_items_count * percentage)}")
