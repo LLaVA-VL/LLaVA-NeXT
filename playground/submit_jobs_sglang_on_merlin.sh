@@ -26,7 +26,7 @@ python3 -m torch.utils.collect_env
 
 which python3
 
-python3 -m sglang.launch_server --model-path liuhaotian/llava-v1.6-34b --tokenizer-path liuhaotian/llava-v1.6-34b-tokenizer --port=30000 --tp-size=8 &
+python3 -m sglang.launch_server --model-path liuhaotian/llava-v1.6-34b --tokenizer-path liuhaotian/llava-v1.6-34b-tokenizer --port=30000 --tp-size=1 &
 
 sleep 600;
 echo "Web service initialized";
