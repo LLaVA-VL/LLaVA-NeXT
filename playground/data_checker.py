@@ -6,10 +6,11 @@ import yaml
 
 
 class DataProcessor:
-    def __init__(self, file_path, image_root):
+    def __init__(self, file_path, image_root, video_root):
         self.file_path = file_path
         self.image_root = image_root
         self.data = None
+        self.video_root = video_root
         self.load_data()
 
     def load_data(self):
@@ -19,6 +20,9 @@ class DataProcessor:
         elif self.file_path.endswith(".yaml"):
             with open(self.file_path, "r") as f:
                 self.data = yaml.safe_load(f)
+        elif self.file_path.endswith(".jsonl"):
+            with open(save_path, "r") as f:
+                self.data = [json.loads(line) for line in f.readlines()]
         else:
             raise ValueError("Unsupported file format")
 
@@ -31,6 +35,12 @@ class DataProcessor:
             full_image_path = os.path.join(self.image_root, data["image"])
             if not os.path.exists(full_image_path):
                 print(f"WARNING!!! {full_image_path} not exists !!!")
+
+        if "video" in data:
+            full_video_path = os.path.join(self.video_root, data["video"])
+            if not os.path.exists(full_video_path):
+                print(f"WARNING!!! {full_video_path} not exists !!!")
+
 
         if data["conversations"][0]["value"].count("<image>") > 1:
             print(f"WARNING!!! {data['conversations'][0]['value']} has more than one <image> !!!")
@@ -74,8 +84,8 @@ class DataProcessor:
             return total_items_count
 
 
-def main(file_path, image_root, operation):
-    processor = DataProcessor(file_path, image_root)
+def main(file_path, image_root, operation, video_root):
+    processor = DataProcessor(file_path, image_root, video_root)
     if operation == "check":
         processor.process_images()
     elif operation == "count":
@@ -90,6 +100,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--file_path", type=str, default="/mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/scripts/i18n/scale_llms/sft_medium_cauldron.yaml")
     parser.add_argument("--image_root", type=str, default="/mnt/bn/vl-research/data/llava_data")
+    parser.add_argument("--video_root", type=str, default="/mnt/bn/vl-research/data/llava_video")
     parser.add_argument("--operation", type=str, default="check")
     args = parser.parse_args()
-    main(args.file_path, args.image_root, args.operation)
+    main(args.file_path, args.image_root, args.operation, args.video_root)
