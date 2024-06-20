@@ -39,5 +39,5 @@ python3 -m sglang.launch_server --model-path liuhaotian/llava-v1.6-34b --tokeniz
 sleep 300;
 echo "Web service initialized";
 python3 /mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/playground/sgl_llava_inference_multinode.py \
-    --dist=${1} --total_dist=6 --parallel=32 --port=30000 \
+    --dist=${1} --total_dist=6 --parallel=16 --port=30000 \
     --result_file=/mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/playground/cc3m_result_file.json
