@@ -573,7 +573,6 @@ class SigLipVisionTower(nn.Module):
 
         self.is_loaded = True
 
-    @torch.no_grad()
     def forward(self, images):
         if type(images) is list:
             image_features = []

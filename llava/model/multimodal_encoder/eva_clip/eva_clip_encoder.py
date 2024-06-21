@@ -38,7 +38,6 @@ class EvaClipVisionTower(nn.Module):
         self.vision_tower.requires_grad_(False)
         self.is_loaded = True
 
-    @torch.no_grad()
     def forward(self, images):
         if type(images) is list:
             image_features = []
