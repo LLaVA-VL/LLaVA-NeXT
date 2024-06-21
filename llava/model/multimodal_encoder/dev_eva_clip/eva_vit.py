@@ -103,7 +103,6 @@ class EvaViTWrapper(nn.Module):
         if self.is_loaded:
             self.vision_tower.eval()
 
-    @torch.no_grad()
     def forward(self, images):
         if type(images) is list:
             image_features = []
