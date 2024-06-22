@@ -86,6 +86,8 @@ Please checkout the following page for more inference & evaluation details.
 #### - LLaVA-NeXT: A Strong Zero-shot Video Understanding Model
 - [LLaVA-NeXT-Video](./docs/LLaVA-NeXT-Video.md): for video inference and evaluation scripts.
 
+#### - LLaVA-NeXT: Tackling Multi-image, Video, and 3D in Large Multimodal Models
+- [LLaVA-NeXT-Interleave](./docs/LLaVA-NeXT-Interleave.md): for multi-image demo and evaluation scripts.
 
 ## SGLang for SpeedUp Inference and Deployment
 
