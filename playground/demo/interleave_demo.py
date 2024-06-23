@@ -278,7 +278,7 @@ txt = gr.Textbox(
 with gr.Blocks() as demo:
     # Informations
     title_markdown = ("""
-        # LLaVA-Interleave
+        # LLaVA-NeXT Interleave
         [[Blog]](https://llava-vl.github.io/blog/2024-06-16-llava-next-interleave/)  [[Code]](https://github.com/LLaVA-VL/LLaVA-NeXT) [[Model]](https://huggingface.co/lmms-lab/llava-next-interleave-7b)
     """)
     tos_markdown = ("""
