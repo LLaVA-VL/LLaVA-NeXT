@@ -19,7 +19,7 @@
   * Construct multi-image benchmark [**LLaVA-Interleave Bench**](https://huggingface.co/datasets/lmms-lab/llava-interleave-bench)
 
 
-- [2024/05/25] 🔥 **LLaVA-NeXT** (Interleave) models are released. Meanwhile, open-source the recapioned high-quality data using LLaVA-NeXT-34B on [COCO] [LCS] [CC3M].
+- [2024/05/25] 🔥 Wondering "[What Else Influences Visual Instruction Tuning Beyond Data?](https://llava-vl.github.io/blog/2024-05-25-llava-next-ablations/)" Our new [blog](https://llava-vl.github.io/blog/2024-05-25-llava-next-ablations/) summarizes empirical explorations to ablate the various design choices in improving LMMs except instruct data itself. Meanwhile, open-source the recapioned high-quality data using LLaVA-NeXT-34B on [COCO] [LCS] [CC3M].
   * Architectures (LMM & Vision Encoder)
   * Visual Representations (Resolution & # Tokens)
   * Training Strategies (High-quality data & Trainable modules)
