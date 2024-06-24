@@ -251,6 +251,7 @@ with gr.Blocks() as demo:
             # [{"files": [f"playground/demo/examples/lion1_.mp4",f"playground/demo/examples/lion2_.mp4"], "text": "The input contains two videos, the first half is the first video and the second half is the second video. What is the difference between the two videos?"}],
             
 
+
             
         ], inputs=[chat_input], label="Compare images: ")
 

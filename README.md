@@ -6,12 +6,17 @@
 [![llava_next-blog](https://img.shields.io/badge/llava_next-blog-green)](https://llava-vl.github.io/blog/)
 [![llava_next-demo](https://img.shields.io/badge/llava_next-image_demo-red)](https://llava-next.lmms-lab.com/)
 [![llava_next-video_demo](https://img.shields.io/badge/llava_next-video_demo-red)](https://llavanext-video.lmms-lab.com/)
+[![llava_next-interleave_demo2](https://img.shields.io/badge/llava_next-interleave_demo-red)](http://semantic-sam.xyzou.net:6123/)
 [![llava_next-image_checkpoints](https://img.shields.io/badge/llava_next-image_checkpoints-blue)](https://huggingface.co/lmms-lab)
 [![llava_next-video_checkpoints](https://img.shields.io/badge/llava_next-video_checkpoints-blue)](https://huggingface.co/collections/lmms-lab/llava-next-video-661e86f5e8dabc3ff793c944)
+[![llava_next-interleave_checkpoints](https://img.shields.io/badge/llava_next-interleave_checkpoints-blue)](https://huggingface.co/lmms-lab/llava-next-interleave-7b)
 
 ## Release
 
-
+- [2024/06/23] 🔥 **LLaVA-NeXT (interleave)** is released. We utilize image-text interleaved format to unify multi-image, video, and 3D tasks in one LLM and achieve **SoTA** performance on a wide range of benchmarks. Check out [blog](https://llava-vl.github.io/blog/2024-06-16-llava-next-interleave/) and [checkpoints](https://huggingface.co/lmms-lab/llava-next-interleave-7b) to see new capabilities and improved performance!
+  * An all-round LLM for multi-image, video, and 3D with strong performance \[[demo 1](https://llava-next-intlv.lmms-lab.com/)\] \[[demo 2](http://semantic-sam.xyzou.net:6123/)\]
+  * Construct interleave training data **M4-Instruct**
+  * Construct multi-image benchmark [**LLaVA-Interleave Bench**](https://huggingface.co/datasets/lmms-lab/llava-interleave-bench)
 
 
 - [2024/05/25] 🔥 Wondering "[What Else Influences Visual Instruction Tuning Beyond Data?](https://llava-vl.github.io/blog/2024-05-25-llava-next-ablations/)" Our new [blog](https://llava-vl.github.io/blog/2024-05-25-llava-next-ablations/) summarizes empirical explorations to ablate the various design choices in improving LMMs except instruct data itself. Meanwhile, open-source the recapioned high-quality data using LLaVA-NeXT-34B on [COCO] [LCS] [CC3M].
