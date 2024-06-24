@@ -562,7 +562,7 @@ class SigLipVisionTower(nn.Module):
         if self.is_loaded:
             return
 
-        self.vision_tower = SigLipVisionModel.from_pretrained(self.vision_tower_name, device_map=device_map)
+        self.vision_tower = SigLipVisionModel.from_pretrained("/comp_robot/zhanghao/ckpts/siglip-so400m-patch14-384", device_map=device_map)
 
         del self.vision_tower.vision_model.encoder.layers[-1:]
         self.vision_tower.vision_model.head = nn.Identity()

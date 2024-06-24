@@ -29,11 +29,11 @@ from io import BytesIO
 from transformers import TextStreamer
 
 class InferenceDemo(object):
-    def __init__(self,args,model_path) -> None:
+    def __init__(self,args,model_path,tokenizer, model, image_processor, context_len) -> None:
         disable_torch_init()
 
-        model_name = get_model_name_from_path(args.model_path)
-        self.tokenizer, self.model, self.image_processor, self.context_len = load_pretrained_model(args.model_path, args.model_base, model_name, args.load_8bit, args.load_4bit)
+        
+        self.tokenizer, self.model, self.image_processor, self.context_len = tokenizer, model, image_processor, context_len
 
         if "llama-2" in model_name.lower():
             conv_mode = "llava_llama_2"
@@ -50,49 +50,34 @@ class InferenceDemo(object):
             print("[WARNING] the auto inferred conversation mode is {}, while `--conv-mode` is {}, using {}".format(conv_mode, args.conv_mode, args.conv_mode))
         else:
             args.conv_mode = conv_mode
-            pass
         self.conv_mode=conv_mode
         self.conversation = conv_templates[args.conv_mode].copy()
         self.num_frames = args.num_frames
-        pass
 
 
 
 def is_valid_video_filename(name):
-    # 定义支持的视频文件后缀列表
     video_extensions = ['avi', 'mp4', 'mov', 'mkv', 'flv', 'wmv', 'mjpeg']
     
-    # 获取文件的后缀名，并转换为小写
     ext = name.split('.')[-1].lower()
     
-    # 检查文件后缀是否在支持的列表中
     if ext in video_extensions:
         return True
     else:
         return False
 
 def sample_frames(video_file, num_frames) :
-    # 打开视频文件
     video = cv2.VideoCapture(video_file)
-    #获取视频的总帧数
     total_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
-    #计算采样间隔
     interval = total_frames // num_frames
-    #初始化结果列表
     frames = []
-    #遍历视频的每一帧
     for i in range(total_frames):
-        #读取当前帧
         ret, frame = video.read()
         pil_img = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-        #如果帧为空，则跳过
         if not ret:
             continue
-        #如果是采样帧，则添加到结果列表中
         if i % interval == 0:
             frames.append(pil_img)
-    # import pdb;pdb.set_trace()
-    # 关闭视频文件
     video.release()
     return frames
 
@@ -126,92 +111,25 @@ def clear_response(history):
     history = history[:-index_conv]
     return history, question
 
-# def print_like_dislike(x: gr.LikeData):
-#     print(x.index, x.value, x.liked)
+def print_like_dislike(x: gr.LikeData):
+    print(x.index, x.value, x.liked)
 
 
-def add_video(history, video):
-    # if len(history)>1:
-    #     history=[]
-    print("LOG. Add Video Function is called.")
-    # path_input_vid = get_tmp_file_name(type="video",prefix="tmp_input_vid_")
-    # print("LOG. Video is saved to: ", path_input_vid)
-    # import pdb;pdb.set_trace()
-    history = history + [((video, ), "A New video is added.")]
-    return history
 
 def add_message(history, message):
     # history=[]
+    global our_chatbot
+    if len(history)==0:
+        our_chatbot = InferenceDemo(args,model_path,tokenizer, model, image_processor, context_len)
+        
     for x in message["files"]:
         history.append(((x,), None))
     if message["text"] is not None:
         history.append((message["text"], None))
     return history, gr.MultimodalTextbox(value=None, interactive=False)
 
-def add_text(history, text, temporature_slider=0.2):
-    def response2stream(response, question):
-        return [[question, response]]
-    images_this_term=[]
-    text_this_term=''
-    # import pdb;pdb.set_trace()
-    num_new_images = 0
-    for i,message in enumerate(history):
-        if type(message[0]) is tuple:
-            images_this_term.append(message[0][0])
-            if is_valid_video_filename(message[0][0]):
-                num_new_images+=our_chatbot.num_frames
-            else:
-                num_new_images+=1
-        else:
-            num_new_images=0
-            
-    # for message in history[-i-1:]:
-    #     images_this_term.append(message[0][0])
-
-    assert len(images_this_term)>0, "must have an image"
-    # image_files = (args.image_file).split(',')
-    # image = [load_image(f) for f in images_this_term if f]
-    image_list=[]
-    for f in images_this_term:
-        if is_valid_video_filename(f):
-            image_list+=sample_frames(f, our_chatbot.num_frames)
-        else:
-            image_list.append(load_image(f))
-    image_tensor = [our_chatbot.image_processor.preprocess(f, return_tensors="pt")["pixel_values"][0].half().to(our_chatbot.model.device) for f in image_list]
-
-    image_tensor = torch.stack(image_tensor)
-    image_token = DEFAULT_IMAGE_TOKEN*num_new_images
-    # if our_chatbot.model.config.mm_use_im_start_end:
-    #     inp = DEFAULT_IM_START_TOKEN + image_token + DEFAULT_IM_END_TOKEN + "\n" + inp
-    # else:
-    inp=text
-    inp = image_token + "\n" + inp
-    our_chatbot.conversation.append_message(our_chatbot.conversation.roles[0], inp)
-    our_chatbot.conversation.append_message(our_chatbot.conversation.roles[1], None)
-    prompt = our_chatbot.conversation.get_prompt()
-
-    input_ids = tokenizer_image_token(prompt, our_chatbot.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).to(our_chatbot.model.device)
-    stop_str = our_chatbot.conversation.sep if our_chatbot.conversation.sep_style != SeparatorStyle.TWO else our_chatbot.conversation.sep2
-    keywords = [stop_str]
-    stopping_criteria = KeywordsStoppingCriteria(keywords, our_chatbot.tokenizer, input_ids)
-    streamer = TextStreamer(our_chatbot.tokenizer, skip_prompt=True, skip_special_tokens=True)
-    # import pdb;pdb.set_trace()
-    with torch.inference_mode():
-        output_ids = our_chatbot.model.generate(input_ids, images=image_tensor, do_sample=True, temperature=temporature_slider, max_new_tokens=1024, streamer=streamer, use_cache=True, stopping_criteria=[stopping_criteria])
-
-    outputs = our_chatbot.tokenizer.decode(output_ids[0]).strip()
-    if outputs.endswith(stop_str):
-        outputs = outputs[:-len(stop_str)]
-    our_chatbot.conversation.messages[-1][-1] = outputs
-   
-    history += response2stream(outputs, text)
-
-    return history, None
- 
-
 def bot(history):
     text=history[-1][0]
-
     images_this_term=[]
     text_this_term=''
     # import pdb;pdb.set_trace()
@@ -259,7 +177,7 @@ def bot(history):
     streamer = TextStreamer(our_chatbot.tokenizer, skip_prompt=True, skip_special_tokens=True)
     # import pdb;pdb.set_trace()
     with torch.inference_mode():
-        output_ids = our_chatbot.model.generate(input_ids, images=image_tensor, do_sample=True, temperature=0.2, max_new_tokens=1024, streamer=streamer, use_cache=True, stopping_criteria=[stopping_criteria])
+        output_ids = our_chatbot.model.generate(input_ids, images=image_tensor, do_sample=True, temperature=0.2, max_new_tokens=1024, streamer=streamer, use_cache=False, stopping_criteria=[stopping_criteria])
 
     outputs = our_chatbot.tokenizer.decode(output_ids[0]).strip()
     if outputs.endswith(stop_str):
@@ -278,8 +196,8 @@ txt = gr.Textbox(
 with gr.Blocks() as demo:
     # Informations
     title_markdown = ("""
-        # LLaVA-Interleave
-        [[Project Page]](todo) [[Paper]](todo) [[Code]](todo) [[Model]](todo)
+        # LLaVA-NeXT Interleave
+        [[Blog]](https://llava-vl.github.io/blog/2024-06-16-llava-next-interleave/)  [[Code]](https://github.com/LLaVA-VL/LLaVA-NeXT) [[Model]](https://huggingface.co/lmms-lab/llava-next-interleave-7b)
     """)
     tos_markdown = ("""
     ### TODO!. Terms of use
@@ -293,18 +211,11 @@ with gr.Blocks() as demo:
     The service is a research preview intended for non-commercial use only, subject to the model [License](https://github.com/facebookresearch/llama/blob/main/MODEL_CARD.md) of LLaMA, [Terms of Use](https://openai.com/policies/terms-of-use) of the data generated by OpenAI, and [Privacy Practices](https://chrome.google.com/webstore/detail/sharegpt-share-your-chatg/daiacboceoaocpibfodeljbdfacokfjb) of ShareGPT. Please contact us if you find any potential violation.
     """)
     models = [
-        "LLaVA-Interleave-14B",
+        "LLaVA-Interleave-7B",
     ]
     cur_dir = os.path.dirname(os.path.abspath(__file__))
     gr.Markdown(title_markdown)
-    # with gr.Row():
-    #     # with gr.Column():
-    #     #     video = gr.Video( height=220)
-    #     #     txt.render()
-    #     #     with gr.Row():
-    #     #         video_upload_btn = gr.Button("Submit Video")
-    #     #         submit_btn = gr.Button(value="Submit Text")
-    #     with gr.Column():
+
     chatbot = gr.Chatbot(
         [],
         elem_id="chatbot",
@@ -325,28 +236,23 @@ with gr.Blocks() as demo:
     bot_msg = chat_msg.then(bot, chatbot, chatbot, api_name="bot_response")
     bot_msg.then(lambda: gr.MultimodalTextbox(interactive=True), None, [chat_input])
 
-    # chatbot.like(print_like_dislike, None, None)
+    chatbot.like(print_like_dislike, None, None)
     clear_btn.click(fn=clear_history, inputs=[chatbot], outputs=[chatbot], api_name="clear_all")
     with gr.Column():
         gr.Examples(examples=[
-            [{"files": [f"{cur_dir}/examples/iron.jpg",f"{cur_dir}/examples/iron_man_cartoon.jpg"], "text": "Please describe the similarity of the images."}],
-            [{"files": [f"{cur_dir}/examples/image-00007.jpeg",f"{cur_dir}/examples/image-00053.jpeg"], "text": "What is the relation between the images?"}],
-            [{"files": [f"{cur_dir}/examples/strawberry.png",f"{cur_dir}/examples/orange.png"], "text": "How to edit image1 to make it look like image2?"}],
-            [{"files": [f"{cur_dir}/examples/dog_to_monkey1.png",f"{cur_dir}/examples/dog_to_monkey2.png"], "text": "How to edit image1 to make it look like image2?"}],
+            [{"files": [f"{cur_dir}/examples/code1.jpeg",f"{cur_dir}/examples/code2.jpeg"], "text": "Please pay attention to the movement of the object from the first image to the second image, then write a HTML code to show this movement."}],
+            [{"files": [f"{cur_dir}/examples/shub.jpg",f"{cur_dir}/examples/shuc.jpg",f"{cur_dir}/examples/shud.jpg"], "text": "what is fun about the images?"}],
+            [{"files": [f"{cur_dir}/examples/iphone-15-price-1024x576.jpg",f"{cur_dir}/examples/dynamic-island-1024x576.jpg",f"{cur_dir}/examples/iphone-15-colors-1024x576.jpg",f"{cur_dir}/examples/Iphone-15-Usb-c-charger-1024x576.jpg",f"{cur_dir}/examples/A-17-processors-1024x576.jpg"], "text": "The images are the PPT of iPhone 15 review. can you summarize the main information?"}],
+            [{"files": [f"{cur_dir}/examples/fangao3.jpeg",f"{cur_dir}/examples/fangao2.jpeg",f"{cur_dir}/examples/fangao1.jpeg"], "text": "Do you kown who draw these paintings?"}],
+            [{"files": [f"{cur_dir}/examples/oprah-winfrey-resume.png",f"{cur_dir}/examples/steve-jobs-resume.jpg"], "text": "Hi, there are two candidates, can you provide a brief description for each of them for me?"}],
             [{"files": [f"{cur_dir}/examples/original_bench.jpeg",f"{cur_dir}/examples/changed_bench.jpeg"], "text": "How to edit image1 to make it look like image2?"}],
-            [{"files": [f"{cur_dir}/examples/startup.png",f"{cur_dir}/examples/bigcompany.png"], "text": "What if fun about the images?"}],
-            [{"files": [f"{cur_dir}/examples/resumea.png",f"{cur_dir}/examples/resumeb.jpg"], "text": "what do you think about this candidate?"}],
-            [{"files": [f"{cur_dir}/examples/twitter1.jpeg",f"{cur_dir}/examples/twitter2.jpeg",f"{cur_dir}/examples/twitter3.jpeg",f"{cur_dir}/examples/twitter4.jpeg"], "text": "Please write a blog post for the images."}],
-            [{"files": [f"{cur_dir}/examples/man_snow.mp4",f"{cur_dir}/examples/tokyo_people.mp4"], "text": "Do the videos have a similar background?"}],
-            [{"files": [f"{cur_dir}/examples/kangro_dance.mp4",f"{cur_dir}/examples/small_panda.mp4"], "text": "What is similar about the videos?"}],
+            [{"files": [f"{cur_dir}/examples/twitter2.jpeg",f"{cur_dir}/examples/twitter3.jpeg",f"{cur_dir}/examples/twitter4.jpeg"], "text": "Please write a twitter blog post with the images."}],
+            [{"files": [f"{cur_dir}/examples/twitter3.jpeg",f"{cur_dir}/examples/twitter4.jpeg"], "text": "Please write a twitter blog post with the images."}],
+            # [{"files": [f"playground/demo/examples/lion1_.mp4",f"playground/demo/examples/lion2_.mp4"], "text": "The input contains two videos, the first half is the first video and the second half is the second video. What is the difference between the two videos?"}],
             
-            
-        #     [f"{cur_dir}/examples/iron.jpg", "Describe the image."],
-        # [f"{cur_dir}/examples/iron_man_cartoon.jpg", "Describe the differrnce between the two images."],
-        ], inputs=[chat_input], label="Compare images: ")
-    # submit_btn.click(fn=add_text, inputs=[chatbot, txt], outputs=[chatbot, txt])
 
-    # video_upload_btn.click(fn=add_video, inputs=[chatbot, video], outputs=[chatbot], api_name="upload_video")
+            
+        ], inputs=[chat_input], label="Compare images: ")
 
 demo.queue()
 if __name__ == "__main__":
@@ -369,7 +275,9 @@ if __name__ == "__main__":
     args = argparser.parse_args()
     model_path = args.model_path
     filt_invalid="cut"
-    our_chatbot = InferenceDemo(args,model_path)
+    model_name = get_model_name_from_path(args.model_path)
+    tokenizer, model, image_processor, context_len = load_pretrained_model(args.model_path, args.model_base, model_name, args.load_8bit, args.load_4bit)
+    our_chatbot = None
     # import pdb;pdb.set_trace()
     try:
         demo.launch(server_name=args.server_name, server_port=int(args.port),share=True)
