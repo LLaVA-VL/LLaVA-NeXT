@@ -14,7 +14,7 @@
 
 To run a demo, execute:
 ```bash
-bash playground/demo/interleave_demo.py --model_path path/to/ckpt
+python playground/demo/interleave_demo.py --model_path path/to/ckpt
 ```
 
 ## Evaluation
