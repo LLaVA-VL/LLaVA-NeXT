@@ -21,7 +21,7 @@ class DataProcessor:
             with open(self.file_path, "r") as f:
                 self.data = yaml.safe_load(f)
         elif self.file_path.endswith(".jsonl"):
-            with open(save_path, "r") as f:
+            with open(self.file_path, "r") as f:
                 self.data = [json.loads(line) for line in f.readlines()]
         else:
             raise ValueError("Unsupported file format")
@@ -32,9 +32,15 @@ class DataProcessor:
 
     def check_image_existence(self, data):
         if "image" in data:
-            full_image_path = os.path.join(self.image_root, data["image"])
-            if not os.path.exists(full_image_path):
-                print(f"WARNING!!! {full_image_path} not exists !!!")
+            if type(data["image"]) == list:
+                images = data["image"]
+            else:
+                images = [data["image"]]
+            
+            for image in images:
+                full_image_path = os.path.join(self.image_root, image)
+                if not os.path.exists(full_image_path):
+                    print(f"WARNING!!! {full_image_path} not exists !!!")
 
         if "video" in data:
             full_video_path = os.path.join(self.video_root, data["video"])
@@ -42,8 +48,8 @@ class DataProcessor:
                 print(f"WARNING!!! {full_video_path} not exists !!!")
 
 
-        if data["conversations"][0]["value"].count("<image>") > 1:
-            print(f"WARNING!!! {data['conversations'][0]['value']} has more than one <image> !!!")
+        # if data["conversations"][0]["value"].count("<image>") > 1:
+        #     print(f"WARNING!!! {data['conversations'][0]['value']} has more than one <image> !!!")
 
     def process_images(self):
         if isinstance(self.data, list):
