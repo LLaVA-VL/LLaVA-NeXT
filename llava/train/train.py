@@ -548,13 +548,29 @@ def preprocess_gemma(sources: List[List[Dict[str, str]]], tokenizer: transformer
 
 
 def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_image: bool = False, max_len=2048, system_message: str = "You are a helpful assistant.") -> Dict:
-    roles = {"human": "<|im_start|>user", "gpt": "<|im_start|>assistant"}
+    # roles = {"human": "<|im_start|>user", "gpt": "<|im_start|>assistant"}
+    roles = {"human": "user", "gpt": "assistant"}
 
+    # Add image tokens to tokenizer as a special tokens
+    # Use a deepcopy of tokenizer so that we don't modify on the tokenizer
+    tokenizer = copy.deepcopy(tokenizer)
+    # When there is actually an image, we add the image tokens as a special token
+    if has_image:
+        tokenizer.add_tokens(["<image>"], special_tokens=True)
+
+    image_token_index = tokenizer.convert_tokens_to_ids("<image>")
     im_start, im_end = tokenizer.additional_special_tokens_ids
+    # unmask_tokens = ["<|im_start|>", "<|im_start|>", "\n"]
+    unmask_tokens_idx =  [198, im_start, im_end]
     nl_tokens = tokenizer("\n").input_ids
-    _system = tokenizer("system").input_ids + nl_tokens
-    _user = tokenizer("user").input_ids + nl_tokens
-    _assistant = tokenizer("assistant").input_ids + nl_tokens
+
+    # Reset Qwen chat templates so that it won't include system message every time we apply
+    chat_template = "{% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant\n' }}{% endif %}"
+    tokenizer.chat_template = chat_template
+
+    # _system = tokenizer("system").input_ids + nl_tokens
+    # _user = tokenizer("user").input_ids + nl_tokens
+    # _assistant = tokenizer("assistant").input_ids + nl_tokens
 
     # Apply prompt templates
     input_ids, targets = [], []
@@ -563,33 +579,39 @@ def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_im
             source = source[1:]
 
         input_id, target = [], []
-        system = [im_start] + _system + tokenizer(system_message).input_ids + [im_end] + nl_tokens
-        input_id += system
-        target += [im_start] + [IGNORE_INDEX] * (len(system) - 3) + [im_end] + nl_tokens
-        assert len(input_id) == len(target)
-        for j, sentence in enumerate(source):
-            role = roles[sentence["from"]]
-            if has_image and "<image>" in sentence["value"]:
-                num_im = len(re.findall(DEFAULT_IMAGE_TOKEN, sentence["value"]))
-                # multi image can start with text first
-                if num_im == 1:
-                    assert sentence["value"].startswith("<image>"), print(sentence["value"])
-                matches = re.findall("<image>", sentence["value"])
-                num_image = len(matches)
-                _input_id = tokenizer(role).input_ids + nl_tokens + [IMAGE_TOKEN_INDEX] * num_image + nl_tokens + tokenizer(sentence["value"][len("<image>") * num_image :]).input_ids + [im_end] + nl_tokens
+
+        # New version, use apply chat template
+        # Build system message for each sentence
+        input_id += tokenizer.apply_chat_template([{"role" : "system", "content" : system_message}])
+        target += [IGNORE_INDEX] * len(input_id)
+
+        for conv in source:
+            # Make sure llava data can load
+            try:
+                role = conv["role"]
+                content = conv["content"]
+            except:
+                role = conv["from"]
+                content = conv["value"]
+
+            role =  roles.get(role, role)
+            
+            conv = [{"role" : role, "content" : content}]
+            encode_id = tokenizer.apply_chat_template(conv)
+            input_id += encode_id
+            if role in ["user", "system"]:
+                target += [IGNORE_INDEX] * len(encode_id)
             else:
-                _input_id = tokenizer(role).input_ids + nl_tokens + tokenizer(sentence["value"]).input_ids + [im_end] + nl_tokens
-            input_id += _input_id
-            if role == "<|im_start|>user":
-                _target = [im_start] + [IGNORE_INDEX] * (len(_input_id) - 3) + [im_end] + nl_tokens
-            elif role == "<|im_start|>assistant":
-                _target = [im_start] + [IGNORE_INDEX] * len(tokenizer(role).input_ids) + _input_id[len(tokenizer(role).input_ids) + 1 : -2] + [im_end] + nl_tokens
-            else:
-                raise NotImplementedError
-            target += _target
-        assert len(input_id) == len(target)
-        # input_id += [tokenizer.pad_token_id] * (max_len - len(input_id))
-        # target += [IGNORE_INDEX] * (max_len - len(target))
+                target += encode_id
+        
+
+                    
+        assert len(input_id) == len(target), f"{len(input_id)} != {len(target)}"
+        for idx, encode_id in enumerate(input_id):
+            if encode_id in unmask_tokens_idx:
+                target[idx] = encode_id
+            if encode_id == image_token_index:
+                input_id[idx] = IMAGE_TOKEN_INDEX
         input_ids.append(input_id)
         targets.append(target)
     input_ids = torch.tensor(input_ids, dtype=torch.long)
@@ -598,7 +620,6 @@ def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_im
     return dict(
         input_ids=input_ids,  # tensor(bs x seq_len)
         labels=targets,  # tensor(bs x seq_len)
-        # attention_mask=input_ids.ne(tokenizer.pad_token_id), # tensor(bs x seq_len)
     )
 
 
