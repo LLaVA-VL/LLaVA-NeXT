@@ -1128,40 +1128,27 @@ class LazySupervisedDataset(Dataset):
                 print("File {} not exist!".format(video_file))
 
             try:
-                video = process_video_with_pyav(video_file, self.data_args)
-                # using videoreader
-                # if "shareVideoGPTV" not in video_file and "liangke" not in video_file:
-                # vr = VideoReader(video_file, ctx=cpu(0))
-                # total_frame_num = len(vr)
-                # avg_fps = round(vr.get_avg_fps() / self.data_args.video_fps)
-                # frame_idx = [i for i in range(0, total_frame_num, avg_fps)]
-                # if self.data_args.frames_upbound > 0:
-                #     if len(frame_idx) > self.data_args.frames_upbound:
-                #         uniform_sampled_frames = np.linspace(0, total_frame_num - 1, self.data_args.frames_upbound, dtype=int)
-                #         frame_idx = uniform_sampled_frames.tolist()
-                # video = vr.get_batch(frame_idx).asnumpy()
-                # video = np.array(video)
-                # else:
-                #     if "liangke" in video_file:
-                #         video_file = self.list_data_dict[i]["video"]
-                #     frame_files = [os.path.join(video_file, f) for f in os.listdir(video_file) if os.path.isfile(os.path.join(video_file, f))]
-                #     frame_files.sort()  # Ensure the frames are sorted if they are named sequentially
+                if "shareVideoGPTV" in video_file:
+                    frame_files = [os.path.join(video_file, f) for f in os.listdir(video_file) if os.path.isfile(os.path.join(video_file, f))]
+                    frame_files.sort()  # Ensure the frames are sorted if they are named sequentially
 
-                #     # TODO: Hard CODE: Determine the indices for uniformly sampling 10 frames
-                #     num_frames_to_sample = 10
-                #     total_frames = len(frame_files)
-                #     sampled_indices = np.linspace(0, total_frames - 1, num_frames_to_sample, dtype=int)
+                    # TODO: Hard CODE: Determine the indices for uniformly sampling 10 frames
+                    num_frames_to_sample = 10
+                    total_frames = len(frame_files)
+                    sampled_indices = np.linspace(0, total_frames - 1, num_frames_to_sample, dtype=int)
 
-                #     # Read and store the sampled frames
-                #     video = []
-                #     for idx in sampled_indices:
-                #         frame_path = frame_files[idx]
-                #         try:
-                #             with Image.open(frame_path) as img:
-                #                 frame = img.convert("RGB")
-                #                 video.append(frame)
-                #         except IOError:
-                #             print(f"Failed to read frame at path: {frame_path}")
+                    # Read and store the sampled frames
+                    video = []
+                    for idx in sampled_indices:
+                        frame_path = frame_files[idx]
+                        try:
+                            with Image.open(frame_path) as img:
+                                frame = img.convert("RGB")
+                                video.append(frame)
+                        except IOError:
+                            print(f"Failed to read frame at path: {frame_path}")
+                else:
+                    video = process_video_with_pyav(video_file, self.data_args)
 
                 processor = self.data_args.image_processor
                 image = processor.preprocess(video, return_tensors="pt")["pixel_values"]
