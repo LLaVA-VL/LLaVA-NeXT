@@ -15,7 +15,7 @@
 
 - [2024/06/23] 🔥 **LLaVA-NeXT (interleave)** is released. We utilize image-text interleaved format to unify multi-image, video, and 3D tasks in one LLM and achieve **SoTA** performance on a wide range of benchmarks. Check out [blog](https://llava-vl.github.io/blog/2024-06-16-llava-next-interleave/) and [checkpoints](https://huggingface.co/lmms-lab/llava-next-interleave-7b) to see new capabilities and improved performance!
   * An all-round LLM for multi-image, video, and 3D with strong performance \[[demo](http://semantic-sam.xyzou.net:6123/)\]
-  * Construct interleave training data **M4-Instruct**
+  * Construct interleave training data [**M4-Instruct**](https://huggingface.co/datasets/lmms-lab/M4-Instruct-Data)
   * Construct multi-image benchmark [**LLaVA-Interleave Bench**](https://huggingface.co/datasets/lmms-lab/llava-interleave-bench)
 
 
