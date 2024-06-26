@@ -1115,6 +1115,13 @@ class LazySupervisedDataset(Dataset):
             image_file = self.list_data_dict[i]["image"]
             if type(image_file) is list:
                 image = [self.process_image(f) for f in image_file]
+                # Handling multi images
+                # Also, if the config set anyres, then we
+                # only get the original image patches
+                if len(image_file) > 1:
+                    all_images = [im[0] if im[0].shape[0] == 1 else im[0][0:1] for im in image]
+                    all_images = torch.concat(all_images, dim=0)
+                    image = [[all_images, image[0][1], "multi-images"]]
             else:
                 image = [self.process_image(image_file)]
             sources = preprocess_multimodal(copy.deepcopy([e["conversations"] for e in sources]), self.data_args)
@@ -1303,6 +1310,9 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
         overwrite_config["mm_resampler_type"] = model_args.mm_resampler_type
         overwrite_config["mm_spatial_pool_stride"] = model_args.mm_spatial_pool_stride
         overwrite_config["mm_spatial_pool_out_channels"] = model_args.mm_spatial_pool_out_channels
+        overwrite_config["mm_spatial_pool_mode"] = model_args.mm_spatial_pool_mode
+
+    if model_args.mm_spatial_pool_mode is not None:
         overwrite_config["mm_spatial_pool_mode"] = model_args.mm_spatial_pool_mode
 
     if overwrite_config:
