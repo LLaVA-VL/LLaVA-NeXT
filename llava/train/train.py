@@ -88,7 +88,7 @@ class ModelArguments:
     mm_mask_drop_ratio_upper: Optional[float] = field(default=None)
     mm_mask_drop_ratio_lower: Optional[float] = field(default=None)
     mm_spatial_pool_stride: Optional[int] = field(default=None)
-    mm_spatial_pool_mode: str = field(default="average")
+    mm_spatial_pool_mode: str = field(default="bilinear")
     mm_spatial_pool_out_channels: Optional[int] = field(default=None)
     mm_perceiver_depth: Optional[int] = field(default=3)
     mm_perceiver_latents: Optional[int] = field(default=32)
