@@ -38,30 +38,27 @@ def process_video_with_decord(video_file, data_args):
 
 def process_video_with_pyav(video_file, data_args):
     container = av.open(video_file)
-    stream = container.streams.video[0]
+    # !!! This is the only difference. Using auto threading
+    container.streams.video[0].thread_type = "AUTO"
 
-    total_frame_num = stream.frames
-    avg_fps = round(stream.average_rate / data_args.video_fps)
+    video_frames = []
+    for packet in container.demux():
+        if packet.stream.type == 'video':
+            for frame in packet.decode():
+                video_frames.append(frame)
+    total_frame_num = len(video_frames)
+    video_time = video_frames[-1].time
+    avg_fps = round(total_frame_num / video_time / data_args.video_fps)
     frame_idx = [i for i in range(0, total_frame_num, avg_fps)]
+
     if data_args.frames_upbound > 0:
         if len(frame_idx) > data_args.frames_upbound:
             uniform_sampled_frames = np.linspace(0, total_frame_num - 1, data_args.frames_upbound, dtype=int)
             frame_idx = uniform_sampled_frames.tolist()
 
-    video_frames = []
-    frame_count = 0
-    for packet in container.demux(video=0):
-        for frame in packet.decode():
-            if frame_count in frame_idx:
-                video_frames.append(frame.to_rgb().to_ndarray())
-                if len(video_frames) == len(frame_idx):
-                    break
-            frame_count += 1
-        if len(video_frames) == len(frame_idx):
-            break
 
-    video = np.stack(video_frames)
-    return video
+    frames = [video_frames[i] for i in frame_idx]
+    return np.stack([x.to_ndarray(format="rgb24") for x in frames])
 
 
 def rank0_print(*args):
