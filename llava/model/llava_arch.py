@@ -170,6 +170,11 @@ class LlavaMetaForCausalLM(ABC):
             image_feature = nn.functional.avg_pool2d(image_feature, self.config.mm_spatial_pool_stride)
         elif self.config.mm_spatial_pool_mode == "max":
             image_feature = nn.functional.max_pool2d(image_feature, self.config.mm_spatial_pool_stride)
+        elif self.config.mm_spatial_pool_mode == "bilinear":
+            height, weight = image_feature.shape[2:]
+            scaled_shape = [math.ceil(height / 2), math.ceil(weight / 2)]
+            image_feature = nn.functional.interpolate(image_feature, size=scaled_shape, mode='bilinear')
+
         else:
             raise ValueError(f"Unexpected mm_spatial_pool_mode: {self.config.mm_spatial_pool_mode}")
         image_feature = image_feature.permute(0, 2, 3, 1)
@@ -188,9 +193,9 @@ class LlavaMetaForCausalLM(ABC):
         all_videos_or_images_features = []
 
         for idx, feat in enumerate(per_videos_or_images_features):
+            feat = self.get_model().mm_projector(feat)
             if idx in video_idx_in_batch:
                 feat = self.get_2dPool(feat)
-            feat = self.get_model().mm_projector(feat)
             all_videos_or_images_features.append(feat)
         return all_videos_or_images_features
 
@@ -204,9 +209,15 @@ class LlavaMetaForCausalLM(ABC):
                 images = [x.unsqueeze(0) if x.ndim == 3 else x for x in images]
 
             video_idx_in_batch = []
+            multi_imgs_idx_in_batch = []
+            # Don't get confused here, 
+            # We treat multi-images as video also because we do pooling
+            # on these two modalities. And we separate them
             for _ in range(len(modalities)):
-                if modalities[_] == "video":
+                if modalities[_] == "video" or modalities[_] == "multi-images":
                     video_idx_in_batch.append(_)
+                if modalities[_] == "multi-images":
+                    multi_imgs_idx_in_batch.append(_)
 
             images_list = []
             for image in images:
@@ -218,6 +229,7 @@ class LlavaMetaForCausalLM(ABC):
             concat_images = torch.cat([image for image in images_list], dim=0)
             split_sizes = [image.shape[0] for image in images_list]
 
+            # This is a list, each element is [num_images, patch * patch, dim]
             image_features = self.encode_multimodals(concat_images, video_idx_in_batch, split_sizes)
             # image_features = torch.split(image_features, split_sizes, dim=0)
             mm_patch_merge_type = getattr(self.config, "mm_patch_merge_type", "flat")
@@ -233,13 +245,22 @@ class LlavaMetaForCausalLM(ABC):
                     # num_patches = h * w, where h = w = sqrt(num_patches)
                     # currently image_feature is a tensor of shape (4, num_patches, hidden_size)
                     # we want to first unflatten it to (2, 2, h, w, hidden_size)
-                    if image_idx in video_idx_in_batch:  # video operations
+                    if image_idx in video_idx_in_batch and image_idx not in multi_imgs_idx_in_batch:  # video operations
                         if "unpad" in mm_patch_merge_type:
                             # image_feature = image_feature.permute(2, 0, 1).contiguous()
                             # image_feature =  torch.cat((image_feature, self.model.image_newline[:, None, None].expand(*image_feature.shape[:-1], 1).to(image_feature.device)), dim=-1)
                             # image_feature = image_feature.permute(1, 2, 0).contiguous()
                             image_feature = image_feature.flatten(0, 1)
                             image_feature = torch.cat((image_feature, self.model.image_newline[None].to(image_feature.device)), dim=0)
+
+                    if image_idx in multi_imgs_idx_in_batch:
+                        # For multi-images, we append each image feat in to new image features
+                        # separately and then we just simply continue
+                        # so that we don't append again at the end of for loop
+                        for image_feat in image_feature:
+                            new_image_features.append(image_feat)
+                        continue
+
 
                     elif image_feature.shape[0] > 1:  # multi patches and multi images operations
                         base_image_feature = image_feature[0]
@@ -334,6 +355,7 @@ class LlavaMetaForCausalLM(ABC):
         cur_image_idx = 0
         for batch_idx, cur_input_ids in enumerate(input_ids):
             num_images = (cur_input_ids == IMAGE_TOKEN_INDEX).sum()
+            rank0_print(num_images)
             if num_images == 0:
                 cur_image_features = image_features[cur_image_idx]
                 cur_input_embeds_1 = self.get_model().embed_tokens(cur_input_ids)
