@@ -45,7 +45,7 @@ from llava.train.llava_trainer import LLaVATrainer
 from llava import conversation as conversation_lib
 from llava.model import *
 from llava.mm_utils import process_highres_image, process_anyres_image, process_highres_image_crop_split, tokenizer_image_token
-from llava.utils import rank0_print, process_video_with_pyav
+from llava.utils import rank0_print, process_video_with_pyav, process_video_with_decord
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
@@ -1155,7 +1155,7 @@ class LazySupervisedDataset(Dataset):
                         except IOError:
                             print(f"Failed to read frame at path: {frame_path}")
                 else:
-                    video = process_video_with_pyav(video_file, self.data_args)
+                    video = process_video_with_decord(video_file, self.data_args)
 
                 processor = self.data_args.image_processor
                 image = processor.preprocess(video, return_tensors="pt")["pixel_values"]

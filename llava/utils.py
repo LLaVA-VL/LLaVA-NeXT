@@ -18,14 +18,27 @@ import torch.distributed as dist
 
 try:
     import av
+    from decord import VideoReader, cpu
 except ImportError:
     print("Please install pyav to use video processing functions.")
 
+def process_video_with_decord(video_file, data_args):
+    vr = VideoReader(video_file, ctx=cpu(0))
+    total_frame_num = len(vr)
+    avg_fps = round(vr.get_avg_fps() / data_args.video_fps)
+    frame_idx = [i for i in range(0, total_frame_num, avg_fps)]
+    
+    if data_args.frames_upbound > 0:
+        if len(frame_idx) > data_args.frames_upbound:
+            uniform_sampled_frames = np.linspace(0, total_frame_num - 1, data_args.frames_upbound, dtype=int)
+            frame_idx = uniform_sampled_frames.tolist()
+    
+    video = vr.get_batch(frame_idx).asnumpy()
+    return video
 
 def process_video_with_pyav(video_file, data_args):
     container = av.open(video_file)
     stream = container.streams.video[0]
-    # stream.codec_context.skip_frame = "NONKEY"  # Optional: Skip non-key frames to speed up
 
     total_frame_num = stream.frames
     avg_fps = round(stream.average_rate / data_args.video_fps)
@@ -36,11 +49,16 @@ def process_video_with_pyav(video_file, data_args):
             frame_idx = uniform_sampled_frames.tolist()
 
     video_frames = []
-    for index, frame in enumerate(container.decode(video=0)):
-        if index in frame_idx:
-            video_frames.append(frame.to_rgb().to_ndarray())
-            if len(video_frames) == len(frame_idx):  # Stop decoding once we have all needed frames
-                break
+    frame_count = 0
+    for packet in container.demux(video=0):
+        for frame in packet.decode():
+            if frame_count in frame_idx:
+                video_frames.append(frame.to_rgb().to_ndarray())
+                if len(video_frames) == len(frame_idx):
+                    break
+            frame_count += 1
+        if len(video_frames) == len(frame_idx):
+            break
 
     video = np.stack(video_frames)
     return video
