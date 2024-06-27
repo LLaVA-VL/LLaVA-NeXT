@@ -201,6 +201,7 @@ class LlavaMetaForCausalLM(ABC):
 
     def prepare_inputs_labels_for_multimodal(self, input_ids, position_ids, attention_mask, past_key_values, labels, images, modalities=["image"], image_sizes=None):
         vision_tower = self.get_vision_tower()
+        # rank0_print(modalities)
         if vision_tower is None or images is None or input_ids.shape[1] == 1:
             return input_ids, position_ids, attention_mask, past_key_values, None, labels
 
@@ -230,7 +231,9 @@ class LlavaMetaForCausalLM(ABC):
             split_sizes = [image.shape[0] for image in images_list]
 
             # This is a list, each element is [num_images, patch * patch, dim]
+            # rank0_print(f"Concat images : {concat_images.shape}")
             image_features = self.encode_multimodals(concat_images, video_idx_in_batch, split_sizes)
+            # rank0_print(f"Encoded image feats : {[x.shape for x in image_features]}")
             # image_features = torch.split(image_features, split_sizes, dim=0)
             mm_patch_merge_type = getattr(self.config, "mm_patch_merge_type", "flat")
             image_aspect_ratio = getattr(self.config, "image_aspect_ratio", "square")
@@ -245,7 +248,15 @@ class LlavaMetaForCausalLM(ABC):
                     # num_patches = h * w, where h = w = sqrt(num_patches)
                     # currently image_feature is a tensor of shape (4, num_patches, hidden_size)
                     # we want to first unflatten it to (2, 2, h, w, hidden_size)
-                    if image_idx in video_idx_in_batch and image_idx not in multi_imgs_idx_in_batch:  # video operations
+                    # rank0_print("At least we are reaching here")
+                    if image_idx in multi_imgs_idx_in_batch:
+                        # For multi-images, we append each image feat in to new image features
+                        # rank0_print("Multi-images")
+                        for image_feat in image_feature:
+                            new_image_features.append(image_feat)
+
+                    elif image_idx in video_idx_in_batch and image_idx not in multi_imgs_idx_in_batch:  # video operations
+                        # rank0_print("Video")
                         if "unpad" in mm_patch_merge_type:
                             # image_feature = image_feature.permute(2, 0, 1).contiguous()
                             # image_feature =  torch.cat((image_feature, self.model.image_newline[:, None, None].expand(*image_feature.shape[:-1], 1).to(image_feature.device)), dim=-1)
@@ -253,16 +264,8 @@ class LlavaMetaForCausalLM(ABC):
                             image_feature = image_feature.flatten(0, 1)
                             image_feature = torch.cat((image_feature, self.model.image_newline[None].to(image_feature.device)), dim=0)
 
-                    if image_idx in multi_imgs_idx_in_batch:
-                        # For multi-images, we append each image feat in to new image features
-                        # separately and then we just simply continue
-                        # so that we don't append again at the end of for loop
-                        for image_feat in image_feature:
-                            new_image_features.append(image_feat)
-                        continue
-
-
                     elif image_feature.shape[0] > 1:  # multi patches and multi images operations
+                        # rank0_print("Single-images")
                         base_image_feature = image_feature[0]
                         image_feature = image_feature[1:]
                         height = width = self.get_vision_tower().num_patches_per_side
@@ -318,7 +321,8 @@ class LlavaMetaForCausalLM(ABC):
                         if "unpad" in mm_patch_merge_type:
                             image_feature = torch.cat((image_feature, self.model.image_newline[None]), dim=0)
 
-                    new_image_features.append(image_feature)
+                    if image_idx not in multi_imgs_idx_in_batch:
+                        new_image_features.append(image_feature)
                 image_features = new_image_features
             else:
                 raise ValueError(f"Unexpected mm_patch_merge_type: {self.config.mm_patch_merge_type}")
@@ -328,6 +332,7 @@ class LlavaMetaForCausalLM(ABC):
         # TODO: image start / end is not implemented here to support pretraining.
         if getattr(self.config, "tune_mm_mlp_adapter", False) and getattr(self.config, "mm_use_im_start_end", False):
             raise NotImplementedError
+        # rank0_print(f"Total images : {len(image_features)}")
 
         # Let's just add dummy tensors if they do not exist,
         # it is a headache to deal with None all the time.
@@ -355,7 +360,7 @@ class LlavaMetaForCausalLM(ABC):
         cur_image_idx = 0
         for batch_idx, cur_input_ids in enumerate(input_ids):
             num_images = (cur_input_ids == IMAGE_TOKEN_INDEX).sum()
-            rank0_print(num_images)
+            # rank0_print(num_images)
             if num_images == 0:
                 cur_image_features = image_features[cur_image_idx]
                 cur_input_embeds_1 = self.get_model().embed_tokens(cur_input_ids)
