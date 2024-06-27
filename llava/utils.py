@@ -25,7 +25,7 @@ except ImportError:
 def process_video_with_pyav(video_file, data_args):
     container = av.open(video_file)
     stream = container.streams.video[0]
-    stream.codec_context.skip_frame = "NONKEY"  # Optional: Skip non-key frames to speed up
+    # stream.codec_context.skip_frame = "NONKEY"  # Optional: Skip non-key frames to speed up
 
     total_frame_num = stream.frames
     avg_fps = round(stream.average_rate / data_args.video_fps)
