@@ -23,7 +23,7 @@ except ImportError:
     print("Please install pyav to use video processing functions.")
 
 def process_video_with_decord(video_file, data_args):
-    vr = VideoReader(video_file, ctx=cpu(0))
+    vr = VideoReader(video_file, ctx=cpu(0), num_threads=2)
     total_frame_num = len(vr)
     avg_fps = round(vr.get_avg_fps() / data_args.video_fps)
     frame_idx = [i for i in range(0, total_frame_num, avg_fps)]
@@ -68,6 +68,12 @@ def rank0_print(*args):
     else:
         print(*args)
 
+
+def rank_print(*args):
+    if dist.is_initialized():
+        print(f"Rank {dist.get_rank()}: ", *args)
+    else:
+        print(*args)
 
 def build_logger(logger_name, logger_filename):
     global handler
