@@ -23,7 +23,7 @@ except ImportError:
     print("Please install pyav to use video processing functions.")
 
 def process_video_with_decord(video_file, data_args):
-    vr = VideoReader(video_file, ctx=cpu(0), num_threads=2)
+    vr = VideoReader(video_file, ctx=cpu(0), num_threads=1)
     total_frame_num = len(vr)
     avg_fps = round(vr.get_avg_fps() / data_args.video_fps)
     frame_idx = [i for i in range(0, total_frame_num, avg_fps)]
@@ -34,6 +34,8 @@ def process_video_with_decord(video_file, data_args):
             frame_idx = uniform_sampled_frames.tolist()
     
     video = vr.get_batch(frame_idx).asnumpy()
+    # https://github.com/dmlc/decord/issues/208
+    vr.seek(0)
     return video
 
 def process_video_with_pyav(video_file, data_args):
