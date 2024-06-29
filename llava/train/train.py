@@ -1034,7 +1034,7 @@ class LazySupervisedDataset(Dataset):
             length_list.append(cur_len)
         return length_list
 
-    def process_image(self, image_file):
+    def process_image(self, image_file, overwrite_image_aspect_ratio=None):
         image_folder = self.data_args.image_folder
         processor = self.data_args.image_processor
         # print(f"\n\nInspecting the image path, folder = {image_folder}, image={image_file}\n\n")
@@ -1045,13 +1045,16 @@ class LazySupervisedDataset(Dataset):
             raise exn
 
         image_size = image.size
-        if self.data_args.image_aspect_ratio == "highres":
+        image_aspect_ratio = self.data_args.image_aspect_ratio
+        if overwrite_image_aspect_ratio is not None:
+            image_aspect_ratio = overwrite_image_aspect_ratio
+        if image_aspect_ratio == "highres":
             image = process_highres_image(image, self.data_args.image_processor, self.data_args.image_grid_pinpoints)
-        elif self.data_args.image_aspect_ratio == "anyres" or "anyres_max" in self.data_args.image_aspect_ratio:
+        elif image_aspect_ratio == "anyres" or "anyres_max" in image_aspect_ratio:
             image = process_anyres_image(image, self.data_args.image_processor, self.data_args.image_grid_pinpoints)
-        elif self.data_args.image_aspect_ratio == "crop_split":
+        elif image_aspect_ratio == "crop_split":
             image = process_highres_image_crop_split(image, self.data_args)
-        elif self.data_args.image_aspect_ratio == "pad":
+        elif image_aspect_ratio == "pad":
 
             def expand2square(pil_img, background_color):
                 width, height = pil_img.size
@@ -1116,12 +1119,11 @@ class LazySupervisedDataset(Dataset):
             if type(image_file) is list:
                 image = [self.process_image(f) for f in image_file]
                 # Handling multi images
-                # Also, if the config set anyres, then we
-                # only get the original image patches
+                # if it is multi images, we treat it as video modalities
+                # overwrite to process with simple pad 
                 if len(image_file) > 1:
-                    all_images = [im[0] if im[0].shape[0] == 1 else im[0][0:1] for im in image]
-                    all_images = torch.concat(all_images, dim=0)
-                    image = [[all_images, image[0][1], "multi-images"]]
+                    image = [self.process_image(f, "pad") for f in image_file]
+                    image = [[im[0], im[1], "video"] for im in image]
             else:
                 image = [self.process_image(image_file)]
             sources = preprocess_multimodal(copy.deepcopy([e["conversations"] for e in sources]), self.data_args)
@@ -1155,7 +1157,7 @@ class LazySupervisedDataset(Dataset):
                         except IOError:
                             print(f"Failed to read frame at path: {frame_path}")
                 else:
-                    video = process_video_with_pyav(video_file, self.data_args)
+                    video = process_video_with_decord(video_file, self.data_args)
 
                 processor = self.data_args.image_processor
                 image = processor.preprocess(video, return_tensors="pt")["pixel_values"]
