@@ -210,15 +210,9 @@ class LlavaMetaForCausalLM(ABC):
                 images = [x.unsqueeze(0) if x.ndim == 3 else x for x in images]
 
             video_idx_in_batch = []
-            multi_imgs_idx_in_batch = []
-            # Don't get confused here, 
-            # We treat multi-images as video also because we do pooling
-            # on these two modalities. And we separate them
             for _ in range(len(modalities)):
-                if modalities[_] == "video" or modalities[_] == "multi-images":
+                if modalities[_] == "video":
                     video_idx_in_batch.append(_)
-                if modalities[_] == "multi-images":
-                    multi_imgs_idx_in_batch.append(_)
 
             images_list = []
             for image in images:
@@ -249,13 +243,7 @@ class LlavaMetaForCausalLM(ABC):
                     # currently image_feature is a tensor of shape (4, num_patches, hidden_size)
                     # we want to first unflatten it to (2, 2, h, w, hidden_size)
                     # rank0_print("At least we are reaching here")
-                    if image_idx in multi_imgs_idx_in_batch:
-                        # For multi-images, we append each image feat in to new image features
-                        # rank0_print("Multi-images")
-                        for image_feat in image_feature:
-                            new_image_features.append(image_feat)
-
-                    elif image_idx in video_idx_in_batch and image_idx not in multi_imgs_idx_in_batch:  # video operations
+                    if image_idx in video_idx_in_batch:  # video operations
                         # rank0_print("Video")
                         if "unpad" in mm_patch_merge_type:
                             # image_feature = image_feature.permute(2, 0, 1).contiguous()
@@ -321,8 +309,7 @@ class LlavaMetaForCausalLM(ABC):
                         if "unpad" in mm_patch_merge_type:
                             image_feature = torch.cat((image_feature, self.model.image_newline[None]), dim=0)
 
-                    if image_idx not in multi_imgs_idx_in_batch:
-                        new_image_features.append(image_feature)
+                    new_image_features.append(image_feature)
                 image_features = new_image_features
             else:
                 raise ValueError(f"Unexpected mm_patch_merge_type: {self.config.mm_patch_merge_type}")
