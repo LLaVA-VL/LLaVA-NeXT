@@ -37,7 +37,7 @@ train = [
     "torch==2.1.2",
     "torchvision==0.16.2",
     "uvicorn",
-    "wandb==0.16.5",
+    "wandb",
     "deepspeed==0.14.2",
     "peft==0.4.0",
     "accelerate>=0.29.1",
