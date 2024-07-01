@@ -1235,12 +1235,12 @@ class DataCollatorForSupervisedDataset(object):
             batch["modalities"] = [im[2] for im_list in images for im in im_list]
             images = [im[0] for im_list in images for im in im_list]
 
-            if all(x is not None and x.shape == images[0].shape for x in images):
+            # if all(x is not None and x.shape == images[0].shape for x in images):
                 # Image: (N, P, C, H, W)
                 # Video: (N, F, C, H, W)
-                batch["images"] = torch.stack(images)
-            else:
-                batch["images"] = images
+            #     batch["images"] = torch.stack(images)
+            # else:
+            batch["images"] = images
 
         if "prompt" in instances[0]:
             batch["prompts"] = [instance["prompt"] for instance in instances]
