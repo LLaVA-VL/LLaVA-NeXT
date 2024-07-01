@@ -27,7 +27,7 @@ from .multimodal_projector.builder import build_vision_projector
 from llava.constants import IGNORE_INDEX, IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 
 from llava.mm_utils import get_anyres_image_grid_shape
-from llava.utils import rank0_print
+from llava.utils import rank0_print, rank_print
 import random
 
 
@@ -183,10 +183,10 @@ class LlavaMetaForCausalLM(ABC):
 
     def encode_images(self, images):
         image_features = self.get_model().get_vision_tower()(images)
-        image_features = self.get_model().vision_resampler(image_features, images=images)
+        # image_features = self.get_model().vision_resampler(image_features, images=images)
         image_features = self.get_model().mm_projector(image_features)
         return image_features
-
+    
     def encode_multimodals(self, videos_or_images, video_idx_in_batch, split_sizes=None):
         videos_or_images_features = self.get_model().get_vision_tower()(videos_or_images)
         per_videos_or_images_features = torch.split(videos_or_images_features, split_sizes, dim=0)  # tuple, (dim_1, 576, 4096)
@@ -201,7 +201,7 @@ class LlavaMetaForCausalLM(ABC):
 
     def prepare_inputs_labels_for_multimodal(self, input_ids, position_ids, attention_mask, past_key_values, labels, images, modalities=["image"], image_sizes=None):
         vision_tower = self.get_vision_tower()
-        # rank0_print(modalities)
+        # rank_print(modalities)
         if vision_tower is None or images is None or input_ids.shape[1] == 1:
             return input_ids, position_ids, attention_mask, past_key_values, None, labels
 
@@ -223,11 +223,19 @@ class LlavaMetaForCausalLM(ABC):
 
             concat_images = torch.cat([image for image in images_list], dim=0)
             split_sizes = [image.shape[0] for image in images_list]
+            encoded_image_features = self.encode_images(concat_images)
 
             # This is a list, each element is [num_images, patch * patch, dim]
-            # rank0_print(f"Concat images : {concat_images.shape}")
-            image_features = self.encode_multimodals(concat_images, video_idx_in_batch, split_sizes)
-            # rank0_print(f"Encoded image feats : {[x.shape for x in image_features]}")
+            # rank_print(f"Concat images : {concat_images.shape}")
+            encoded_image_features = torch.split(encoded_image_features, split_sizes)
+            image_features = []
+            for idx, image_feat in enumerate(encoded_image_features):
+                if idx in video_idx_in_batch:
+                    image_features.append(self.get_2dPool(image_feat))
+                else:
+                    image_features.append(image_feat)
+            # image_features = self.encode_multimodals(concat_images, video_idx_in_batch, split_sizes)
+            # rank_print(f"Encoded image feats : {[x.shape for x in image_features]}")
             # image_features = torch.split(image_features, split_sizes, dim=0)
             mm_patch_merge_type = getattr(self.config, "mm_patch_merge_type", "flat")
             image_aspect_ratio = getattr(self.config, "image_aspect_ratio", "square")
@@ -319,7 +327,7 @@ class LlavaMetaForCausalLM(ABC):
         # TODO: image start / end is not implemented here to support pretraining.
         if getattr(self.config, "tune_mm_mlp_adapter", False) and getattr(self.config, "mm_use_im_start_end", False):
             raise NotImplementedError
-        # rank0_print(f"Total images : {len(image_features)}")
+        # rank_print(f"Total images : {len(image_features)}")
 
         # Let's just add dummy tensors if they do not exist,
         # it is a headache to deal with None all the time.
@@ -345,7 +353,7 @@ class LlavaMetaForCausalLM(ABC):
         new_input_embeds = []
         new_labels = []
         cur_image_idx = 0
-        # rank0_print("Inserting Images embedding")
+        # rank_print("Inserting Images embedding")
         for batch_idx, cur_input_ids in enumerate(input_ids):
             num_images = (cur_input_ids == IMAGE_TOKEN_INDEX).sum()
             # rank0_print(num_images)
@@ -391,7 +399,7 @@ class LlavaMetaForCausalLM(ABC):
 
         # Truncate sequences to max length as image embeddings can make the sequence longer
         tokenizer_model_max_length = getattr(self.config, "tokenizer_model_max_length", None)
-        # rank0_print("Finishing Inserting")
+        # rank_print("Finishing Inserting")
 
         new_input_embeds = [x[:tokenizer_model_max_length] for x, modality in zip(new_input_embeds, modalities)]
         new_labels = [x[:tokenizer_model_max_length] for x, modality in zip(new_labels, modalities)]
