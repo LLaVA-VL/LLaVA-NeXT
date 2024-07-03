@@ -277,7 +277,11 @@ class LlavaMetaForCausalLM(ABC):
                                 vision_tower_image_size = self.get_vision_tower().image_size
                             else:
                                 raise ValueError("vision_tower_image_size is not found in the vision tower.")
-                            num_patch_width, num_patch_height = get_anyres_image_grid_shape(image_sizes[image_idx], self.config.image_grid_pinpoints, vision_tower_image_size)
+                            try:
+                                num_patch_width, num_patch_height = get_anyres_image_grid_shape(image_sizes[image_idx], self.config.image_grid_pinpoints, vision_tower_image_size)
+                            except Exception as e:
+                                rank0_print(f"Error: {e}")
+                                num_patch_width, num_patch_height = 2, 2
                             image_feature = image_feature.view(num_patch_height, num_patch_width, height, width, -1)
                         else:
                             image_feature = image_feature.view(2, 2, height, width, -1)
