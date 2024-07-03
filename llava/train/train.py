@@ -1010,6 +1010,7 @@ class LazySupervisedDataset(Dataset):
                 rank0_print(f"Loaded {len(cur_data_dict)} samples from {data_path}")
                 self.list_data_dict.extend(cur_data_dict)
 
+        rank0_print(f"Loaded {len(self.list_data_dict)} samples from {data_path}")
         rank0_print("Formatting inputs...Skip in lazy mode")
         self.tokenizer = tokenizer
         self.data_args = data_args
