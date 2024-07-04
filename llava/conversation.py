@@ -221,7 +221,7 @@ class Conversation:
             img_b64_str = base64.b64encode(buffered.getvalue()).decode()
             return img_b64_str
 
-    def get_images(self, return_pil=False):
+    def get_images(self, return_pil=False, return_path=False):
         images = []
         for i, (role, msg) in enumerate(self.messages[self.offset :]):
             if i % 2 == 0:
@@ -230,8 +230,10 @@ class Conversation:
                     if type(image) != list:
                         image = [image]
                     for img in image:
-                        img = self.process_image(img, image_process_mode, return_pil=return_pil)
-                        images.append(img)
+                        if not return_path:
+                            img = self.process_image(img, image_process_mode, return_pil=return_pil)
+                        else:
+                            images.append(img)
         return images
 
     def to_gradio_chatbot(self):
