@@ -19,7 +19,7 @@
   * Construct multi-image benchmark [**LLaVA-Interleave Bench**](https://huggingface.co/datasets/lmms-lab/LLaVA-NeXT-Interleave-Bench)
 
 
-- [2024/05/25] 🔥 Wondering "[What Else Influences Visual Instruction Tuning Beyond Data?](https://llava-vl.github.io/blog/2024-05-25-llava-next-ablations/)" Our new [blog](https://llava-vl.github.io/blog/2024-05-25-llava-next-ablations/) summarizes empirical explorations to ablate the various design choices in improving LMMs except instruct data itself. Meanwhile, open-source the recapioned high-quality data using LLaVA-NeXT-34B on [COCO] [LCS] [CC3M].
+- [2024/05/25] 🔥 Wondering "[What Else Influences Visual Instruction Tuning Beyond Data?](https://llava-vl.github.io/blog/2024-05-25-llava-next-ablations/)" Our new [blog](https://llava-vl.github.io/blog/2024-05-25-llava-next-ablations/) summarizes empirical explorations to ablate the various design choices in improving LMMs except instruct data itself. Meanwhile, open-source the recapioned high-quality data using LLaVA-NeXT-34B on [[COCO]](https://huggingface.co/datasets/lmms-lab/LLaVA-ReCap-118K) [[LCS]](https://huggingface.co/datasets/lmms-lab/LLaVA-ReCap-558K) [[CC3M]](https://huggingface.co/datasets/lmms-lab/LLaVA-ReCap-CC3M).
   * Architectures (LMM & Vision Encoder)
   * Visual Representations (Resolution & # Tokens)
   * Training Strategies (High-quality data & Trainable modules)
@@ -131,6 +131,22 @@ Checkout the HTTP Post/Get and SRT usage at [sglang/examples/usage/llava](https:
 
 If you find it useful for your research and applications, please cite related papers/blogs using this BibTeX:
 ```bibtex
+@misc{li2024llavanext-interleave,
+	title={LLaVA-NeXT: Tackling Multi-image, Video, and 3D in Large Multimodal Models},
+	url={https://llava-vl.github.io/blog/2024-06-16-llava-next-interleave/},
+	author={Li, Feng and Zhang, Renrui and Zhang, Hao and Zhang, Yuanhan and Li, Bo and Li, Wei and Ma, Zejun and Li, Chunyuan},
+	month={June},
+	year={2024}
+}
+
+@misc{li2024llavanext-ablations,
+	title={LLaVA-NeXT: What Else Influences Visual Instruction Tuning Beyond Data?},
+	url={https://llava-vl.github.io/blog/2024-05-25-llava-next-ablations/},
+	author={Li, Bo and Zhang, Hao and Zhang, Kaichen and Guo, Dong and Zhang, Yuanhan and Zhang, Renrui and Li, Feng and Liu, Ziwei and Li, Chunyuan},
+	month={May},
+	year={2024}
+}
+
 @misc{li2024llavanext-strong,
     title={LLaVA-NeXT: Stronger LLMs Supercharge Multimodal Capabilities in the Wild},
     url={https://llava-vl.github.io/blog/2024-05-10-llava-next-stronger-llms/},
@@ -139,7 +155,7 @@ If you find it useful for your research and applications, please cite related pa
     year={2024}
 }
 
-@misc{zhang2024llavanextvideo,
+@misc{zhang2024llavanext-video,
   title={LLaVA-NeXT: A Strong Zero-shot Video Understanding Model},
   url={https://llava-vl.github.io/blog/2024-04-30-llava-next-video/},
   author={Zhang, Yuanhan and Li, Bo and Liu, haotian and Lee, Yong jae and Gui, Liangke and Fu, Di and Feng, Jiashi and Liu, Ziwei and Li, Chunyuan},
