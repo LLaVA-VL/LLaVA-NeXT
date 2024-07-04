@@ -981,8 +981,17 @@ class LazySupervisedDataset(Dataset):
                     sampling_number = None
 
                     rank0_print(f"Loading {json_path} with {sampling_strategy} sampling strategy")
-                    with open(json_path, "r") as json_file:
-                        cur_data_dict = json.load(json_file)
+
+                    if json_path.endswith(".jsonl"):
+                        cur_data_dict = []
+                        with open(json_path, "r") as json_file:
+                            for line in json_file:
+                                cur_data_dict.append(json.loads(line.strip()))
+                    elif json_path.endswith(".json"):
+                        with open(json_path, "r") as json_file:
+                            cur_data_dict = json.load(json_file)
+                    else:
+                        raise ValueError(f"Unsupported file type: {json_path}")
 
                     if ":" in sampling_strategy:
                         sampling_strategy, sampling_number = sampling_strategy.split(":")

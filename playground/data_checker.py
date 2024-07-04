@@ -27,8 +27,14 @@ class DataProcessor:
             raise ValueError("Unsupported file format")
 
     def load_json_data(self, json_path):
-        with open(json_path, "r") as f:
-            return json.load(f)
+        if json_path.endswith(".jsonl"):
+            with open(json_path, "r") as f:
+                return [json.loads(line) for line in f.readlines()]
+        elif json_path.endswith(".json"):
+            with open(json_path, "r") as f:
+                return json.load(f)
+        else:
+            raise ValueError("Unsupported file format")
 
     def check_image_existence(self, data):
         if "image" in data:
@@ -36,7 +42,7 @@ class DataProcessor:
                 images = data["image"]
             else:
                 images = [data["image"]]
-            
+
             for image in images:
                 full_image_path = os.path.join(self.image_root, image)
                 if not os.path.exists(full_image_path):
@@ -46,7 +52,6 @@ class DataProcessor:
             full_video_path = os.path.join(self.video_root, data["video"])
             if not os.path.exists(full_video_path):
                 print(f"WARNING!!! {full_video_path} not exists !!!")
-
 
         # if data["conversations"][0]["value"].count("<image>") > 1:
         #     print(f"WARNING!!! {data['conversations'][0]['value']} has more than one <image> !!!")
@@ -104,6 +109,7 @@ def main(file_path, image_root, operation, video_root):
 
 if __name__ == "__main__":
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--file_path", type=str, default="/mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/scripts/i18n/scale_llms/sft_medium_cauldron.yaml")
     parser.add_argument("--image_root", type=str, default="/mnt/bn/vl-research/data/llava_data")
