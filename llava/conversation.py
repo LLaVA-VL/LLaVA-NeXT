@@ -202,9 +202,12 @@ class Conversation:
         else:
             raise ValueError(f"Invalid image_process_mode: {image_process_mode}")
 
+        if type(image) is not Image.Image:
+            image = Image.open(image).convert("RGB")
+
         max_hw, min_hw = max(image.size), min(image.size)
         aspect_ratio = max_hw / min_hw
-        max_len, min_len = 672, 448
+        max_len, min_len = 1008, 672
         shortest_edge = int(min(max_len / aspect_ratio, min_len, min_hw))
         longest_edge = int(shortest_edge * aspect_ratio)
         W, H = image.size
@@ -350,21 +353,16 @@ conv_llava_llama_2 = Conversation(
     sep2="</s>",
 )
 
-try:
-    llama3_tokenizer = AutoTokenizer.from_pretrained("meta-llama/Meta-Llama-3-8B-Instruct")
-except Exception as e:
-    print("Error loading llama3 tokenizer")
-    print(e)
-
 conv_llava_llama_3 = Conversation(
     system="You are a helpful language and vision assistant. " "You are able to understand the visual content that the user provides, " "and assist the user with a variety of tasks using natural language.",
-    roles=("<|start_header_id|>user", "<|start_header_id|>assistant"),
+    roles=("user", "assistant"),
     version="llama_v3",
     messages=[],
     offset=0,
+    sep="<|eot_id|>",
     sep_style=SeparatorStyle.LLAMA_3,
     tokenizer_id="meta-llama/Meta-Llama-3-8B-Instruct",
-    tokenizer=llama3_tokenizer,
+    tokenizer=AutoTokenizer.from_pretrained("meta-llama/Meta-Llama-3-8B-Instruct"),
     stop_token_ids=[128009],
 )
 
