@@ -7,8 +7,7 @@ DATA_PATH=$2
 EVAL_TYPE=$3
 JSON_PATH=$2/$3.json
 ############################### eval multi-image 
-DATASET=$(echo "$DATASET" | awk -F'.' '{print $(NF - 1)}')
-RESULT_NAME="logs/${NAME}/${DATASET}"
+RESULT_NAME="logs/${NAME}/${EVAL_TYPE}"
 echo $RESULT_NAME
 
 mkdir -p logs/${NAME}
