@@ -97,7 +97,6 @@ class DataProcessor:
 
 def main(file_path, image_root, operation, video_root):
     processor = DataProcessor(file_path, image_root, video_root)
-    print(f"Processing with {cpu_count()}")
     if operation == "check":
         processor.process_images()
     elif operation == "count":
