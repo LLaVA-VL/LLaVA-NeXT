@@ -89,7 +89,7 @@ Please checkout the following page for more inference & evaluation details.
 
 
 #### - LLaVA-NeXT: A Strong Zero-shot Video Understanding Model
-- [LLaVA-NeXT-Video](./docs/LLaVA-NeXT-Video.md): for video inference and evaluation scripts.
+- [LLaVA-NeXT-Video](./docs/LLaVA-NeXT-Video.md): for video inference and evaluation scripts. We recommend to use [LMMs-video](https://lmms-lab.github.io/posts/lmms-eval-0.2/) for evaluation.
 
 #### - LLaVA-NeXT: Tackling Multi-image, Video, and 3D in Large Multimodal Models
 - [LLaVA-NeXT-Interleave](./docs/LLaVA-NeXT-Interleave.md): for multi-image demo and evaluation scripts.
