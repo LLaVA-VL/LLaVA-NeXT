@@ -131,12 +131,11 @@ Checkout the HTTP Post/Get and SRT usage at [sglang/examples/usage/llava](https:
 
 If you find it useful for your research and applications, please cite related papers/blogs using this BibTeX:
 ```bibtex
-@misc{li2024llavanext-interleave,
-	title={LLaVA-NeXT: Tackling Multi-image, Video, and 3D in Large Multimodal Models},
-	url={https://llava-vl.github.io/blog/2024-06-16-llava-next-interleave/},
-	author={Li, Feng and Zhang, Renrui and Zhang, Hao and Zhang, Yuanhan and Li, Bo and Li, Wei and Ma, Zejun and Li, Chunyuan},
-	month={June},
-	year={2024}
+@article{li2024llava,
+  title={LLaVA-NeXT-Interleave: Tackling Multi-image, Video, and 3D in Large Multimodal Models},
+  author={Li, Feng and Zhang, Renrui and Zhang, Hao and Zhang, Yuanhan and Li, Bo and Li, Wei and Ma, Zejun and Li, Chunyuan},
+  journal={arXiv preprint arXiv:2407.07895},
+  year={2024}
 }
 
 @misc{li2024llavanext-ablations,
