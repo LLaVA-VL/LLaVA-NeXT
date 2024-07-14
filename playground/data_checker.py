@@ -97,34 +97,22 @@ class DataProcessor:
                 print(f"{dd_json_path}: {sampling_count}")
             return total_items_count
 
+    def stat_data(self):
+        if isinstance(self.data, dict):
+            cur_lens_list = []
+            for d in self.data["datasets"]:
+                dd_json_path = d["json_path"]
+                data = self.load_json_data(dd_json_path)
+                print(f"{dd_json_path}: {len(data)}")
+                for item in data:
+                    cur_len = sum([len(conv["value"]) for conv in item["conversations"]])
+
+                    cur_lens_list.append(cur_len)
+            print(f"Max length: {max(cur_lens_list)}, Min length: {min(cur_lens_list)}, Average length: {sum(cur_lens_list) / len(cur_lens_list)}")
+                    
+
     def filter_data(self):
-        if isinstance(self.data, list):
-            filtered_data = []
-            for d in self.data:
-                if "image" in d:
-                    num_image = len(d["image"]) if isinstance(d["image"], list) else 1
-                else:
-                    num_image = 0
-                if "video" in d:
-                    num_video = len(d["video"]) if isinstance(d["video"], list) else 1
-                else:
-                    num_video = 0
-
-                print(f"{num_image}, {num_video}")
-                conv_text = ""
-                for conv in d["conversations"]:
-                    conv_text += conv["value"]
-
-                num_img_token_appearance = conv_text.count("<image>")
-                if num_img_token_appearance == num_image:
-                    filtered_data.append(d)
-                else:
-                    print(f"Filtered out: {num_img_token_appearance} != {num_image}")
-
-            self.data = filtered_data
-            print(f"Filtered data count: {len(self.data)}")
-
-        elif isinstance(self.data, dict):
+        if isinstance(self.data, dict):
             for d in self.data["datasets"]:
                 dd_json_path = d["json_path"]
                 print(f"Processing {dd_json_path}")
@@ -150,7 +138,10 @@ class DataProcessor:
                         conv_text += conv["value"]
 
                     num_img_token_appearance = conv_text.count("<image>")
-                    if num_img_token_appearance == num_visuals or num_img_token_appearance < num_visuals:
+                    if len(conv_text) == 0:
+                        print(f"Conversation text is empty for {item}")
+                        
+                    if num_img_token_appearance == num_visuals or num_img_token_appearance < num_visuals and len(conv_text) > 0:
                         filtered_data.append(item)
                     elif num_img_token_appearance > num_visuals:
                         item["num_img_token_appearance"] = num_img_token_appearance
@@ -166,7 +157,7 @@ class DataProcessor:
                     print(f"Data mismatch for {dd_json_path}")
 
                 if len(filtered_data) < len(data):
-                    saving_dd_json_path = dd_json_path.replace(".jsonl", f"_sp_token_fltd_{len(filtered_data)}.jsonl").replace(".json", f"_sp_token_fltd_{len(filtered_data)}.json")
+                    saving_dd_json_path = dd_json_path.replace(".jsonl", f"fltd_{len(filtered_data)}.json").replace(".json", f"fltd_{len(filtered_data)}.json")
                     with open(saving_dd_json_path, "w") as f:
                         json.dump(filtered_data, f, indent=2)
                     print(f"Filtered data count: {len(filtered_data)}")
@@ -183,6 +174,8 @@ def main(file_path, image_root, operation, video_root):
         print(f"Total items: {total_items}")
     elif operation == "filter":
         processor.filter_data()
+    elif operation == "stat":
+        processor.stat_data()
     else:
         raise ValueError("Unsupported operation")
 
