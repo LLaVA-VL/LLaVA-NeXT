@@ -1040,6 +1040,7 @@ class LazySupervisedDataset(Dataset):
         length_list = []
         for sample in self.list_data_dict:
             cur_len = sum(len(conv["value"].split()) for conv in sample["conversations"])
+            assert cur_len > 0, f"Conversation length is 0 for {sample}"
             cur_len = cur_len if ("image" in sample) or ("video" in sample) else -cur_len
             length_list.append(cur_len)
         return length_list
