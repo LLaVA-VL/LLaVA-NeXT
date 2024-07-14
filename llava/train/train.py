@@ -1130,11 +1130,10 @@ class LazySupervisedDataset(Dataset):
             if type(image_file) is list:
                 image = [self.process_image(f) for f in image_file]
                 # Handling multi images
-                # if it is multi images, we treat it as video modalities
                 # overwrite to process with simple pad 
                 if len(image_file) > 1:
                     image = [self.process_image(f, "pad") for f in image_file]
-                    image = [[im[0], im[1], "video"] for im in image]
+                    image = [[im[0], im[1], "image"] for im in image]
             else:
                 image = [self.process_image(image_file)]
             sources = preprocess_multimodal(copy.deepcopy([e["conversations"] for e in sources]), self.data_args)
