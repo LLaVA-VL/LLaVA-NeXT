@@ -100,16 +100,53 @@ class DataProcessor:
     def stat_data(self):
         if isinstance(self.data, dict):
             cur_lens_list = []
+            single_image_count = 0
+            multiple_image_count = 0
+            video_count = 0
+            total_count = 0
+            text_count = 0
+
             for d in self.data["datasets"]:
                 dd_json_path = d["json_path"]
                 data = self.load_json_data(dd_json_path)
-                print(f"{dd_json_path}: {len(data)}")
-                for item in data:
-                    cur_len = sum([len(conv["value"]) for conv in item["conversations"]])
+                sampling_strategy = d["sampling_strategy"]
 
+                try:
+                    if sampling_strategy != "all":
+                        percentage = float(sampling_strategy.split(":")[-1].replace("%", "")) / 100.0
+                    else:
+                        percentage = 1.0
+                except Exception as e:
+                    print(f"Error parsing sampling strategy: {e}")
+                    percentage = 1.0
+
+                sampled_count = int(len(data) * percentage)
+                print(f"{dd_json_path}: {sampled_count} (sampled from {len(data)})")
+
+                for item in data[:sampled_count]:
+                    cur_len = sum([len(conv["value"]) for conv in item["conversations"]])
                     cur_lens_list.append(cur_len)
+
+                    total_count += 1
+                    if "image" in item:
+                        if isinstance(item["image"], list):
+                            if len(item["image"]) > 1:
+                                multiple_image_count += 1
+                            else:
+                                single_image_count += 1
+                        else:
+                            single_image_count += 1
+                    elif "video" in item:
+                        video_count += 1
+                    else:
+                        text_count += 1
+
             print(f"Max length: {max(cur_lens_list)}, Min length: {min(cur_lens_list)}, Average length: {sum(cur_lens_list) / len(cur_lens_list)}")
-                    
+            print(f"Total items: {total_count}")
+            print(f"Text items: {text_count} ({text_count/total_count*100:.2f}%)")
+            print(f"Single image items: {single_image_count} ({single_image_count/total_count*100:.2f}%)")
+            print(f"Multiple image items: {multiple_image_count} ({multiple_image_count/total_count*100:.2f}%)")
+            print(f"Video items: {video_count} ({video_count/total_count*100:.2f}%)")
 
     def filter_data(self):
         if isinstance(self.data, dict):
@@ -140,7 +177,7 @@ class DataProcessor:
                     num_img_token_appearance = conv_text.count("<image>")
                     if len(conv_text) == 0:
                         print(f"Conversation text is empty for {item}")
-                        
+
                     if num_img_token_appearance == num_visuals or num_img_token_appearance < num_visuals and len(conv_text) > 0:
                         filtered_data.append(item)
                     elif num_img_token_appearance > num_visuals:
