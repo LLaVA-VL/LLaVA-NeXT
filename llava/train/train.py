@@ -113,6 +113,7 @@ class DataArguments:
     data_path: str = field(default=None, metadata={"help": "Path to the training data, in llava's instruction.json format. Supporting multiple json files via /path/to/{a,b,c}.json"})
     lazy_preprocess: bool = False
     is_multimodal: bool = False
+    early_mix_text: bool = False
     image_folder: Optional[str] = field(default=None)
     image_aspect_ratio: str = "square"
     image_grid_pinpoints: Optional[str] = field(default=None)
@@ -1041,8 +1042,10 @@ class LazySupervisedDataset(Dataset):
         for sample in self.list_data_dict:
             cur_len = sum(len(conv["value"].split()) for conv in sample["conversations"])
             assert cur_len > 0, f"Conversation length is 0 for {sample}"
-            cur_len = cur_len if ("image" in sample) or ("video" in sample) else -cur_len
-            length_list.append(cur_len)
+            if "image" in sample or "video" in sample or self.data_args.early_mix_text:
+                length_list.append(cur_len)
+            else:
+                length_list.append(-cur_len)
         return length_list
 
     def process_image(self, image_file, overwrite_image_aspect_ratio=None):
