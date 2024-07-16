@@ -23,7 +23,7 @@ from llavavid.model import *
 from llavavid.constants import DEFAULT_IMAGE_PATCH_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN
 
 
-def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map="auto", overwrite_config=None):
+def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map="auto", overwrite_config=None, attn_implementation="flash_attention_2"):
     kwargs = {"device_map": device_map}
 
     # import pdb;pdb.set_trace()
@@ -46,7 +46,7 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
             tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
             print("Loading LLaVA from base model...")
             if "mixtral" in model_name.lower():
-                model = LlavaMixtralForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=lora_cfg_pretrained, **kwargs)
+                model = LlavaMixtralForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=lora_cfg_pretrained, use_flash_attention_2=False, **kwargs)
             else:
                 model = LlavaLlamaForCausalLM.from_pretrained(model_base, low_cpu_mem_usage=True, config=lora_cfg_pretrained, **kwargs)
             token_num, tokem_dim = model.lm_head.out_features, model.lm_head.in_features
@@ -105,7 +105,7 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                 model = LlavaMptForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
             elif "mixtral" in model_name.lower() and "vicuna" not in model_name.lower() and "mistral" not in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_path)
-                model = LlavaMixtralForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, **kwargs)
+                model = LlavaMixtralForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, use_flash_attention_2=False, **kwargs)
             elif "mistral" in model_name.lower() or "zephyr" in model_name.lower():
                 tokenizer = AutoTokenizer.from_pretrained(model_path)
                 cfg_pretrained = AutoConfig.from_pretrained(model_path)
@@ -114,7 +114,19 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                     print(f"Overwriting config with {overwrite_config}")
                     for k, v in overwrite_config.items():
                         setattr(cfg_pretrained, k, v)
-                model = LlavaMistralForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, config=cfg_pretrained, **kwargs)
+                model = LlavaMistralForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, config=cfg_pretrained, **kwargs)
+            elif "qwen" in model_name.lower() or "quyen" in model_name.lower() or "longva" in model_name.lower():
+                from llava.model.language_model.llava_qwen import LlavaQwenConfig
+                # import pdb;pdb.set_trace()
+                tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
+                if overwrite_config is not None:
+                    cfg_pretrained = LlavaQwenConfig.from_pretrained(model_path)
+                    print(f"Overwriting config with {overwrite_config}")
+                    for k, v in overwrite_config.items():
+                        setattr(cfg_pretrained, k, v)
+                    model = LlavaQwenForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, config=cfg_pretrained, **kwargs)
+                else:
+                    model = LlavaQwenForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, **kwargs)
             else:
                 tokenizer = AutoTokenizer.from_pretrained(model_path, use_fast=False)
                 cfg_pretrained = AutoConfig.from_pretrained(model_path)
@@ -122,7 +134,7 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                     print(f"Overwriting config with {overwrite_config}")
                     for k, v in overwrite_config.items():
                         setattr(cfg_pretrained, k, v)
-                model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, config=cfg_pretrained, **kwargs)
+                model = LlavaLlamaForCausalLM.from_pretrained(model_path, low_cpu_mem_usage=True, attn_implementation=attn_implementation, config=cfg_pretrained, **kwargs)
     else:
         # Load language model
         if model_base is not None:

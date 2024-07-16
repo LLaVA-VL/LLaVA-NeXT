@@ -15,8 +15,11 @@ CKPT=$1
 CONV_MODE=$2
 FRAMES=$3
 POOL_STRIDE=$4
-OVERWRITE=$5
-VIDEO_PATH=$6
+POOL_MODE=$5
+POOL_POSITION=$6
+NEWLINE_POSITION=$7
+OVERWRITE=$8
+VIDEO_PATH=$9
 
 
 if [ "$OVERWRITE" = False ]; then
@@ -35,6 +38,10 @@ python3 playground/demo/video_demo.py \
     --overwrite ${OVERWRITE} \
     --mm_spatial_pool_stride ${POOL_STRIDE:-4} \
     --for_get_frames_num $FRAMES \
-    --conv-mode $CONV_MODE 
+    --conv-mode $CONV_MODE \
+    --mm_spatial_pool_mode ${POOL_MODE:-average} \
+    --mm_pooling_position ${POOL_POSITION:-before} \
+    --mm_newline_position ${NEWLINE_POSITION:-grid} \
+    --prompt "Please provide a detailed description of the video, focusing on the main subjects, their actions, the background scenes."
 
 
