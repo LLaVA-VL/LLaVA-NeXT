@@ -18,15 +18,16 @@ The new model achieves the best open-source performance in several video benchma
   ```
 
 ### Evaluation Results
-| Model | NextQA-MC | video-mme(overall) | Egochema Perception Test (val) | w/o subs | w subs |
-| --- | --- | --- | --- | --- | --- |
-| **Proprietary** | | | | | |
-| GPT-4o | - | 71.9 | 77.2 | 72.2 | - |
-| Gemini 1.5 Pro | - | 75.0 | 81.3 | 72.2 | - |
-| **Open-Source** | | | | | |
-| VideoLLaMA 2 (8x7B) | 76.3* | 47.9 | 50.3 | 53.3 | 51.2* |
-| VILA-1.5-34B | 67.89* | 60.11 | 61.1 | 58.04* | 54 |
-| **LLaVA-NeXT-Video (Qwen-32B)** | 77.31 | 60.11 | 62.93 | 60.85 | 59.38 |
+| Model                       | NextQA-MC | video-mme(overall) |        | Egochema | Perception Test  (val) |
+|-----------------------------|-----------|--------------------|--------|----------|------------------------|
+|                             |           | w/o subs           | w subs |          |                        |
+| **Proprietary**                 |           |                    |        |          |                        |
+| GPT-4o                      | -         | 71.9               | 77.2   | 72.2     | -                      |
+| Gemini 1.5 Pro              | -         | 75.0               | 81.3   | 72.2     | -                      |
+| **Open-Source**                 |           |                    |        |          |                        |
+| VideoLLaMA 2 (8x7B)         | 76.3*     | 47.9               | 50.3   | 53.3     | 51.2*                  |
+| VILA-1.5-34B                | 67.89*    | 60.1               | 61.1   | 58.04*   | 54                     |
+| LLaVA-NeXT-Video (Qwen-32B) | 77.31     | 60.2               | 63.0   | 60.85    | 59.38                  |
 
 _*Results are reproduced by [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval). Please refer to the lmms-eval to reproduce the results._
 
