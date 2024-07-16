@@ -12,7 +12,7 @@
 [![llava_next-interleave_checkpoints](https://img.shields.io/badge/llava_next-interleave_checkpoints-blue)](https://huggingface.co/lmms-lab/llava-next-interleave-7b)
 
 ## Release
-- [2024/07/16] 🔥 **LLaVA-NeXT-Video** has been upgraded. Please refer to [this page](docs/LLaVA-NeXT-Video_0716.md) for details. The new model achieves the best open-source performance on several video benchmarks, including [Video-MME](https://video-mme.github.io/home_page.html#leaderboard).
+- [2024/07/16] 🔥 **LLaVA-NeXT-Video** has been upgraded. The new 32B model achieves the best open-source performance on several video benchmarks, including [Video-MME](https://video-mme.github.io/home_page.html#leaderboard). Please refer to [this page](docs/LLaVA-NeXT-Video_0716.md) for details.
 
 - [2024/06/23] 🔥 **LLaVA-NeXT (interleave)** is released. We utilize image-text interleaved format to unify multi-image, video, and 3D tasks in one LLM and achieve **SoTA** performance on a wide range of benchmarks. Check out [paper](https://arxiv.org/pdf/2407.07895), [blog](https://llava-vl.github.io/blog/2024-06-16-llava-next-interleave/), and [checkpoints](https://huggingface.co/collections/lmms-lab/llava-next-interleave-66763c55c411b340b35873d1) to see new capabilities and improved performance! We have released 0.5b, 7b, and 7b-dpo models.
   * An all-round LLM for multi-image, video, and 3D with strong performance \[[demo](http://semantic-sam.xyzou.net:6123/)\]
