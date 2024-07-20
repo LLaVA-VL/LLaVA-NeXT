@@ -59,18 +59,46 @@ class DataProcessor:
         # if data["conversations"][0]["value"].count("<image>") > 1:
         #     print(f"WARNING!!! {data['conversations'][0]['value']} has more than one <image> !!!")
 
+    def check_item_structure(self, item):
+        if not all(key in item for key in ["conversations"]):
+            print(f"WARNING!!! Item {item.get('id', 'unknown')} is missing required fields!")
+            return False
+
+        conversations = item["conversations"]
+        if not isinstance(conversations, list) or len(conversations) < 2 or len(conversations) % 2 != 0:
+            print(f"WARNING!!! Item {item['id']} has invalid conversations structure!")
+            return False
+
+        for i, conv in enumerate(conversations):
+            if not all(key in conv for key in ["from", "value"]):
+                print(f"WARNING!!! Item {item['id']} has invalid conversation format!")
+                return False
+
+            expected_from = "human" if i % 2 == 0 else "gpt"
+            if conv["from"] != expected_from:
+                print(f"WARNING!!! Item {item['id']} has incorrect conversation order!")
+                return False
+
+        return True
+
+    def check_image_and_structure(self, item):
+        if not self.check_item_structure(item):
+            return
+
+        # self.check_image_existence(item)
+
     def process_images(self):
         if isinstance(self.data, list):
             args = [d for d in self.data]
             with Pool(processes=cpu_count()) as pool:
-                list(tqdm(pool.imap(self.check_image_existence, args), total=len(self.data)))
+                list(tqdm(pool.imap(self.check_image_and_structure, args), total=len(self.data)))
         elif isinstance(self.data, dict):
             for d in self.data["datasets"]:
                 dd_json_path = d["json_path"]
                 data = self.load_json_data(dd_json_path)
                 args = [d for d in data]
                 with Pool(processes=cpu_count()) as pool:
-                    list(tqdm(pool.imap(self.check_image_existence, args), total=len(data), desc=f"Processing {dd_json_path}"))
+                    list(tqdm(pool.imap(self.check_image_and_structure, args), total=len(data), desc=f"Processing {dd_json_path}"))
 
     def count_items(self):
         if isinstance(self.data, list):  # Assuming JSON data loaded directly
@@ -105,6 +133,8 @@ class DataProcessor:
             video_count = 0
             total_count = 0
             text_count = 0
+            max_tokens_item = None
+            max_tokens = 0
 
             for d in self.data["datasets"]:
                 dd_json_path = d["json_path"]
@@ -124,8 +154,13 @@ class DataProcessor:
                 print(f"{dd_json_path}: {sampled_count} (sampled from {len(data)})")
 
                 for item in data[:sampled_count]:
-                    cur_len = sum([len(conv["value"]) for conv in item["conversations"]])
+                    conversations = item["conversations"]
+                    cur_len = sum([len(conv["value"].split()) for conv in conversations])
                     cur_lens_list.append(cur_len)
+
+                    if cur_len > max_tokens:
+                        max_tokens = cur_len
+                        max_tokens_item = item
 
                     total_count += 1
                     if "image" in item:
@@ -148,6 +183,11 @@ class DataProcessor:
             print(f"Multiple image items: {multiple_image_count} ({multiple_image_count/total_count*100:.2f}%)")
             print(f"Video items: {video_count} ({video_count/total_count*100:.2f}%)")
 
+            print("\nItem with the largest number of tokens:")
+            print(f"Token count: {max_tokens}")
+            print("Item content:")
+            print(json.dumps(max_tokens_item, indent=2))
+
     def filter_data(self):
         if isinstance(self.data, dict):
             for d in self.data["datasets"]:
@@ -159,36 +199,40 @@ class DataProcessor:
                 mismatch_data = []
                 mismatch_flag = False
                 for item in data:
-                    if "image" in item:
-                        num_image = len(item["image"]) if isinstance(item["image"], list) else 1
-                    else:
-                        num_image = 0
+                    try:
+                        if "image" in item:
+                            num_image = len(item["image"]) if isinstance(item["image"], list) else 1
+                        else:
+                            num_image = 0
 
-                    if "video" in item:
-                        num_video = len(item["video"]) if isinstance(item["video"], list) else 1
-                    else:
-                        num_video = 0
+                        if "video" in item:
+                            num_video = len(item["video"]) if isinstance(item["video"], list) else 1
+                        else:
+                            num_video = 0
 
-                    num_visuals = num_image + num_video
-                    conv_text = ""
-                    for conv in item["conversations"]:
-                        conv_text += conv["value"]
+                        num_visuals = num_image + num_video
+                        conv_text = ""
+                        for conv in item["conversations"]:
+                            conv_text += conv["value"]
 
-                    num_img_token_appearance = conv_text.count("<image>")
-                    if len(conv_text) == 0:
-                        print(f"Conversation text is empty for {item}")
+                        num_img_token_appearance = conv_text.count("<image>")
+                        if len(conv_text) == 0:
+                            print(f"Conversation text is empty for {item}")
 
-                    if num_img_token_appearance == num_visuals or num_img_token_appearance < num_visuals and len(conv_text) > 0:
-                        filtered_data.append(item)
-                    elif num_img_token_appearance > num_visuals:
-                        item["num_img_token_appearance"] = num_img_token_appearance
-                        item["num_visuals"] = num_visuals
-                        mismatch_data.append(item)
+                        if num_img_token_appearance == num_visuals or num_img_token_appearance < num_visuals and len(conv_text) > 0:
+                            filtered_data.append(item)
+                        elif num_img_token_appearance > num_visuals:
+                            item["num_img_token_appearance"] = num_img_token_appearance
+                            item["num_visuals"] = num_visuals
+                            mismatch_data.append(item)
 
-                        if not mismatch_flag:
-                            print(f"Data mismatch for {item}")
+                            if not mismatch_flag:
+                                print(f"Data mismatch for {item}")
 
-                        mismatch_flag = True
+                            mismatch_flag = True
+                    except Exception as e:
+                        print(f"Error: {e}")
+                        print()
 
                 if mismatch_flag:
                     print(f"Data mismatch for {dd_json_path}")
@@ -201,8 +245,94 @@ class DataProcessor:
                 else:
                     pass
 
+    def stat_and_filter_data(self, threshold):
+        if isinstance(self.data, dict):
+            cur_lens_list = []
+            single_image_count = 0
+            multiple_image_count = 0
+            video_count = 0
+            total_count = 0
+            text_count = 0
 
-def main(file_path, image_root, operation, video_root):
+            for d in self.data["datasets"]:
+                dd_json_path = d["json_path"]
+                data = self.load_json_data(dd_json_path)
+                sampling_strategy = d["sampling_strategy"]
+                filtered_data = []
+
+                try:
+                    if sampling_strategy != "all":
+                        percentage = float(sampling_strategy.split(":")[-1].replace("%", "")) / 100.0
+                    else:
+                        percentage = 1.0
+                except Exception as e:
+                    print(f"Error parsing sampling strategy: {e}")
+                    percentage = 1.0
+
+                sampled_count = int(len(data) * percentage)
+                print(f"{dd_json_path}: {sampled_count} (sampled from {len(data)})")
+
+                save_flag = False
+                for item in data:
+                    total_count += 1
+                    conversations = item["conversations"]
+                    filtered_conversations = []
+                    current_token_count = 0
+
+                    for i in range(0, len(conversations), 2):
+                        if i + 1 < len(conversations):
+                            human_conv = conversations[i]
+                            gpt_conv = conversations[i + 1]
+                            pair_tokens = len(human_conv["value"].split()) + len(gpt_conv["value"].split())
+
+                            if current_token_count + pair_tokens <= threshold:
+                                filtered_conversations.extend([human_conv, gpt_conv])
+                                current_token_count += pair_tokens
+                            else:
+                                save_flag = True
+                                break
+
+                    if filtered_conversations:
+                        item["conversations"] = filtered_conversations
+                        cur_len = sum([len(conv["value"].split()) for conv in filtered_conversations])
+                        cur_lens_list.append(cur_len)
+                        filtered_data.append(item)
+
+                        if "image" in item:
+                            if isinstance(item["image"], list):
+                                if len(item["image"]) > 1:
+                                    multiple_image_count += 1
+                                else:
+                                    single_image_count += 1
+                            else:
+                                single_image_count += 1
+                        elif "video" in item:
+                            video_count += 1
+                        else:
+                            text_count += 1
+
+                # Save filtered data for each dataset
+                if filtered_data and save_flag:
+                    if dd_json_path.endswith(".jsonl"):
+                        output_file = dd_json_path.replace(".jsonl", f"_filtered_{threshold}tokens_{len(filtered_data)}.jsonl")
+                        with open(output_file, "w") as f:
+                            for item in filtered_data:
+                                f.write(json.dumps(item) + "\n")
+                    else:
+                        output_file = dd_json_path.replace(".json", f"_filtered_{threshold}tokens_{len(filtered_data)}.json")
+                        with open(output_file, "w") as f:
+                            json.dump(filtered_data, f, indent=2)
+                    print(f"Filtered data for {dd_json_path} saved to: {output_file}")
+
+            print(f"Max length: {max(cur_lens_list)}, Min length: {min(cur_lens_list)}, Average length: {sum(cur_lens_list) / len(cur_lens_list)}")
+            print(f"Total items: {total_count}")
+            print(f"Text items: {text_count} ({text_count/total_count*100:.2f}%)")
+            print(f"Single image items: {single_image_count} ({single_image_count/total_count*100:.2f}%)")
+            print(f"Multiple image items: {multiple_image_count} ({multiple_image_count/total_count*100:.2f}%)")
+            print(f"Video items: {video_count} ({video_count/total_count*100:.2f}%)")
+
+
+def main(file_path, image_root, operation, video_root, threshold=None):
     processor = DataProcessor(file_path, image_root, video_root)
     if operation == "check":
         processor.process_images()
@@ -213,6 +343,10 @@ def main(file_path, image_root, operation, video_root):
         processor.filter_data()
     elif operation == "stat":
         processor.stat_data()
+    elif operation == "stat_and_filter":
+        if threshold is None:
+            raise ValueError("Threshold must be provided for stat_and_filter operation")
+        processor.stat_and_filter_data(threshold)
     else:
         raise ValueError("Unsupported operation")
 
@@ -225,5 +359,6 @@ if __name__ == "__main__":
     parser.add_argument("--image_root", type=str, default="/mnt/bn/vl-research/data/llava_data")
     parser.add_argument("--video_root", type=str, default="/mnt/bn/vl-research/data/llava_video")
     parser.add_argument("--operation", type=str, default="filter")
+    parser.add_argument("--threshold", type=int, default=None, help="Threshold for stat_and_filter operation")
     args = parser.parse_args()
-    main(args.file_path, args.image_root, args.operation, args.video_root)
+    main(args.file_path, args.image_root, args.operation, args.video_root, args.threshold)
