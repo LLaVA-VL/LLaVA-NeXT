@@ -29,7 +29,7 @@ bash scripts/video/demo/video_demo.sh ${Example model} ${Prompt mode} ${Sampled 
 ```
 Example:
 ```bash
-bash scripts/video/demo/video_demo.sh lmms-lab/LLaVA-NeXT-Video-7B-DPO vicuna_v1 32 2 average after grid True ./data/llava_video/video-chatgpt/evaluation/Test_Videos/v_Lf_7RurLgp0.mp4
+bash scripts/video/demo/video_demo.sh lmms-lab/LLaVA-NeXT-Video-7B-DPO vicuna_v1 32 2 average after no_token True ./data/llava_video/video-chatgpt/evaluation/Test_Videos/v_Lf_7RurLgp0.mp4
 ```
 
 ## Evaluation
