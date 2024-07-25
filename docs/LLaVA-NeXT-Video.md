@@ -32,6 +32,8 @@ Example:
 bash scripts/video/demo/video_demo.sh lmms-lab/LLaVA-NeXT-Video-7B-DPO vicuna_v1 32 2 average after no_token True ./data/llava_video/video-chatgpt/evaluation/Test_Videos/v_Lf_7RurLgp0.mp4
 ```
 
+**IMPORTANT** Please refer to [Latest video model](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/inference/docs/LLaVA-NeXT-Video_0716.md) for the runnning of the latest model.
+
 ## Evaluation
 
 ### Preparation
