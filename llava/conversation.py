@@ -568,6 +568,7 @@ conv_templates = {
     "llava_mistral_instruct": conv_mistral_instruct,
     "mpt": conv_mpt,
     "qwen_1_5": conv_qwen,
+    "qwen_2": conv_qwen,
     "gemma_instruct": conv_gemma_instruct,
 }
 
