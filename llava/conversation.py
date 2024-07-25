@@ -233,11 +233,19 @@ class Conversation:
                     if type(image) != list:
                         image = [image]
                     for img in image:
-                        if not return_path:
+                        if not return_path and self.is_image_file(img):
                             img = self.process_image(img, image_process_mode, return_pil=return_pil)
                         else:
                             images.append(img)
         return images
+
+    def is_image_file(self, filename):
+        image_extensions = [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp"]
+        return any(filename.lower().endswith(ext) for ext in image_extensions)
+
+    def is_video_file(self, filename):
+        video_extensions = [".mp4", ".mov", ".avi", ".mkv", ".wmv", ".flv", ".mpeg", ".mpg"]
+        return any(filename.lower().endswith(ext) for ext in video_extensions)
 
     def to_gradio_chatbot(self):
         ret = []
@@ -251,10 +259,24 @@ class Conversation:
                         msg = "<image>\n" + msg.replace("<image>", "").strip()
                     else:
                         msg = re.sub(r"(<image>)\n(?=<image>)", r"\1 ", msg)
+
+                    img_str_list = []                         
                     for img in image:
-                        img_b64_str = self.process_image(img, "Default", return_pil=False, image_format="JPEG")
-                        img_str = f'<img src="data:image/jpeg;base64,{img_b64_str}"/>'
-                        msg = msg.replace("<image>", img_str, 1).strip()
+                        if self.is_image_file(img):
+                            img_b64_str = self.process_image(img, "Default", return_pil=False, image_format="JPEG")
+                            img_str = f'<img src="data:image/jpeg;base64,{img_b64_str}" style="max-width: 300px; max-height: 300px; width: auto; height: auto; object-fit: contain;"/>'
+                            img_str_list.append(img_str)
+                        elif self.is_video_file(img):
+                            pass
+
+                    msg = msg.strip()
+                    img_place_holder = ""
+                    for img_str in img_str_list:
+                        img_place_holder += f"{img_str}\n\n"
+
+                    if len(img_str_list) > 0:
+                        msg = f"{img_place_holder}\n\n{msg}"
+
                     if len(msg) > 0:
                         ret.append([msg, None])
                 else:

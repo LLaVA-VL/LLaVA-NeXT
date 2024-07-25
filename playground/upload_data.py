@@ -29,4 +29,4 @@ def gen():
 
 
 hf_dataset = Dataset.from_generator(generator=gen)
-hf_dataset.push_to_hub("lmms-lab/LLaVA-ReCap-CC3M", token="HF_Token")
+hf_dataset.push_to_hub("lmms-lab/LLaVA-ReCap-CC3M")
