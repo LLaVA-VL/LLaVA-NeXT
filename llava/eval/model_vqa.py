@@ -23,13 +23,12 @@ import math
 def split_list(lst, n):
     """Split a list into n (roughly) equal-sized chunks"""
     chunk_size = math.ceil(len(lst) / n)  # integer division
-    return [lst[i : i + chunk_size] for i in range(0, len(lst), chunk_size)]
+    return [lst[i:i+chunk_size] for i in range(0, len(lst), chunk_size)]
 
 
 def get_chunk(lst, n, k):
     chunks = split_list(lst, n)
     return chunks[k]
-
 
 def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_image: bool = False, max_len=2048, system_message: str = "You are a helpful assistant.") -> Dict:
     roles = {"human": "<|im_start|>user", "gpt": "<|im_start|>assistant"}
@@ -42,63 +41,50 @@ def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_im
 
     # Apply prompt templates
     input_ids, targets = [], []
-    # for i, source in enumerate(sources):
-    if True:
-        source = sources
-        if roles[source[0]["from"]] != roles["human"]:
-            source = source[1:]
 
-        input_id, target = [], []
-        system = [im_start] + _system + tokenizer(system_message).input_ids + [im_end] + nl_tokens
-        input_id += system
-        target += [im_start] + [IGNORE_INDEX] * (len(system) - 3) + [im_end] + nl_tokens
-        assert len(input_id) == len(target)
-        for j, sentence in enumerate(source):
-            role = roles[sentence["from"]]
-            if has_image and sentence["value"] is not None and "<image>" in sentence["value"]:
-                num_image = len(re.findall(DEFAULT_IMAGE_TOKEN, sentence["value"]))
-                # multi image can start with text first
-                # if num_image == 1:
-                #     assert sentence["value"].startswith("<image>"), print(sentence["value"])
-                # _input_id = tokenizer(role).input_ids + nl_tokens + [IMAGE_TOKEN_INDEX]*num_image + nl_tokens + tokenizer(sentence["value"][len("<image>")*num_image :]).input_ids + [im_end] + nl_tokens
-                texts = sentence["value"].split("<image>")
+    source = sources
+    if roles[source[0]["from"]] != roles["human"]:
+        source = source[1:]
+
+    input_id, target = [], []
+    system = [im_start] + _system + tokenizer(system_message).input_ids + [im_end] + nl_tokens
+    input_id += system
+    target += [im_start] + [IGNORE_INDEX] * (len(system) - 3) + [im_end] + nl_tokens
+    assert len(input_id) == len(target)
+    for j, sentence in enumerate(source):
+        role = roles[sentence["from"]]
+        if has_image and sentence["value"] is not None and "<image>" in sentence["value"]:
+            num_image = len(re.findall(DEFAULT_IMAGE_TOKEN, sentence["value"]))
+            texts = sentence["value"].split('<image>')
+            _input_id = tokenizer(role).input_ids + nl_tokens 
+            for i,text in enumerate(texts):
+                _input_id += tokenizer(text).input_ids 
+                if i<len(texts)-1:
+                    _input_id += [IMAGE_TOKEN_INDEX] + nl_tokens
+            _input_id += [im_end] + nl_tokens
+            assert sum([i==IMAGE_TOKEN_INDEX for i in _input_id])==num_image
+        else:
+            if sentence["value"] is None:
                 _input_id = tokenizer(role).input_ids + nl_tokens
-                for i, text in enumerate(texts):
-                    _input_id += tokenizer(text).input_ids
-                    if i < len(texts) - 1:
-                        _input_id += [IMAGE_TOKEN_INDEX] + nl_tokens
-                _input_id += [im_end] + nl_tokens
-                assert sum([i == IMAGE_TOKEN_INDEX for i in _input_id]) == num_image
             else:
-                if sentence["value"] is None:
-                    _input_id = tokenizer(role).input_ids + nl_tokens
-                else:
-                    _input_id = tokenizer(role).input_ids + nl_tokens + tokenizer(sentence["value"]).input_ids + [im_end] + nl_tokens
-            input_id += _input_id
-            if role == "<|im_start|>user":
-                _target = [im_start] + [IGNORE_INDEX] * (len(_input_id) - 3) + [im_end] + nl_tokens
-            elif role == "<|im_start|>assistant":
-                _target = [im_start] + [IGNORE_INDEX] * len(tokenizer(role).input_ids) + _input_id[len(tokenizer(role).input_ids) + 1 : -2] + [im_end] + nl_tokens
-            else:
-                raise NotImplementedError
-            target += _target
-        # assert len(input_id) == len(target)
-        # input_id += [tokenizer.pad_token_id] * (max_len - len(input_id))
-        # target += [IGNORE_INDEX] * (max_len - len(target))
-        input_ids.append(input_id)
-        targets.append(target)
+                _input_id = tokenizer(role).input_ids + nl_tokens + tokenizer(sentence["value"]).input_ids + [im_end] + nl_tokens
+        input_id += _input_id
+        if role == "<|im_start|>user":
+            _target = [im_start] + [IGNORE_INDEX] * (len(_input_id) - 3) + [im_end] + nl_tokens
+        elif role == "<|im_start|>assistant":
+            _target = [im_start] + [IGNORE_INDEX] * len(tokenizer(role).input_ids) + _input_id[len(tokenizer(role).input_ids) + 1 : -2] + [im_end] + nl_tokens
+        else:
+            raise NotImplementedError
+        target += _target
+
+    input_ids.append(input_id)
+    targets.append(target)
     input_ids = torch.tensor(input_ids, dtype=torch.long)
     targets = torch.tensor(targets, dtype=torch.long)
     return input_ids
-    # return dict(
-    #     input_ids=input_ids,  # tensor(bs x seq_len)
-    #     labels=targets,  # tensor(bs x seq_len)
-    #     # attention_mask=input_ids.ne(tokenizer.pad_token_id), # tensor(bs x seq_len)
-    # )
-
 
 def eval_model(args):
-
+    
     # Model
     disable_torch_init()
     model_path = os.path.expanduser(args.model_path)
@@ -112,16 +98,12 @@ def eval_model(args):
     answers_file = os.path.expanduser(args.answers_file)
     os.makedirs(os.path.dirname(answers_file), exist_ok=True)
     ans_file = open(answers_file, "w")
-
+    
     for line in tqdm(questions):
         idx = line["sample_id"]
         question_type = line["metadata"]["question_type"]
         dataset_name = line["metadata"]["dataset"]
         gt = line["conversations"][1]["value"]
-
-        # choice_list = None
-        # if question_type == "multi-choice":
-        # choice_list = line["choice_list"]
 
         image_files = line["image"]
         qs = line["conversations"][0]["value"]
@@ -134,16 +116,15 @@ def eval_model(args):
         conv.append_message(conv.roles[1], None)
         prompt = conv.get_prompt()
 
-        input_ids_ori = tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).cuda()
-        input_ids = preprocess_qwen([line["conversations"][0], {"from": "gpt", "value": None}], tokenizer, has_image=True).cuda()
+        input_ids = preprocess_qwen([line["conversations"][0],{'from': 'gpt','value': None}], tokenizer, has_image=True).cuda()
         img_num = list(input_ids.squeeze()).count(IMAGE_TOKEN_INDEX)
 
         image_tensors = []
         for image_file in image_files:
             image = Image.open(os.path.join(args.image_folder, image_file))
-            image_tensor = image_processor.preprocess(image, return_tensors="pt")["pixel_values"]
-            image_tensors.append(image_tensor)
-        image_tensors = torch.cat(image_tensors, dim=0)
+            image_tensor = image_processor.preprocess(image, return_tensors='pt')['pixel_values']
+            image_tensors.append(image_tensor.half().cuda())
+        # image_tensors = torch.cat(image_tensors, dim=0)
 
         stop_str = conv.sep if conv.sep_style != SeparatorStyle.TWO else conv.sep2
         keywords = [stop_str]
@@ -152,48 +133,39 @@ def eval_model(args):
         with torch.inference_mode():
             output_ids = model.generate(
                 input_ids,
-                images=image_tensors.half().cuda(),
+                images=image_tensors,
                 do_sample=True if args.temperature > 0 else False,
                 temperature=args.temperature,
                 top_p=args.top_p,
                 num_beams=args.num_beams,
                 # no_repeat_ngram_size=3,
                 max_new_tokens=1024,
-                use_cache=True,
-            )
+                use_cache=True)
 
+        
         outputs = tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0]
         outputs = outputs.strip()
         if outputs.endswith(stop_str):
-            outputs = outputs[: -len(stop_str)]
+            outputs = outputs[:-len(stop_str)]
         outputs = outputs.strip()
 
         ans_id = shortuuid.uuid()
-        ans_file.write(
-            json.dumps(
-                {
-                    "dataset": dataset_name,
-                    "sample_id": idx,
-                    "prompt": cur_prompt,
-                    "pred_response": outputs,
-                    "gt_response": gt,
-                    "shortuuid": ans_id,
-                    "model_id": model_name,
-                    "question_type": question_type,
-                    #    "choice_list": choice_list,
-                }
-            )
-            + "\n"
-        )
+        ans_file.write(json.dumps({
+                                   "dataset": dataset_name,
+                                   "sample_id": idx,
+                                   "prompt": cur_prompt,
+                                   "pred_response": outputs,
+                                   "gt_response": gt,
+                                   "shortuuid": ans_id,
+                                   "model_id": model_name,
+                                   "question_type": question_type,
+                                   }) + "\n")
         ans_file.flush()
 
         if len(line["conversations"]) > 2:
 
             for i in range(2, len(line["conversations"]), 2):
-                # print(output_ids)
                 input_ids = torch.cat((input_ids, output_ids), dim=1)
-                # print(img_num, image_tensors.shape)
-                # image_tensors = image_tensors[img_num: ]
 
                 gt = line["conversations"][i + 1]["value"]
                 qs = line["conversations"][i]["value"]
@@ -206,8 +178,7 @@ def eval_model(args):
                 conv.append_message(conv.roles[1], None)
                 prompt = conv.get_prompt()
 
-                input_ids_new_ori = tokenizer_image_token(prompt, tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(0).cuda()
-                input_ids_new = preprocess_qwen([line["conversations"][i], {"from": "gpt", "value": None}], tokenizer, has_image=True).cuda()
+                input_ids_new = preprocess_qwen([line["conversations"][i],{'from': 'gpt','value': None}], tokenizer, has_image=True).cuda()
                 input_ids = torch.cat((input_ids, input_ids_new), dim=1)
                 img_num = list(input_ids_new.squeeze()).count(IMAGE_TOKEN_INDEX)
 
@@ -215,48 +186,39 @@ def eval_model(args):
                 keywords = [stop_str]
                 stopping_criteria = KeywordsStoppingCriteria(keywords, tokenizer, input_ids)
 
-                # print(input_ids.shape)
                 with torch.inference_mode():
                     output_ids = model.generate(
                         input_ids,
-                        images=image_tensors.half().cuda(),
+                        images=image_tensors,
                         do_sample=True if args.temperature > 0 else False,
                         temperature=args.temperature,
                         top_p=args.top_p,
                         num_beams=args.num_beams,
                         # no_repeat_ngram_size=3,
                         max_new_tokens=1024,
-                        use_cache=True,
-                    )
-                # print(output_ids.shape)
-
+                        use_cache=True)
+        
                 outputs = tokenizer.batch_decode(output_ids, skip_special_tokens=True)[0]
                 outputs = outputs.strip()
                 if outputs.endswith(stop_str):
-                    outputs = outputs[: -len(stop_str)]
+                    outputs = outputs[:-len(stop_str)]
                 outputs = outputs.strip()
 
                 ans_id = shortuuid.uuid()
-                ans_file.write(
-                    json.dumps(
-                        {
-                            "dataset": dataset_name,
-                            "sample_id": idx,
-                            "prompt": cur_prompt,
-                            "pred_response": outputs,
-                            "gt_response": gt,
-                            "shortuuid": ans_id,
-                            "model_id": model_name,
-                            "question_type": question_type,
-                            # "choice_list": choice_list,
-                        }
-                    )
-                    + "\n"
-                )
+                ans_file.write(json.dumps({
+                                        "dataset": dataset_name,
+                                        "sample_id": idx,
+                                        "prompt": cur_prompt,
+                                        "pred_response": outputs,
+                                        "gt_response": gt,
+                                        "shortuuid": ans_id,
+                                        "model_id": model_name,
+                                        "question_type": question_type,
+                                        }) + "\n")
                 ans_file.flush()
 
-    ans_file.close()
 
+    ans_file.close()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
