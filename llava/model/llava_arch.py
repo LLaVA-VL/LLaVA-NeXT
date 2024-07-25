@@ -498,7 +498,6 @@ class LlavaMetaForCausalLM(ABC):
                     input_embeddings[-num_new_tokens:] = embed_tokens_weight
                 else:
                     raise ValueError(f"Unexpected embed_tokens_weight shape. Pretrained: {embed_tokens_weight.shape}. Current: {input_embeddings.shape}. Numer of new tokens: {num_new_tokens}.")
-
         elif model_args.mm_use_im_patch_token:
             if model_args.tune_mm_mlp_adapter:
                 for p in self.get_input_embeddings().parameters():
