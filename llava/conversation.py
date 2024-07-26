@@ -264,10 +264,10 @@ class Conversation:
                     for img in image:
                         if self.is_image_file(img):
                             img_b64_str = self.process_image(img, "Default", return_pil=False, image_format="JPEG")
-                            img_str = f'<img src="data:image/jpeg;base64,{img_b64_str}" style="max-width: 300px; max-height: 300px; width: auto; height: auto; object-fit: contain;"/>'
+                            img_str = f'<img src="data:image/jpeg;base64,{img_b64_str}" style="max-width: 256px; max-height: 256px; width: auto; height: auto; object-fit: contain;"/>'
                             img_str_list.append(img_str)
                         elif self.is_video_file(img):
-                            pass
+                            ret.append(((img,), None))
 
                     msg = msg.strip()
                     img_place_holder = ""
