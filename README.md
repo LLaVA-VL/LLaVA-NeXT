@@ -5,7 +5,7 @@
 # LLaVA-NeXT: Open Large Multimodal Models
 [![llava_next-blog](https://img.shields.io/badge/llava_next-blog-green)](https://llava-vl.github.io/blog/)
 [![llava_next-demo](https://img.shields.io/badge/llava_next-image_demo-red)](https://llava-next.lmms-lab.com/)
-[![llava_next-video_demo](https://img.shields.io/badge/llava_next-video_demo-red)](https://llavanext-video.lmms-lab.com/)
+[![llava_next-video_demo](https://img.shields.io/badge/llava_next-video_demo-red)](https://huggingface.co/spaces/WildVision/vision-arena)
 [![llava_next-interleave_demo](https://img.shields.io/badge/llava_next-interleave_demo-red)](https://huggingface.co/spaces/lmms-lab/LLaVA-NeXT-Interleave-Demo)
 [![llava_next-image_checkpoints](https://img.shields.io/badge/llava_next-image_checkpoints-blue)](https://huggingface.co/lmms-lab)
 [![llava_next-video_checkpoints](https://img.shields.io/badge/llava_next-video_checkpoints-blue)](https://huggingface.co/collections/lmms-lab/llava-next-video-661e86f5e8dabc3ff793c944)
