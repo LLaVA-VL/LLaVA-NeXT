@@ -87,7 +87,7 @@ class Conversation:
             for role, message in messages:
                 if message:
                     if type(message) is tuple:
-                        message, images = message
+                        message, images, _ = message
                         message = "<image>" * len(images) + message
                     ret += role + "\n" + message + self.sep + "\n"
                 else:
