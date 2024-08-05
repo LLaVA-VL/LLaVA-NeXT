@@ -8,19 +8,21 @@ LLaVA OneVision is a multi-modal model capable of processing images, text, image
 2. Stage-1.5: Training on 4M high-quality samples with detailed captions, OCR and knowledge data.
 3. Stage-2: 
    - Single-Image: Training on 3.2M instruction-following image samples.
-   - OneVision: Training on 1.6M multi-image and video samples with instructions.
+   - OneVision: Training on 1.6M single-image, multi-image and video samples with instructions.
 
 Key features:
 - Supports various input resolutions up to 2304 * 2304 pixels.
 - Single image input is represented by 729 * (9+1) tokens at most under `anyres_max_9` mode.
 - Supports multi-image and video inputs. Multi-image input is represented by 729 token for each image, and video input is represented by 196 token for each frame.
 - Available in three sizes: 0.5B, 7B and 72B parameter versions, fit for different memory and inference latency requirements.
+
+Implementation Details:
 - Trained using a combination of vision-specific (AdamW, 2e-6) and language model (AdamW, 1e-5) learning rates.
 - Each stage is trained for 1 epoch.
 
 The model uses [SO400M](https://huggingface.co/collections/google/siglip-659d5e62f0ae1a57ae0e83ba) as the vision encoder and [Qwen-2.0](https://huggingface.co/docs/transformers/model_doc/qwen2) as the language model, with trainable components including a projector and the full model in later stages.
 
-We recommend to use the scripts in [training](../scripts/train) to get the details of the training process.
+We recommend to use the scripts in [training](../scripts/) to get the details of the training process.
 
 ## Inference Guidance
 
