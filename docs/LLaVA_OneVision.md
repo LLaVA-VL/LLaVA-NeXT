@@ -42,7 +42,7 @@ Our models' evaluation results can be fully reproduced using the lmms-eval toolk
 
 Note: These commands require flash-attn. If you prefer not to install it, disable flash-attn by adding `attn_implementation=None` to the `--model_args` parameter.
 
-Important: Different torch versions may cause slight variations in results.
+Important: Different torch versions may cause slight variations in results. By default in `lmms-eval`, the requirement for torch version is set to the latest version. In `llava` repo, the torch version is set to `2.1.2`. Torch version `2.1.2` would be stable for both `llava` and `lmms-eval`
 
 ### Evaluating LLaVA-OneVision on multiple datasets
 
