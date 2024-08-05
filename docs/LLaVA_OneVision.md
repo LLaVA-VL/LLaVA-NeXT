@@ -16,7 +16,7 @@ Key features:
 - Supports multi-image and video inputs. Multi-image input is represented by 729 token for each image, and video input is represented by 196 token for each frame.
 - Available in three sizes: 0.5B, 7B and 72B parameter versions, fit for different memory and inference latency requirements.
 
-Implementation Details:
+Some Implementation Details:
 - Trained using a combination of vision-specific (AdamW, 2e-6) and language model (AdamW, 1e-5) learning rates.
 - Each stage is trained for 1 epoch.
 
