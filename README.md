@@ -3,16 +3,21 @@
 </p>
 
 # LLaVA-NeXT: Open Large Multimodal Models
+![Static Badge](https://img.shields.io/badge/llava_onevision-paper-green)
 [![llava_next-blog](https://img.shields.io/badge/llava_next-blog-green)](https://llava-vl.github.io/blog/)
-[![llava_next-demo](https://img.shields.io/badge/llava_next-image_demo-red)](https://llava-next.lmms-lab.com/)
-[![llava_next-video_demo](https://img.shields.io/badge/llava_next-video_demo-red)](https://huggingface.co/spaces/WildVision/vision-arena)
-[![llava_next-interleave_demo](https://img.shields.io/badge/llava_next-interleave_demo-red)](https://huggingface.co/spaces/lmms-lab/LLaVA-NeXT-Interleave-Demo)
-[![llava_next-image_checkpoints](https://img.shields.io/badge/llava_next-image_checkpoints-blue)](https://huggingface.co/lmms-lab)
-[![llava_next-video_checkpoints](https://img.shields.io/badge/llava_next-video_checkpoints-blue)](https://huggingface.co/collections/lmms-lab/llava-next-video-661e86f5e8dabc3ff793c944)
-[![llava_next-interleave_checkpoints](https://img.shields.io/badge/llava_next-interleave_checkpoints-blue)](https://huggingface.co/collections/lmms-lab/llava-next-interleave-66763c55c411b340b35873d1)
 
-## Release
-- [2024/08/06] 🔥 **LLaVA-OneVision** is released. The new 0.5/7/72B model achieves the best open-source performance on several single-image, multi-image, and video benchmarks. We also release our training code, and [LLaVA-OneVision Data](https://huggingface.co/datasets/lmms-lab/LLaVA-OneVision-Data)! Please refer to [LLaVA-OneVision](https://llava-vl.github.io/blog/2024-08-05-llava-onevision/) for details.
+![Static Badge](https://img.shields.io/badge/llava_onevision-demo-red)
+[![llava_next-interleave_demo](https://img.shields.io/badge/llava_next-interleave_demo-red)](https://huggingface.co/spaces/lmms-lab/LLaVA-NeXT-Interleave-Demo)
+[![llava_next-video_demo](https://img.shields.io/badge/llava_next-video_demo-red)](https://huggingface.co/spaces/WildVision/vision-arena)
+
+![Static Badge](https://img.shields.io/badge/llava_onevision-checkpoints-blue)
+[![llava_next-interleave_checkpoints](https://img.shields.io/badge/llava_next-interleave_checkpoints-blue)](https://huggingface.co/collections/lmms-lab/llava-next-interleave-66763c55c411b340b35873d1)
+[![llava_next-video_checkpoints](https://img.shields.io/badge/llava_next-video_checkpoints-blue)](https://huggingface.co/collections/lmms-lab/llava-next-video-661e86f5e8dabc3ff793c944)
+[![llava_next-image_checkpoints](https://img.shields.io/badge/llava_next-image_checkpoints-blue)](https://huggingface.co/lmms-lab)
+
+## Release Notes
+
+- [2024/08/06] 🔥🔥🔥 **LLaVA-OneVision** is released. The new 0.5/7/72B model achieves the state-of-the-art level performance on several single-image, multi-image, and video benchmarks. We also release our training code, and [LLaVA-OneVision Data](https://huggingface.co/datasets/lmms-lab/LLaVA-OneVision-Data)! Please refer to [LLaVA-OneVision Paper](https://github.com/LLaVA-VL/blog/tree/main/2024-08-05-llava-onevision/llava-onevision.pdf) for the last dance.
   
 - [2024/07/16] 🔥 **LLaVA-NeXT-Video** has been upgraded. The new 32B model achieves the best open-source performance on several video benchmarks, including [Video-MME](https://video-mme.github.io/home_page.html#leaderboard). Please refer to [this page](docs/LLaVA-NeXT-Video_0716.md) for details.
 
