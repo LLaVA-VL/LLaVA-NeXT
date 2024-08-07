@@ -3,7 +3,7 @@
 </p>
 
 # LLaVA-NeXT: Open Large Multimodal Models
-[![Static Badge](https://img.shields.io/badge/llava_onevision-paper-green)](https://drive.google.com/file/d/1apfvUKDvOGfvwcHVjASPwo1cLNDYiIMG/view)
+[![Static Badge](https://img.shields.io/badge/llava_onevision-paper-green)](https://arxiv.org/abs/2408.03326)
 [![llava_next-blog](https://img.shields.io/badge/llava_next-blog-green)](https://llava-vl.github.io/blog/)
 
 [![llava_onevision-demo](https://img.shields.io/badge/llava_onevision-demo-red)](https://llava-onevision.lmms-lab.com/)
