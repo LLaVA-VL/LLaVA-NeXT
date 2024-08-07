@@ -40,11 +40,3 @@ _*Results are reproduced by [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms
   month={April},
   year={2024}
 }
-
-@misc{li2024llavanext-interleave,
-  title={LLaVA-NeXT: Tackling Multi-image, Video, and 3D in Large Multimodal Models},
-  url={https://llava-vl.github.io/blog/2024-06-16-llava-next-interleave/},
-  author={Li, Feng and Zhang, Renrui and Zhang, Hao and Zhang, Yuanhan and Li, Bo and Li, Wei and Ma, Zejun and Li, Chunyuan},
-  month={June},
-  year={2024}
-}
