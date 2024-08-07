@@ -70,4 +70,4 @@ build/
 playground/*.json
 mlx_configs/
 data_processing/
-demo/
+# demo/
