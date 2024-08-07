@@ -19,7 +19,8 @@
 
 - [2024/08/06] 🔥 **LLaVA-OneVision** is [released](https://llava-vl.github.io/blog/2024-08-05-llava-onevision/). The new 0.5/7/72B model achieves the state-of-the-art level and comparable to most powerful commercial models performance on several single-image, multi-image, and video benchmarks. We benchmarked on a total of 47 benchmarks to comprehensively reflect our model's true capabilities in diverse domains. We also release our training code, and single-image/multi-image data mixture in [LLaVA-OneVision Data](https://huggingface.co/datasets/lmms-lab/LLaVA-OneVision-Data)! Our video part data will be released via next upgrade of video specific model, stay tuned! Our training code can be directly used to train on single-image, multi-image and video data.
   - Check our [Paper](https://arxiv.org/abs/2408.03326) for more details and to see our insights on training one model to rule them all.
-  - Check our [LLaVA-OneVision Doc](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/docs/LLaVA_OneVision.md).
+  - Check our [LLaVA-OneVision Doc](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/docs/LLaVA_OneVision.md) for inference and evaluation guidance.
+  - Check our [Training Scripts](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/scripts/train) to start training models on single-image/multi-image/video data.
   
 - [2024/07/16] 🔥 **LLaVA-NeXT-Video** has been upgraded. The new 32B model achieves the best open-source performance on several video benchmarks, including [Video-MME](https://video-mme.github.io/home_page.html#leaderboard). Please refer to [this page](docs/LLaVA-NeXT-Video_0716.md) for details, refer to [llava_next-video_demo](https://huggingface.co/spaces/WildVision/vision-arena) for demo.
 
