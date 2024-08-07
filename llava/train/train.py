@@ -108,6 +108,9 @@ class ModelArguments:
     pos_skipping_range: Optional[int] = field(default=4096)
 
 
+    mm_newline_position: Optional[str] = field(default="one_token")
+
+
 @dataclass
 class DataArguments:
     data_path: str = field(default=None, metadata={"help": "Path to the training data, in llava's instruction.json format. Supporting multiple json files via /path/to/{a,b,c}.json"})
@@ -1576,6 +1579,7 @@ def train(attn_implementation=None):
         model.config.image_split_resolution = data_args.image_split_resolution
         model.config.tokenizer_padding_side = tokenizer.padding_side
         model.config.tokenizer_model_max_length = tokenizer.model_max_length
+        model.config.mm_newline_position = model_args.mm_newline_position
 
         ### Deciding train which part of the model
         if model_args.mm_tunable_parts is None:  # traditional way of deciding which part to train
