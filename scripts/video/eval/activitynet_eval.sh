@@ -87,7 +87,7 @@ echo $SAVE_DIR
 
 # wait
 
-python3 llavavid/eval/eval_activitynet_qa.py \
+python3 llava/eval/eval_activitynet_qa.py \
     --pred_path ./work_dirs/eval_activitynet/$SAVE_DIR \
     --output_dir ./work_dirs/eval_activitynet/$SAVE_DIR/results \
     --output_json ./work_dirs/eval_activitynet/$SAVE_DIR/results.json \

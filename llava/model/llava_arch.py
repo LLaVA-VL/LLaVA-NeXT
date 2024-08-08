@@ -221,6 +221,9 @@ class LlavaMetaForCausalLM(ABC):
         if vision_tower is None or images is None or input_ids.shape[1] == 1:
             return input_ids, position_ids, attention_mask, past_key_values, None, labels
 
+        if isinstance(modalities, str):
+            modalities = [modalities]
+            
         if type(images) is list or images.ndim == 5:
             if type(images) is list:
                 images = [x.unsqueeze(0) if x.ndim == 3 else x for x in images]
@@ -229,6 +232,8 @@ class LlavaMetaForCausalLM(ABC):
             for _ in range(len(modalities)):
                 if modalities[_] == "video":
                     video_idx_in_batch.append(_)
+
+            # print(video_idx_in_batch)
 
             images_list = []
             for image in images:
