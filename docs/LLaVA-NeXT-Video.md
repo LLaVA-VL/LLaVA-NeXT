@@ -19,17 +19,15 @@
 
 5. **Spatial pooling mode:** `average` (Options: `average`, `max`.)
 
-6. **Spatial pooling location:** `after` (Options: `before`, `after`.)
-
-5. **Local video path:** `./data/llava_video/video-chatgpt/evaluation/Test_Videos/v_Lf_7RurLgp0.mp4`
+6. **Local video path:** `./data/llava_video/video-chatgpt/evaluation/Test_Videos/v_Lf_7RurLgp0.mp4`
 
 To run a demo, execute:
 ```bash
-bash scripts/video/demo/video_demo.sh ${Example model} ${Prompt mode} ${Sampled frames} ${Spatial pooling stride} ${Spatial pooling mode} ${Spatial pooling location} grid True ${Video path at local}
+bash scripts/video/demo/video_demo.sh ${Example model} ${Prompt mode} ${Sampled frames} ${Spatial pooling stride} ${Spatial pooling mode} grid True ${Video path at local}
 ```
 Example:
 ```bash
-bash scripts/video/demo/video_demo.sh lmms-lab/LLaVA-NeXT-Video-7B-DPO vicuna_v1 32 2 average after no_token True playground/demo/xU25MMA2N4aVtYay.mp4
+bash scripts/video/demo/video_demo.sh lmms-lab/LLaVA-NeXT-Video-7B-DPO vicuna_v1 32 2 average no_token True playground/demo/xU25MMA2N4aVtYay.mp4
 ```
 
 **IMPORTANT** Please refer to [Latest video model](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/inference/docs/LLaVA-NeXT-Video_0716.md) for the runnning of the latest model.
