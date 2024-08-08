@@ -223,7 +223,7 @@ class LlavaMetaForCausalLM(ABC):
 
         if isinstance(modalities, str):
             modalities = [modalities]
-            
+
         if type(images) is list or images.ndim == 5:
             if type(images) is list:
                 images = [x.unsqueeze(0) if x.ndim == 3 else x for x in images]
@@ -242,6 +242,7 @@ class LlavaMetaForCausalLM(ABC):
                 else:
                     images_list.append(image.unsqueeze(0))
 
+            # import pdb;pdb.set_trace()
             concat_images = torch.cat([image for image in images_list], dim=0)
             split_sizes = [image.shape[0] for image in images_list]
             encoded_image_features = self.encode_images(concat_images)
