@@ -11,7 +11,7 @@ We will gradually release the more detailed training scripts for our LLaVA OneVi
 
 # About the LLaVA-OneVision Data
 
-We sincerely apologize for any inconvenience caused by the fact that our data has been used in different projects and has been collected and managed by different people. LLaVA-OneVision is our first attempt to integrate these datasets. For the data that has already been uploaded, we will refer you to the corresponding locations. We kindly ask everyone to gather the "fragments" and piece them together into a "diamond" in your own environment. 
+We need to address the fact that our data has been collected and used in different projects/people. LLaVA-OneVision is our first attempt to integrate these datasets. For the data that has already been uploaded, we will refer you to the corresponding locations. We kindly ask everyone to gather the "fragments" and piece them together into a "diamond" in your own environment. 
 
 Here we explain the some technical details on our data. 
 
