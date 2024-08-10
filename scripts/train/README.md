@@ -36,7 +36,7 @@ Here we explain the some technical details on our data.
       - json_path: /mnt/bn/vl-research/data/llava_instruct/synthdog_en/synthdog_en_100k.json
         sampling_strategy: all  
   ```
-  The first three datasets can be collected via the [LLaVA-Recap](https://huggingface.co/collections/lmms-lab/llava-next-6623288e2d61edba3ddbf5ff) series data. We did a slightly modification to make the data more compatible to other data with an added prompt at each question. For example:
+  The first three datasets can be collected via the [LLaVA-Recap](https://huggingface.co/collections/lmms-lab/llava-next-6623288e2d61edba3ddbf5ff) series data. We did a slightly modification to make the data more compatible to other data with an added prompt behind `<image>` at each question. You may download our dataset and process it in local environment. Each data we added the **same prompt** "\nPlease generate detailed descriptions of the given image.". Here's an example:
   ```json
     {
     "id": "000000000009",
