@@ -361,8 +361,9 @@ class LlavaMetaForCausalLM(ABC):
                         image_feature = image_feature[0]
                         if "unpad" in mm_patch_merge_type:
                             image_feature = torch.cat((image_feature, self.model.image_newline[None]), dim=0)
-
-                    new_image_features.append(image_feature)
+                    # skip append if video_idx_in_batch
+                    if image_idx not in video_idx_in_batch:
+                        new_image_features.append(image_feature)
                 image_features = new_image_features
             else:
                 raise ValueError(f"Unexpected mm_patch_merge_type: {self.config.mm_patch_merge_type}")
