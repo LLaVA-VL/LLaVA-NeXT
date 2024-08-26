@@ -253,9 +253,6 @@ class LlavaMetaForCausalLM(ABC):
         if vision_tower is None or images is None or input_ids.shape[1] == 1:
             return input_ids, position_ids, attention_mask, past_key_values, None, labels
 
-        if isinstance(modalities, str):
-            modalities = [modalities]
-
         if type(images) is list or images.ndim == 5:
             if type(images) is list:
                 images = [x.unsqueeze(0) if x.ndim == 3 else x for x in images]
@@ -265,8 +262,6 @@ class LlavaMetaForCausalLM(ABC):
                 if modalities[_] == "video":
                     video_idx_in_batch.append(_)
 
-            # print(video_idx_in_batch)
-
             images_list = []
             for image in images:
                 if image.ndim == 4:
@@ -274,7 +269,6 @@ class LlavaMetaForCausalLM(ABC):
                 else:
                     images_list.append(image.unsqueeze(0))
 
-            # import pdb;pdb.set_trace()
             concat_images = torch.cat([image for image in images_list], dim=0)
             split_sizes = [image.shape[0] for image in images_list]
             encoded_image_features = self.encode_images(concat_images)
@@ -346,8 +340,6 @@ class LlavaMetaForCausalLM(ABC):
                             new_image_features.append(image_feature.flatten(0, 1))
                         else:
                             raise ValueError(f"Unexpected mm_newline_position: {self.config.mm_newline_position}")
-
-
                     elif image_feature.shape[0] > 1:  # multi patches and multi images operations
                         # rank0_print("Single-images")
                         base_image_feature = image_feature[0]
