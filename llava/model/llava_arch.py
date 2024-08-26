@@ -288,6 +288,7 @@ class LlavaMetaForCausalLM(ABC):
             # image_features = torch.split(image_features, split_sizes, dim=0)
             mm_patch_merge_type = getattr(self.config, "mm_patch_merge_type", "flat")
             image_aspect_ratio = getattr(self.config, "image_aspect_ratio", "square")
+            mm_newline_position = getattr(self.config, "mm_newline_position", "one_token")
 
             if mm_patch_merge_type == "flat":
                 image_features = [x.flatten(0, 1) for x in image_features]
@@ -302,7 +303,7 @@ class LlavaMetaForCausalLM(ABC):
                     # rank0_print("At least we are reaching here")
                     if image_idx in video_idx_in_batch:  # video operations
                         # rank0_print("Video")
-                        if self.config.mm_newline_position == "grid":
+                        if mm_newline_position == "grid":
                             # Grid-wise
                             image_feature = self.add_token_per_grid(image_feature)
                             if self.config.add_faster_video:
@@ -321,13 +322,13 @@ class LlavaMetaForCausalLM(ABC):
                                 # print("!!!!!!!!!!!!")
                         
                             new_image_features.append(image_feature)
-                        elif self.config.mm_newline_position == "frame":
+                        elif mm_newline_position == "frame":
                             # Frame-wise
                             image_feature = self.add_token_per_frame(image_feature)
 
                             new_image_features.append(image_feature.flatten(0, 1))
                             
-                        elif self.config.mm_newline_position == "one_token":
+                        elif mm_newline_position == "one_token":
                             # one-token
                             image_feature = image_feature.flatten(0, 1)
                             if 'unpad' in mm_patch_merge_type:
@@ -336,10 +337,10 @@ class LlavaMetaForCausalLM(ABC):
                                     self.model.image_newline[None].to(image_feature.device)
                                 ), dim=0)
                             new_image_features.append(image_feature)      
-                        elif self.config.mm_newline_position == "no_token":
+                        elif mm_newline_position == "no_token":
                             new_image_features.append(image_feature.flatten(0, 1))
                         else:
-                            raise ValueError(f"Unexpected mm_newline_position: {self.config.mm_newline_position}")
+                            raise ValueError(f"Unexpected mm_newline_position: {mm_newline_position}")
                     elif image_feature.shape[0] > 1:  # multi patches and multi images operations
                         # rank0_print("Single-images")
                         base_image_feature = image_feature[0]
