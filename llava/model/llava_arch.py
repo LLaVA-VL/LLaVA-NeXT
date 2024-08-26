@@ -93,6 +93,13 @@ class LlavaMetaModel:
         self.config.mm_vision_select_feature = mm_vision_select_feature
         self.config.mm_patch_merge_type = mm_patch_merge_type
 
+        if not hasattr(self.config, 'add_faster_video'):
+            if model_args.add_faster_video:
+                embed_std = 1 / torch.sqrt(torch.tensor(self.config.hidden_size, dtype=self.dtype))
+                self.faster_token = nn.Parameter(
+                    torch.randn(self.config.hidden_size, dtype=self.dtype) * embed_std
+                )
+
         if getattr(self, "mm_projector", None) is None:
             self.mm_projector = build_vision_projector(self.config, vision_cfg=vision_tower.config)
 
@@ -160,19 +167,19 @@ class LlavaMetaForCausalLM(ABC):
     def get_vision_tower(self):
         return self.get_model().get_vision_tower()
 
-    def get_2dPool(self, image_feature):
+    def get_2dPool(self, image_feature, stride=2):
         height = width = self.get_vision_tower().num_patches_per_side
         num_frames, num_tokens, num_dim = image_feature.shape
         image_feature = image_feature.view(num_frames, height, width, -1)
         image_feature = image_feature.permute(0, 3, 1, 2).contiguous()
         # image_feature = nn.functional.max_pool2d(image_feature, self.config.mm_spatial_pool_stride)
         if self.config.mm_spatial_pool_mode == "average":
-            image_feature = nn.functional.avg_pool2d(image_feature, self.config.mm_spatial_pool_stride)
+            image_feature = nn.functional.avg_pool2d(image_feature, stride)
         elif self.config.mm_spatial_pool_mode == "max":
-            image_feature = nn.functional.max_pool2d(image_feature, self.config.mm_spatial_pool_stride)
+            image_feature = nn.functional.max_pool2d(image_feature, stride)
         elif self.config.mm_spatial_pool_mode == "bilinear":
             height, weight = image_feature.shape[2:]
-            scaled_shape = [math.ceil(height / 2), math.ceil(weight / 2)]
+            scaled_shape = [math.ceil(height / stride), math.ceil(weight / stride)]
             image_feature = nn.functional.interpolate(image_feature, size=scaled_shape, mode='bilinear')
 
         else:
@@ -191,21 +198,46 @@ class LlavaMetaForCausalLM(ABC):
         videos_or_images_features = self.get_model().get_vision_tower()(videos_or_images)
         per_videos_or_images_features = torch.split(videos_or_images_features, split_sizes, dim=0)  # tuple, (dim_1, 576, 4096)
         all_videos_or_images_features = []
+        all_faster_video_features = []
+        cur_mm_spatial_pool_stride = self.config.mm_spatial_pool_stride
 
         for idx, feat in enumerate(per_videos_or_images_features):
+            
             feat = self.get_model().mm_projector(feat)
-            if idx in video_idx_in_batch:
-                feat = self.get_2dPool(feat)
-            all_videos_or_images_features.append(feat)
-        return all_videos_or_images_features
+            faster_video_feature = 0
+            slower_img_feat = 0
+            if idx in video_idx_in_batch and cur_mm_spatial_pool_stride > 1:
+                slower_img_feat = self.get_2dPool(feat,cur_mm_spatial_pool_stride)
+                if self.config.add_faster_video:
+                    cur_mm_spatial_pool_stride = cur_mm_spatial_pool_stride * 2
+                    faster_video_feature = self.get_2dPool(feat,cur_mm_spatial_pool_stride)
+            if slower_img_feat is not 0:
+                all_videos_or_images_features.append(slower_img_feat)
+            else:
+                all_videos_or_images_features.append(feat)
+            all_faster_video_features.append(faster_video_feature)
+        return all_videos_or_images_features,all_faster_video_features
 
     def add_token_per_grid(self, image_feature):
         resize_h = int(math.sqrt(image_feature.shape[1]))
         num_frames = image_feature.shape[0]
+        feature_dim = image_feature.shape[-1]
+
         image_feature = image_feature.view(num_frames, 1, resize_h, resize_h, -1)
         image_feature = image_feature.permute(4, 0, 2, 1, 3).contiguous()
         image_feature = image_feature.flatten(1, 2).flatten(2, 3)
         image_feature = torch.cat((image_feature, self.model.image_newline[:, None, None].expand(*image_feature.shape[:-1], 1).to(image_feature.device)), dim=-1)
+        if self.config.add_faster_video:
+            # import pdb; pdb.set_trace()
+            # (3584, 832, 14) -> (3584, 64, 13, 14)
+            image_feature = image_feature.view(feature_dim, num_frames,resize_h, -1)
+            #  (3584, 64, 13, 14) -> (64, 13, 14, 3584)
+            image_feature = image_feature.permute(1, 2, 3, 0).contiguous()
+            # (64, 13, 14, 3584) -> (64, 13*14, 3584)
+            image_feature = image_feature.flatten(1, 2)
+            # import pdb; pdb.set_trace()
+            return image_feature
+        # import pdb; pdb.set_trace()
         image_feature = image_feature.flatten(1, 2).transpose(0, 1)
         return image_feature
 
@@ -246,6 +278,7 @@ class LlavaMetaForCausalLM(ABC):
             concat_images = torch.cat([image for image in images_list], dim=0)
             split_sizes = [image.shape[0] for image in images_list]
             encoded_image_features = self.encode_images(concat_images)
+            # image_features,all_faster_video_features = self.encode_multimodals(concat_images, video_idx_in_batch, split_sizes)
 
             # This is a list, each element is [num_images, patch * patch, dim]
             # rank_print(f"Concat images : {concat_images.shape}")
@@ -278,6 +311,20 @@ class LlavaMetaForCausalLM(ABC):
                         if self.config.mm_newline_position == "grid":
                             # Grid-wise
                             image_feature = self.add_token_per_grid(image_feature)
+                            if self.config.add_faster_video:
+                                faster_video_feature = self.add_token_per_grid(all_faster_video_features[image_idx])
+                                # Add a token for each frame
+                                concat_slow_fater_token = []
+                                # import pdb; pdb.set_trace()
+                                for _ in range(image_feature.shape[0]):
+                                    if _ % self.config.faster_token_stride == 0:
+                                        concat_slow_fater_token.append(torch.cat((image_feature[_], self.model.faster_token[None].to(image_feature.device)), dim=0))
+                                    else:
+                                        concat_slow_fater_token.append(torch.cat((faster_video_feature[_], self.model.faster_token[None].to(image_feature.device)), dim=0))
+                                # import pdb; pdb.set_trace()
+                                image_feature = torch.cat(concat_slow_fater_token)
+
+                                # print("!!!!!!!!!!!!")
                         
                             new_image_features.append(image_feature)
                         elif self.config.mm_newline_position == "frame":
@@ -357,12 +404,13 @@ class LlavaMetaForCausalLM(ABC):
                             pass
                         else:
                             image_feature = torch.cat((base_image_feature, image_feature), dim=0)
+                        new_image_features.append(image_feature)
                     else:  # single image operations
                         image_feature = image_feature[0]
                         if "unpad" in mm_patch_merge_type:
                             image_feature = torch.cat((image_feature, self.model.image_newline[None]), dim=0)
 
-                    new_image_features.append(image_feature)
+                        new_image_features.append(image_feature)
                 image_features = new_image_features
             else:
                 raise ValueError(f"Unexpected mm_patch_merge_type: {self.config.mm_patch_merge_type}")
