@@ -17,11 +17,11 @@
 
 ## Release Notes
 
-- [2024/08/06] 🔥 **LLaVA-OneVision** is [released](https://llava-vl.github.io/blog/2024-08-05-llava-onevision/). The new 0.5/7/72B model achieves the state-of-the-art level and comparable to most powerful commercial models performance on several single-image, multi-image, and video benchmarks. We benchmarked on a total of 47 benchmarks to comprehensively reflect our model's true capabilities in diverse domains. We also release our training code, and single-image/multi-image data mixture in [LLaVA-OneVision Data](https://huggingface.co/datasets/lmms-lab/LLaVA-OneVision-Data)! Our video part data will be released via next upgrade of video specific model, stay tuned! Our training code can be directly used to train on single-image, multi-image and video data.
-  - Check our [Paper](https://arxiv.org/abs/2408.03326) for more details and to see our insights on training one model to rule them all.
-  - Check our [LLaVA-OneVision Doc](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/docs/LLaVA_OneVision.md) for inference and evaluation guidance.
-  - Check our [Training Scripts](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/scripts/train) to start training models on single-image/multi-image/video data.
-  
+- [2024/08/06] 🔥 **🚀 [LLaVA-OneVision (OV)](https://llava-vl.github.io/blog/2024-08-05-llava-onevision/)!** The new LLaVA-OV models (0.5B/7B/72B) achieve new state-of-the-art performance across single-image, multi-image, and video benchmarks, sometimes rivaling top commercial models on 47 diverse benchmarks. 📄 Explore More:
+  * [[Paper]](https://arxiv.org/abs/2408.03326): In-depth insights, new emegerging scenarios, ie, strong video understadning through task transfer from images.
+  * [[LLaVA-OV Doc]](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/docs/LLaVA_OneVision.md): Model inference and evaluation guidance.
+  * [[Scripts]](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/scripts/train): Start training models on your single-image/multi-image/video data.
+    
 - [2024/07/16] 🔥 **LLaVA-NeXT-Video** has been upgraded. The new 32B model achieves the best open-source performance on several video benchmarks, including [Video-MME](https://video-mme.github.io/home_page.html#leaderboard). Please refer to [this page](docs/LLaVA-NeXT-Video_0716.md) for details, refer to [llava_next-video_demo](https://huggingface.co/spaces/WildVision/vision-arena) for demo.
 
 
@@ -96,6 +96,9 @@ pip install -e ".[train]"
 ### Project Navigation
 Please checkout the following page for more inference & evaluation details.
 
+#### - **LLaVA-OneVision: Easy Task Transfer**
+- [LLaVA-OneVision]([./docs/LLaVA-NeXT.md](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/docs/LLaVA_OneVision.md)): for demo inference. The evaluation code is in [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval).
+
 #### - **LLaVA-NeXT: Stronger LLMs Supercharge Multimodal Capabilities in the Wild**
 - [LLaVA-NeXT-Image](./docs/LLaVA-NeXT.md): for image demo inference and evaluation of stronger LMMs using [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval).
 
@@ -113,9 +116,9 @@ We use [SGLang](https://github.com/sgl-project/sglang) to speed up inference and
 **Prepare Environment**:
     Following the instruction in the [sglang](https://github.com/sgl-project/sglang?tab=readme-ov-file#install)
 
-### LLaVA-NeXT (Image)
+### LLaVA-NeXT/OneVision
 
-Checkout the HTTP Post/Get and SRT usage at [sglang/examples/usage/llava](https://github.com/sgl-project/sglang/blob/main/examples/usage/llava)
+Checkout the HTTP Post/Get and SRT usage at [sglang/examples/runtime/llava_onevision](https://github.com/sgl-project/sglang/tree/main/examples/runtime/llava_onevision)
 
 ### LLaVA-NeXT (Video)
 
