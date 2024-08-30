@@ -95,6 +95,8 @@ class Conversation:
             return ret
 
         elif self.sep_style == SeparatorStyle.LLAMA_3:
+            if self.tokenizer is None:
+                raise ValueError("Llama 3 tokenizer is not available. Make sure you have the necessary permissions.")
             chat_template_messages = [{"role": "system", "content": self.system}]
             for role, message in messages:
                 if message:
@@ -375,6 +377,12 @@ conv_llava_llama_2 = Conversation(
     sep2="</s>",
 )
 
+def safe_load_tokenizer(tokenizer_id):
+    try:
+        return AutoTokenizer.from_pretrained(tokenizer_id)
+    except Exception:
+        return None
+
 conv_llava_llama_3 = Conversation(
     system="You are a helpful language and vision assistant. " "You are able to understand the visual content that the user provides, " "and assist the user with a variety of tasks using natural language.",
     roles=("user", "assistant"),
@@ -384,7 +392,7 @@ conv_llava_llama_3 = Conversation(
     sep="<|eot_id|>",
     sep_style=SeparatorStyle.LLAMA_3,
     tokenizer_id="meta-llama/Meta-Llama-3-8B-Instruct",
-    tokenizer=AutoTokenizer.from_pretrained("meta-llama/Meta-Llama-3-8B-Instruct"),
+    tokenizer=safe_load_tokenizer("meta-llama/Meta-Llama-3-8B-Instruct"),
     stop_token_ids=[128009],
 )
 
