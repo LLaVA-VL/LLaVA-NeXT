@@ -1,0 +1,17 @@
+datasets:
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/blip558k_stage1.5_finetune_w_prompt.json # released in lmms-lab/LLaVA-ReCap-*
+    sampling_strategy: all
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/coco118k_stage1.5_finetune_w_prompt.json # released in lmms-lab/LLaVA-ReCap-*
+    sampling_strategy: all
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cc3m_recap_data_prompt_v2.json # released in lmms-lab/LLaVA-ReCap-*
+    sampling_strategy: all
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/ureader_tr_sft.json # released in lmms-lab/LLaVA-OneVision-Mid-Data
+    sampling_strategy: all
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/instruct_azure_dc_zh_92K.json # not released, explained at https://github.com/LLaVA-VL/LLaVA-NeXT/tree/main/scripts/train
+    sampling_strategy: all
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/Evol-Instruct-GPT4-Turbo-143K.json # released in lmms-lab/LLaVA-OneVision-Mid-Data
+    sampling_strategy: all
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/synthdog_zh/synthdog_zh_100k.json # released in lmms-lab/LLaVA-OneVision-Mid-Data
+    sampling_strategy: all
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/synthdog_en/synthdog_en_100k.json # released in lmms-lab/LLaVA-OneVision-Mid-Data
+    sampling_strategy: all
