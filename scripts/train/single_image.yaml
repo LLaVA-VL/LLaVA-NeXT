@@ -1,0 +1,187 @@
+datasets:
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/llava_next_fit_mix_filtered_text_wild_738590.json # released in lmms-lab/LLaVA-NeXT-Data
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/llava_wild_4v_39k.json # not released
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/llava_wild_4v_12k.json # not released
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/llavar_gpt4_20k.json
+    sampling_strategy: "all"
+  # - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/sroie_data_33626.json
+  #   sampling_strategy: "first:10%"
+  # - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/orand_car_a_train_2009.json
+  #   sampling_strategy: "all"
+  # - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/orand_car_b_train_3000.json
+  #   sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/mavis_math_metagen_87358.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/mavis_math_rule_geo_100000.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/chrome_writting_train_8835.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/k12_printing_train_256646.json
+    sampling_strategy: "first:1%"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/iiit5k_annotations_2000.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/hme100k_train_clean_74502.json
+    sampling_strategy: "first:10%"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/ai2d_azuregpt_detailed_understanding_4874.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/infographic_vqa_4404.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/infographic_azuregpt4v_1992.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/lrv_chart_1787.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/lrv_normal_gpt4v_filtered_10500.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/scienceqa_nona_context_19218.json
+    sampling_strategy: "first:5%"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/allava_instruct_vflan4v_20000.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/allava_instruct_laion4v_50000.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/textocr_gpt4v_train_converted_25114.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/ai2d_train_internvl_single_12413.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/textcaps_train_21952.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/ureader_new/ureader_qa_sft.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/ureader_new/ureader_cap_sft.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/ureader_new/ureader_ie_sft.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/ureader_new/ureader_kg_sft.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/vision_flan_filtered_186070.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/mathqa_29837.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/geo3k_2101.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/geo170k_qa_converted_67833.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/geo170k_align_converted_60252.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/sharegpt4v-coco-50k.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/sharegpt4v-knowledge-2k.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/sharegpt4v-llava-30k.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/sharegpt4v-sam-20k.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/MathV360K_CLEVR-Math_5290.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/MathV360K_FigureQA_17597.json
+    sampling_strategy: "first:5%"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/MathV360K_Geometry3K_9734.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/MathV360K_GeoQA+_17172.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/MathV360K_GEOS_508.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/MathV360K_IconQA_22599.json
+    sampling_strategy: "first:5%"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/MathV360K_MapQA_5235.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/MathV360K_PMC-VQA_35958.json
+    sampling_strategy: "first:5%"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/MathV360K_Super-CLEVR_8652.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/MathV360K_TabMWP_22462.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/MathV360K_TQA_10181.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/MathV360K_UniGeo_11959.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/MathV360K_VizWiz_6614.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/MathV360K_VQA-AS_5907.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/MathV360K_VQA-RAD_2130.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/Evol-Instruct-GPT4-Turbo-143000.json
+    sampling_strategy: "first:30%"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/magpie_pro_qwen2_72b_st_300000_sp_token_fltd_299992.json
+    sampling_strategy: "first:50%"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/magpie_pro_l3_80b_st_300000.json
+    sampling_strategy: "first:50%"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/magpie_pro_l3_80b_mt_300000_sp_token_fltd_299998.json
+    sampling_strategy: "first:50%"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/image_textualization_dataset_filtered.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/cambrian_filtered_gpt4vo_sp_token_fltd_max10k.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/sharegpt4o_dataset.jsonl
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/ai2d_llava_format_2434.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/aokvqa_16539_llava_format.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/chart2text_26961.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/chartqa_18265_llava_format.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/clevr_70000_llava_format.json
+    sampling_strategy: "first:1%"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/diagram_image_to_text_300.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/dvqa_200000_llava_format.json
+    sampling_strategy: "first:1%"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/figureqa_100000_llava_format.json
+    sampling_strategy: "first:1%"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/geomverse_9303.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/hateful_memes_8500_llava_format.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/hitab_2500_llava_format.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/iam_5663.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/raven_42000.json
+    sampling_strategy: "first:5%"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/iconqa_llava_format_27307.json
+    sampling_strategy: "first:5%"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/infographic_vqa_2118_llava_format.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/intergps_1280_llava_format.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/mapqa_37417_llava_format.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/multihiertt_7619.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/rendered_text_10000.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/robut_sqa_8514.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/robut_wikisql_74989.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/robut_wtq_38246_llava_format.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/screen2words_15730.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/scienceqa_llava_format_4976.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/tabmwp_22722.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/tallyqa_98680_llava_format.json
+    sampling_strategy: "first:10%"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/st_vqa_17247_llava_format.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/tqa_llava_format_27307.json
+    sampling_strategy: "first:5%"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/visual7w_llava_format_14366.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/visualmrc_3027.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/vqarad_313_llava_format.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/vsr_2157_llava_format.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/vistext_9969.json
+    sampling_strategy: "all"
+  - json_path: /mnt/bn/vl-research/data/llava_instruct/cauldron/websight_10000.json
+    sampling_strategy: "all"
