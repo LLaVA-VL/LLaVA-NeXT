@@ -108,7 +108,11 @@ class ModelArguments:
     pos_skipping_range: Optional[int] = field(default=4096)
 
 
-    mm_newline_position: Optional[str] = field(default="one_token")
+    mm_newline_position: Optional[str] = field(default="grid")
+    delay_load: Optional[bool] = field(default=True)
+    add_faster_video: Optional[bool] = field(default=False)
+    faster_token_stride: Optional[int] = field(default=10)
+
 
 
 @dataclass
@@ -126,6 +130,8 @@ class DataArguments:
     video_folder: Optional[str] = field(default=None)
     video_fps: Optional[int] = field(default=1)
     frames_upbound: Optional[int] = field(default=0)
+    add_time_instruction: Optional[bool] = field(default=False)
+    force_sample: Optional[bool] = field(default=False)
 
 
 @dataclass
@@ -1158,9 +1164,21 @@ class LazySupervisedDataset(Dataset):
                     frame_files.sort()  # Ensure the frames are sorted if they are named sequentially
 
                     # TODO: Hard CODE: Determine the indices for uniformly sampling 10 frames
-                    num_frames_to_sample = 10
+                    if self.data_args.force_sample:
+                        num_frames_to_sample = self.data_args.frames_upbound
+                    else:
+                        num_frames_to_sample = 10
+
+                    avg_fps = 2
+                    
                     total_frames = len(frame_files)
                     sampled_indices = np.linspace(0, total_frames - 1, num_frames_to_sample, dtype=int)
+
+
+                    frame_time = [i/2 for i in sampled_indices]
+                    frame_time = ",".join([f"{i:.2f}s" for i in frame_time])
+
+                    video_time = total_frames / avg_fps
 
                     # Read and store the sampled frames
                     video = []
@@ -1173,12 +1191,16 @@ class LazySupervisedDataset(Dataset):
                         except IOError:
                             print(f"Failed to read frame at path: {frame_path}")
                 else:
-                    video = process_video_with_decord(video_file, self.data_args)
+                    video, video_time, frame_time, num_frames_to_sample = process_video_with_decord(video_file, self.data_args)
 
                 processor = self.data_args.image_processor
                 image = processor.preprocess(video, return_tensors="pt")["pixel_values"]
+                if self.data_args.add_time_instruction:
+                    time_instruciton = f"The video lasts for {video_time:.2f} seconds, and {num_frames_to_sample} frames are uniformly sampled from it. These frames are located at {frame_time}.Please answer the following questions related to this video."
+                    sources[0]["conversations"][0]["value"] = f'{DEFAULT_IMAGE_TOKEN}\n{time_instruciton}\n{sources[0]["conversations"][0]["value"].replace(DEFAULT_IMAGE_TOKEN, "")}'
                 image = [(image, video[0].size, "video")]
                 sources = preprocess_multimodal(copy.deepcopy([e["conversations"] for e in sources]), self.data_args)
+                # print(sources)
             except Exception as e:
                 print(f"Error: {e}")
                 print(f"Failed to read video file: {video_file}")
@@ -1580,6 +1602,11 @@ def train(attn_implementation=None):
         model.config.tokenizer_padding_side = tokenizer.padding_side
         model.config.tokenizer_model_max_length = tokenizer.model_max_length
         model.config.mm_newline_position = model_args.mm_newline_position
+        model.config.add_faster_video = model_args.add_faster_video
+        model.config.faster_token_stride = model_args.faster_token_stride
+        model.config.add_time_instruction = data_args.add_time_instruction
+        model.config.force_sample = data_args.force_sample
+        model.config.mm_spatial_pool_stride = model_args.mm_spatial_pool_stride 
 
         ### Deciding train which part of the model
         if model_args.mm_tunable_parts is None:  # traditional way of deciding which part to train
