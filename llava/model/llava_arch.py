@@ -305,7 +305,7 @@ class LlavaMetaForCausalLM(ABC):
                     # currently image_feature is a tensor of shape (4, num_patches, hidden_size)
                     # we want to first unflatten it to (2, 2, h, w, hidden_size)
                     # rank0_print("At least we are reaching here")
-                    import pdb; pdb.set_trace()
+                    # import pdb; pdb.set_trace()
                     if image_idx in video_idx_in_batch:  # video operations
                         # rank0_print("Video")
                         if mm_newline_position == "grid":
