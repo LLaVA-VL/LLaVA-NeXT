@@ -32,14 +32,12 @@ ckpts*
 
 .ipynb_checkpoints
 chunyl_scripts
-*.ipynb
 
 # DevContainer
 !.devcontainer/*
 
 # Demo
 serve_images/
-notebooks/
 logs
 scripts/dist_*
 logs/
