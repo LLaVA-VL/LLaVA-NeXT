@@ -80,4 +80,4 @@ Here we explain the some technical details on our data.
   - [M4-Instruct Data](https://huggingface.co/datasets/lmms-lab/M4-Instruct-Data)
   - Video Data
     - 65595 re-annotated data. The data sources are from a collection of academic datasets, including Youcook2 (32267), Charades (19851), NextQA (7653), activitynet (5153), ego4d (671). The instruction and response are generated via GPT4o provided by AzureAI. More exquisite details are to be completed by Yuanhan's subsequent work on video specific model to introduce the data annotation pipeline. (it's brilliant, stay tuned!)
-    - [ShareGPTVideo](https://sharegpt4o.github.io/). We use a total of 255000 data from it.
+    - [ShareGPTVideo](https://huggingface.co/ShareGPTVideo). We use a total of 255000 data from it.

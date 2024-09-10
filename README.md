@@ -96,6 +96,9 @@ pip install -e ".[train]"
 ### Project Navigation
 Please checkout the following page for more inference & evaluation details.
 
+#### - **LLaVA-OneVision: Easy Task Transfer**
+- [LLaVA-OneVision]([./docs/LLaVA-NeXT.md](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/docs/LLaVA_OneVision.md)): for demo inference. The evaluation code is in [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval).
+
 #### - **LLaVA-NeXT: Stronger LLMs Supercharge Multimodal Capabilities in the Wild**
 - [LLaVA-NeXT-Image](./docs/LLaVA-NeXT.md): for image demo inference and evaluation of stronger LMMs using [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval).
 
@@ -113,9 +116,9 @@ We use [SGLang](https://github.com/sgl-project/sglang) to speed up inference and
 **Prepare Environment**:
     Following the instruction in the [sglang](https://github.com/sgl-project/sglang?tab=readme-ov-file#install)
 
-### LLaVA-NeXT (Image)
+### LLaVA-NeXT/OneVision
 
-Checkout the HTTP Post/Get and SRT usage at [sglang/examples/usage/llava](https://github.com/sgl-project/sglang/blob/main/examples/usage/llava)
+Checkout the HTTP Post/Get and SRT usage at [sglang/examples/runtime/llava_onevision](https://github.com/sgl-project/sglang/tree/main/examples/runtime/llava_onevision)
 
 ### LLaVA-NeXT (Video)
 
