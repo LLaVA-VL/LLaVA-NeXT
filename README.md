@@ -17,7 +17,7 @@
 
 ## Release Notes
 
-- [2024/08/06] 🔥 **🚀 [LLaVA-OneVision-Chat](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/ov-chat-doc/docs/LLaVA_OneVision_Chat.md)**. The new LLaVA-OV-Chat (7B/72B) significantly improves the chat experience of LLaVA-OV. 📄
+- [2024/08/06] 🔥 **🚀 [LLaVA-OneVision-Chat](docs/LLaVA_OneVision_Chat.md)**. The new LLaVA-OV-Chat (7B/72B) significantly improves the chat experience of LLaVA-OV. 📄
   
   ![](docs/ov_chat_images/chat_results.png)
 
