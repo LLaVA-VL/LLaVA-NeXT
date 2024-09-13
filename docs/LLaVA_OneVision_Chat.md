@@ -95,13 +95,20 @@ Using the feedback data obtained in `Step 2`, we conduct DPO training in an iter
 This iterative process is repeated for `N=3` rounds in total, with each round refining the model’s ability to generate high-quality visual chat responses by progressively incorporating feedback from both human and AI assessments.
 
 ------
+
+Stay tuned on how we develop AI feedback for self-improvement LMMs!
+
+*Contributors to LLaVA-OneVision-Chat: [Tianyi Xiong](https://tyxiong23.github.io/), [Bo Li](https://brianboli.com/), [Huizhuo Yuan](https://scholar.google.com/citations?user=8foZzX4AAAAJ), [Quanquan Gu](https://web.cs.ucla.edu/~qgu/), [Chunyuan Li](https://scholar.google.com/citations?user=Zd7WmXUAAAAJ)*
+
+------
+
 ### Citation
 
 If you find it useful for your research and applications, please cite related papers/blogs using this BibTeX:
 ```bibtex
 
 
-@article{li2024llava,
+@article{li2024llavaov,
   title={Llava-onevision: Easy visual task transfer},
   author={Li, Bo and Zhang, Yuanhan and Guo, Dong and Zhang, Renrui and Li, Feng and Zhang, Hao and Zhang, Kaichen and Li, Yanwei and Liu, Ziwei and Li, Chunyuan},
   journal={arXiv preprint arXiv:2408.03326},
@@ -116,8 +123,4 @@ If you find it useful for your research and applications, please cite related pa
 }
 ```
 
-------
 
-Stay tuned on how we develop AI feedback for self-improvement LMMs!
-
-*Contributors to LLaVA-OneVision-Chat: [Tianyi Xiong](https://tyxiong23.github.io/), [Bo Li](https://brianboli.com/), [Huizhuo Yuan](https://scholar.google.com/citations?user=8foZzX4AAAAJ), [Quanquan Gu](https://web.cs.ucla.edu/~qgu/), [Chunyuan Li](https://scholar.google.com/citations?user=Zd7WmXUAAAAJ)*
