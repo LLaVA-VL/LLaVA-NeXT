@@ -94,6 +94,27 @@ Using the feedback data obtained in `Step 2`, we conduct DPO training in an iter
 
 This iterative process is repeated for `N=3` rounds in total, with each round refining the model’s ability to generate high-quality visual chat responses by progressively incorporating feedback from both human and AI assessments.
 
+------
+### Citation
+
+If you find it useful for your research and applications, please cite related papers/blogs using this BibTeX:
+```bibtex
+
+
+@article{li2024llava,
+  title={Llava-onevision: Easy visual task transfer},
+  author={Li, Bo and Zhang, Yuanhan and Guo, Dong and Zhang, Renrui and Li, Feng and Zhang, Hao and Zhang, Kaichen and Li, Yanwei and Liu, Ziwei and Li, Chunyuan},
+  journal={arXiv preprint arXiv:2408.03326},
+  year={2024}
+}
+
+@article{2023llavarlhf,
+    author      = {Zhiqing Sun and Sheng Shen and Shengcao Cao and Haotian Liu and Chunyuan Li and Yikang Shen and Chuang Gan and Liang-Yan Gui and Yu-Xiong Wang and Yiming Yang and Kurt Keutzer and Trevor Darrell},
+    title       = {Aligning Large Multimodal Models with Factually Augmented RLHF},
+    publisher   = {arXiv:2309.14525},
+    year        = {2023}
+}
+```
 
 ------
 
