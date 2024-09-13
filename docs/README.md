@@ -4,6 +4,7 @@ Welcome to the LLaVA-NeXT documentation. This guide provides an overview of the 
 
 1. [LLaVA OneVision](LLaVA_OneVision.md): Learn about the most advanced and unified version: LLaVA OneVision.
     - [LLaVA OneVision: Inference Tutorials](LLaVA_OneVision_Tutorials.ipynb): Learn how to use LLaVA OneVision for inference.
+    - [LLaVA Onevision Chat](LLaVA_OneVision_Chat.md): Improving Chat with Preference Learning
 
 2. [LLaVA-NeXT Interleave](LLaVA-NeXT-Interleave.md): Explore the interleaved training approach used in LLaVA-NeXT.
 
