@@ -55,7 +55,7 @@ LLaVA-OV-Chat consistently showcases exceptional visual chat capabilities across
 
 To optimize LLaVA-OneVision’s in-the-wild conversational abilities, we've employed an iterative Direct Preference Optimization (DPO) process. Through this method, we found that feedback from two primary sources is particularly effective:
 
-1. **Human Feedback from LLaVA-RLHF**: Real-world human input plays a crucial role in guiding the model toward more intuitive and user-friendly responses.
+1. **Human Feedback from [LLaVA-RLHF](https://llava-rlhf.github.io/)**: Real-world human input plays a crucial role in guiding the model toward more intuitive and user-friendly responses.
 
 2. **AI Feedback from LLaVA-OV’s Self-Generated Responses**: Additionally, the AI's own self-generated feedback allows it to continuously improve and adapt, making this a valuable source for iterative learning.
 
