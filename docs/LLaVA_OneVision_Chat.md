@@ -38,7 +38,7 @@ LLaVA-OV-Chat consistently showcases exceptional visual chat capabilities across
 Some qualitative examples are provided.
 
 ![](ov_chat_images/example1_tree.png)
-
+---
 ![](ov_chat_images/example2_dog.png)
 
 ********
