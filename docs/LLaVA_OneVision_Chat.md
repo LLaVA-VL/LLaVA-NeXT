@@ -105,7 +105,13 @@ Stay tuned on how we develop AI feedback for self-improvement LMMs!
 
 If you find it useful for your research and applications, please cite related papers/blogs using this BibTeX:
 ```bibtex
-
+@misc{xiong2024llavaovchat,
+  title={LLaVA-OneVision-Chat: Improving Chat with Preference Learning},
+  url={https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/docs/LLaVA_OneVision_Chat.md},
+  author={Tianyi Xiong and Bo Li and Huizhuo Yuan and Quanquan Gu and Chunyuan Li},
+  month={September},
+  year={2024}
+}
 
 @article{li2024llavaov,
   title={Llava-onevision: Easy visual task transfer},
