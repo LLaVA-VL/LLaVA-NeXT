@@ -56,7 +56,7 @@ Some qualitative examples are provided.
     <td><img src="ov_chat_images/example1_tree.png"></td>
     <td>How likely is it to snow after this picture was taken? What would change with this type of tree before it's likely to snow?</td>
     <td>It is highly unlikely that it would snow immediately after this picture was taken, as the lush green leaves suggest it's either late spring or summer. Before snowfall, which typically occurs in late autumn or winter, this type of tree, likely an oak, would shed its leaves, and the branches would appear bare.</td>
-    <td>
+    <td style="white-space: nowrap;">
     Given the lush green leaves and the overall vibrancy of the tree in the image, it is highly unlikely that snow would follow immediately. This type of tree, which appears to be a deciduous species, typically sheds its leaves in autumn as a preparation for winter. Before it's likely to snow, the tree would undergo several changes:<br><br>
     1. <b>Color Change</b>: The leaves would change color from green to shades of yellow, orange, red, or brown as the chlorophyll breaks down, revealing other pigments.<br>
     2. <b>Leaf Fall</b>: As the days shorten and temperatures cool, the tree would gradually shed its leaves. This process is triggered by hormonal changes within the tree that cause the cells at the base of each leaf to weaken and eventually break, allowing the leaves to fall.<br>
