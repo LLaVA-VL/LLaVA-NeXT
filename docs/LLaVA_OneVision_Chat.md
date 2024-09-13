@@ -11,8 +11,8 @@ LLaVA-OneVision has demonstrated strong multimodal capabilities, showing excelle
 
 ### Release
 
-- Model Checkpoints: [[OV-7b-Chat]](https://huggingface.co/lmms-lab/llava-onevision-qwen2-7b-ov-chat) | [[OV-72b-Chat]](https://huggingface.co/lmms-lab/llava-onevision-qwen2-72b-ov-chat)
-- Demo: [https://llava-onevision.lmms-lab.com](https://llava-onevision.lmms-lab.com/)
+- 🤗 Model Checkpoints: [[OV-7b-Chat]](https://huggingface.co/lmms-lab/llava-onevision-qwen2-7b-ov-chat) | [[OV-72b-Chat]](https://huggingface.co/lmms-lab/llava-onevision-qwen2-72b-ov-chat)
+- 💬 Demo: [https://llava-onevision.lmms-lab.com](https://llava-onevision.lmms-lab.com/)
 
 ----
 
@@ -59,16 +59,16 @@ By experimenting with either of these two forms of feedback, we've been able to 
 
 We provide a breakdown of the process for enhancing LLaVA-OneVision’s visual chat capabilities through iterative DPO.
 
-#### Requirements:
+##### Requirements:
 
 1. **SFT Checkpoint**: We begin with a pretrained LLaVA-OneVision SFT (Supervised Fine-Tuning) model as the initial checkpoint for response generation.
 2. **Preference Data**: The dataset used in our experiments consists of (language-image prompt, response, preference) pairs sourced from human feedback or AI feedback, which serves as the training data for the model to align with user preference to improve chat experience.
 
-#### Step 1: Response Generation
+##### Step 1: Response Generation
 
 For each langauge-image prompt in the dataset, we randomly generate \( k = 5 \) candidate responses from the starting checkpoint. To ensure diversity in the generated responses, we employ random decoding with the following parameters: Temperature = 0.7, Top-p (nucleus sampling) = 0.9. These settings encourage the generation of varied responses by balancing randomness and precision, giving us a broad spectrum of potential answers for further evaluation.
 
-#### Step 2: Scoring and Acquiring Feedback Data
+##### Step 2: Scoring and Acquiring Feedback Data
 
 Once the candidate responses are generated, we utilize a feedback source (e.g., the Reward Model from LLaVA-RLHF) to score each of them. The reward model is responsible for evaluating the quality of the responses based on relevance, coherence, and appropriateness in relation to the given image-question pair. From the scored responses, we then select:
 
@@ -77,7 +77,7 @@ Once the candidate responses are generated, we utilize a feedback source (e.g., 
 
 These two responses serve as **pairwise feedback data** for the next phase of the training process.
 
-#### Step 3: Training with Iterative DPO
+##### Step 3: Training with Iterative DPO
 
 Using the feedback data obtained in `Step 2`, we conduct DPO training in an iterative fashion. The process is as follows:
 
