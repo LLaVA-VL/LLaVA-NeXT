@@ -56,7 +56,7 @@ Some qualitative examples are provided.
     <td><img src="ov_chat_images/example1_tree.png"></td>
     <td>How likely is it to snow after this picture was taken? What would change with this type of tree before it's likely to snow?</td>
     <td>It is highly unlikely that it would snow immediately after this picture was taken, as the lush green leaves suggest it's either late spring or summer. Before snowfall, which typically occurs in late autumn or winter, this type of tree, likely an oak, would shed its leaves, and the branches would appear bare.</td>
-    <td style="white-space: nowrap;">
+    <td style="font-size: 0.9em;">
     Given the lush green leaves and the overall vibrancy of the tree in the image, it is highly unlikely that snow would follow immediately. This type of tree, which appears to be a deciduous species, typically sheds its leaves in autumn as a preparation for winter. Before it's likely to snow, the tree would undergo several changes:<br><br>
     1. <b>Color Change</b>: The leaves would change color from green to shades of yellow, orange, red, or brown as the chlorophyll breaks down, revealing other pigments.<br>
     2. <b>Leaf Fall</b>: As the days shorten and temperatures cool, the tree would gradually shed its leaves. This process is triggered by hormonal changes within the tree that cause the cells at the base of each leaf to weaken and eventually break, allowing the leaves to fall.<br>
@@ -71,7 +71,7 @@ Some qualitative examples are provided.
     <td><img src="ov_chat_images/example2_dog.jpg"></td>
     <td>Discuss how this creative twist on a classic work of art might be interpreted differently by various audiences.</td>
     <td>Different audiences might interpret this creative twist on the Mona Lisa in various ways. Art enthusiasts might appreciate the skillful execution and the playful reinterpretation of a classic, seeing it as a commentary on the universality of beauty and expression across species. Dog lovers could find joy in seeing their favorite breed portrayed with such dignity and elegance. Some might view it as a humorous take on high art, making it more accessible and relatable. Others might see it as a statement on the anthropomorphism of pets, reflecting how we often attribute human-like qualities to animals. Overall, the varied interpretations highlight the versatility of art in engaging diverse perspectives and emotions.</td>
-    <td>
+    <td style="font-size: 0.9em;">
         This creative twist on the Mona Lisa, featuring a dog's face, can be interpreted in various ways by different audiences. For art enthusiasts, it might be seen as a playful commentary on the nature of portraiture and the human tendency to anthropomorphize animals. It challenges traditional notions of beauty and subjectivity in art, inviting viewers to reconsider what makes a portrait compelling.<br>
         For dog lovers and pet owners, the image could evoke a sense of joy and familiarity, as they see their beloved pets reflected in one of the most iconic artworks in history. It might also highlight the deep bond between humans and their pets, suggesting that animals share in our cultural heritage.<br>
         In a broader social context, this image could be interpreted as a reflection of contemporary society's obsession with internet culture and memes. The substitution of the Mona Lisa's face with a dog's could be seen as a satirical take on how viral content often overshadows classical art in modern media.<br>
