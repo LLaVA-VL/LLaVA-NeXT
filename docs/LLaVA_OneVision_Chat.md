@@ -108,7 +108,7 @@ If you find it useful for your research and applications, please cite related pa
 @misc{xiong2024llavaovchat,
   title={LLaVA-OneVision-Chat: Improving Chat with Preference Learning},
   url={https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/docs/LLaVA_OneVision_Chat.md},
-  author={Tianyi Xiong and Bo Li and Huizhuo Yuan and Quanquan Gu and Chunyuan Li},
+  author={Xiong, Tianyi and Li, Bo and Yuan, Huizhuo and Gu, Quanquan and Li, Chunyuan},
   month={September},
   year={2024}
 }
@@ -120,11 +120,11 @@ If you find it useful for your research and applications, please cite related pa
   year={2024}
 }
 
-@article{2023llavarlhf,
-    author      = {Zhiqing Sun and Sheng Shen and Shengcao Cao and Haotian Liu and Chunyuan Li and Yikang Shen and Chuang Gan and Liang-Yan Gui and Yu-Xiong Wang and Yiming Yang and Kurt Keutzer and Trevor Darrell},
-    title       = {Aligning Large Multimodal Models with Factually Augmented RLHF},
-    publisher   = {arXiv:2309.14525},
-    year        = {2023}
+@article{sun2023aligning,
+  title={Aligning large multimodal models with factually augmented rlhf},
+  author={Sun, Zhiqing and Shen, Sheng and Cao, Shengcao and Liu, Haotian and Li, Chunyuan and Shen, Yikang and Gan, Chuang and Gui, Liang-Yan and Wang, Yu-Xiong and Yang, Yiming and Keutzer, Kurt and Darrell, Trevor},
+  journal={arXiv preprint arXiv:2309.14525},
+  year={2023}
 }
 ```
 
