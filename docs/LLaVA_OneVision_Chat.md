@@ -98,7 +98,7 @@ This iterative process is repeated for `N=3` rounds in total, with each round re
 
 Stay tuned on how we develop AI feedback for self-improvement LMMs!
 
-*Contributors to LLaVA-OneVision-Chat: [Tianyi Xiong](https://tyxiong23.github.io/), [Bo Li](https://brianboli.com/), [Huizhuo Yuan](https://scholar.google.com/citations?user=8foZzX4AAAAJ), [Quanquan Gu](https://web.cs.ucla.edu/~qgu/), [Chunyuan Li](https://scholar.google.com/citations?user=Zd7WmXUAAAAJ)*
+*Contributors to LLaVA-OneVision-Chat: [Tianyi Xiong](https://tyxiong23.github.io/), [Bo Li](https://brianboli.com/), [Dong Guo](https://www.linkedin.com/in/dongguoset/), [Huizhuo Yuan](https://scholar.google.com/citations?user=8foZzX4AAAAJ), [Quanquan Gu](https://web.cs.ucla.edu/~qgu/), [Chunyuan Li](https://scholar.google.com/citations?user=Zd7WmXUAAAAJ)*
 
 
 ### Citation
@@ -108,7 +108,7 @@ If you find it useful for your research and applications, please cite related pa
 @misc{xiong2024llavaovchat,
   title={LLaVA-OneVision-Chat: Improving Chat with Preference Learning},
   url={https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/docs/LLaVA_OneVision_Chat.md},
-  author={Xiong, Tianyi and Li, Bo and Yuan, Huizhuo and Gu, Quanquan and Li, Chunyuan},
+  author={Xiong, Tianyi and Li, Bo and Guo, Dong and Yuan, Huizhuo and Gu, Quanquan and Li, Chunyuan},
   month={September},
   year={2024}
 }
