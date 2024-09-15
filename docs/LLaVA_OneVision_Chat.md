@@ -108,7 +108,7 @@ This iterative process is repeated for `N=3` rounds in total, with each round re
     "chosen": "<chosen model response>",
     "rejected": "<rejected model response>"
   },
-  // ...
+  ...
 ]
 ~~~
 
