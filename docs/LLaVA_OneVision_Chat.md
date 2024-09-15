@@ -98,18 +98,14 @@ This iterative process is repeated for `N=3` rounds in total, with each round re
 
 - Example training script: [`/scripts/train/dpo_ov7b.sh`](../scripts/train/dpo_ov7b.sh)
 - Format of training data:
-
 ~~~json
-[
-  {
-    "id": "<image-id>",
-    "image": "<image path under args.image_folder>",
-    "prompt": "<input prompt/question>",
-    "chosen": "<chosen model response>",
-    "rejected": "<rejected model response>"
-  },
-  ...
-]
+{
+  "id": "<image-id>",
+  "image": "<image path under args.image_folder>",
+  "prompt": "<input prompt/question>",
+  "chosen": "<chosen model response>",
+  "rejected": "<rejected model response>"
+}
 ~~~
 
 
