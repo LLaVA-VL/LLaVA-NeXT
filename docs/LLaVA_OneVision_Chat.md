@@ -94,7 +94,7 @@ Using the feedback data obtained in `Step 2`, we conduct DPO training in an iter
 
 This iterative process is repeated for `N=3` rounds in total, with each round refining the model’s ability to generate high-quality visual chat responses by progressively incorporating feedback from both human and AI assessments.
 
-**Training scripts and data format**
+**Training script and data format**
 
 - Example training script: [`/scripts/train/dpo_ov7b.sh`](../scripts/train/dpo_ov7b.sh)
 - Format of training data:
