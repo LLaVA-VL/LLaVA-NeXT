@@ -96,7 +96,7 @@ This iterative process is repeated for `N=3` rounds in total, with each round re
 
 **Training scripts and data format**
 
-- Example training script: [`/scripts/train/dpo_ov7b.sh`](scripts/train/dpo_ov7b.sh)
+- Example training script: [`/scripts/train/dpo_ov7b.sh`](../scripts/train/dpo_ov7b.sh)
 - Format of training data:
 
 ~~~json
