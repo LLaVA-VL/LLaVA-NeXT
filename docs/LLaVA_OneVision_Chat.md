@@ -94,11 +94,27 @@ Using the feedback data obtained in `Step 2`, we conduct DPO training in an iter
 
 This iterative process is repeated for `N=3` rounds in total, with each round refining the model’s ability to generate high-quality visual chat responses by progressively incorporating feedback from both human and AI assessments.
 
+**Training script and data format**
+
+- Example training script: [`/scripts/train/dpo_ov7b.sh`](../scripts/train/dpo_ov7b.sh)
+- Format of training data:
+~~~json
+{
+  "id": "<image-id>",
+  "image": "<image path under args.image_folder>",
+  "prompt": "<input prompt/question>",
+  "chosen": "<chosen model response>",
+  "rejected": "<rejected model response>"
+}
+~~~
+
+
 ------
 
 Stay tuned on how we develop AI feedback for self-improvement LMMs!
 
 *Contributors to LLaVA-OneVision-Chat: [Tianyi Xiong](https://tyxiong23.github.io/), [Bo Li](https://brianboli.com/), [Dong Guo](https://www.linkedin.com/in/dongguoset/), [Huizhuo Yuan](https://scholar.google.com/citations?user=8foZzX4AAAAJ), [Quanquan Gu](https://web.cs.ucla.edu/~qgu/), [Chunyuan Li](https://scholar.google.com/citations?user=Zd7WmXUAAAAJ)*
+
 
 
 ### Citation
