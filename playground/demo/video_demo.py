@@ -67,26 +67,25 @@ def parse_args():
     parser.add_argument("--add_time_instruction", type=str, default=False)
     return parser.parse_args()
 
+def load_video(video_path,args):
+    if args.for_get_frames_num == 0:
+        return np.zeros((1, 336, 336, 3))
+    vr = VideoReader(video_path, ctx=cpu(0),num_threads=1)
+    total_frame_num = len(vr)
+    video_time = total_frame_num / vr.get_avg_fps()
+    fps = round(vr.get_avg_fps())
+    frame_idx = [i for i in range(0, len(vr), fps)]
+    frame_time = [i/fps for i in frame_idx]
+    if len(frame_idx) > args.for_get_frames_num or args.force_sample:
+        sample_fps = args.for_get_frames_num
+        uniform_sampled_frames = np.linspace(0, total_frame_num - 1, sample_fps, dtype=int)
+        frame_idx = uniform_sampled_frames.tolist()
+        frame_time = [i/vr.get_avg_fps() for i in frame_idx]
+    frame_time = ",".join([f"{i:.2f}s" for i in frame_time])
+    spare_frames = vr.get_batch(frame_idx).asnumpy()
+    # import pdb;pdb.set_trace()
 
-    def load_video(video_path,args):
-        if max_frames_num == 0:
-            return np.zeros((1, 336, 336, 3))
-        vr = VideoReader(video_path, ctx=cpu(0),num_threads=1)
-        total_frame_num = len(vr)
-        video_time = total_frame_num / vr.get_avg_fps()
-        fps = round(vr.get_avg_fps()/fps)
-        frame_idx = [i for i in range(0, len(vr), fps)]
-        frame_time = [i/fps for i in frame_idx]
-        if len(frame_idx) > args.for_get_frames_num or args.force_sample:
-            sample_fps = max_frames_num
-            uniform_sampled_frames = np.linspace(0, total_frame_num - 1, sample_fps, dtype=int)
-            frame_idx = uniform_sampled_frames.tolist()
-            frame_time = [i/vr.get_avg_fps() for i in frame_idx]
-        frame_time = ",".join([f"{i:.2f}s" for i in frame_time])
-        spare_frames = vr.get_batch(frame_idx).asnumpy()
-        # import pdb;pdb.set_trace()
-
-        return spare_frames,frame_time,video_time
+    return spare_frames,frame_time,video_time
 
 
 
@@ -148,6 +147,17 @@ def run_inference(args):
     else:
         pass
 
+    # import pdb;pdb.set_trace()
+    if getattr(model.config, "force_sample", None) is not None:
+        args.force_sample = model.config.force_sample
+    else:
+        args.force_sample = False
+
+    if getattr(model.config, "add_time_instruction", None) is not None:
+        args.add_time_instruction = model.config.add_time_instruction
+    else:
+        args.add_time_instruction = False
+
     # Create the output directory if it doesn't exist
     if not os.path.exists(args.output_dir):
         os.makedirs(args.output_dir)
@@ -195,7 +205,7 @@ def run_inference(args):
         if "gpt4v" != args.model_path:
             qs = question
             if args.add_time_instruction:
-                time_instruciton = f"The video lasts for {video_time:.2f} seconds, and {len(video)} frames are uniformly sampled from it. These frames are located at {frame_time}.Please answer the following questions related to this video."
+                time_instruciton = f"The video lasts for {video_time:.2f} seconds, and {len(video[0])} frames are uniformly sampled from it. These frames are located at {frame_time}.Please answer the following questions related to this video."
                 qs = f'{time_instruciton}\n{qs}'
             if model.config.mm_use_im_start_end:
                 qs = DEFAULT_IM_START_TOKEN + DEFAULT_IMAGE_TOKEN + DEFAULT_IM_END_TOKEN + "\n" + qs
