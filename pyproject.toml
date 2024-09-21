@@ -59,6 +59,7 @@ train = [
     "decord",
     "tyro",
     "scipy",
+    "tflite-runtime",
 ]
 
 [project.urls]

@@ -1,0 +1,15 @@
+datasets:
+  - json_path: /home/azureuser/data/LLaVA-NeXT-Data/llava_next_raw_format/llava_next_raw_format_processed.json
+    sampling_strategy: "all"
+  - json_path: /home/azureuser/data/LLaVA-ReCap-118K/data/data_cleaned.json
+    sampling_strategy: "all"
+  - json_path: /home/azureuser/data/LLaVA-ReCap-558K/data/data_cleaned.json
+    sampling_strategy: "all"
+  - json_path: /home/azureuser/data/LLaVA-ReCap-CC3M/data/data_cleaned.json
+    sampling_strategy: "all"
+  - json_path: /home/azureuser/data/ShareGPT4Video/llava_v1_5_mix665k_with_video_chatgpt72k_share4video28k_cleaned.json
+    sampling_strategy: "all"
+  # - json_path: /home/azureuser/data/ShareGPT4Video/sharegpt4video_40k.jsonl
+  #   sampling_strategy: "all"
+  - json_path: /home/azureuser/data/ShareGPT4Video/sharegpt4video_mix181k_vqa-153k_share-cap-28k.json
+    sampling_strategy: "all"
