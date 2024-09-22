@@ -93,6 +93,7 @@ class LlavaMetaModel:
         self.config.mm_vision_select_feature = mm_vision_select_feature
         self.config.mm_patch_merge_type = mm_patch_merge_type
 
+        
         if not hasattr(self.config, 'add_faster_video'):
             if model_args.add_faster_video:
                 embed_std = 1 / torch.sqrt(torch.tensor(self.config.hidden_size, dtype=self.dtype))
@@ -227,7 +228,7 @@ class LlavaMetaForCausalLM(ABC):
         image_feature = image_feature.permute(4, 0, 2, 1, 3).contiguous()
         image_feature = image_feature.flatten(1, 2).flatten(2, 3)
         image_feature = torch.cat((image_feature, self.model.image_newline[:, None, None].expand(*image_feature.shape[:-1], 1).to(image_feature.device)), dim=-1)
-        if self.config.add_faster_video:
+        if getattr(self.config, "add_faster_video", False):
             # import pdb; pdb.set_trace()
             # (3584, 832, 14) -> (3584, 64, 13, 14)
             image_feature = image_feature.view(feature_dim, num_frames,resize_h, -1)
@@ -311,7 +312,7 @@ class LlavaMetaForCausalLM(ABC):
                         if mm_newline_position == "grid":
                             # Grid-wise
                             image_feature = self.add_token_per_grid(image_feature)
-                            if self.config.add_faster_video:
+                            if getattr(self.config, "add_faster_video", False):
                                 faster_video_feature = self.add_token_per_grid(all_faster_video_features[image_idx])
                                 # Add a token for each frame
                                 concat_slow_fater_token = []
