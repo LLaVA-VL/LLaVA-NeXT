@@ -2,7 +2,7 @@ name: llava-next-server
 message: LLaVA Next Inference server
 resources:
   cluster: vessl-gcp-oregon
-  preset: gpu-l4-small-spot
+  preset: gpu-l4-medium-spot
 image: quay.io/vessl-ai/torch:2.3.1-cuda12.1-r5
 import:
   /code/:
@@ -18,8 +18,6 @@ run:
       pip install flash-attn --no-build-isolation
       pip install fastapi[standard] uvicorn
       pip install fastapi-cli
-  - workdir: /code
-    command: |-
       fastapi run vessl.py
 ports:
   - name: llava-next
