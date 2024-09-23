@@ -31,7 +31,7 @@ from decord import VideoReader, cpu
 # torch.set_printoptions(threshold=1000000)
 
 # Lora model path or Full model path
-model_path = "/home/azureuser/llava-next/checkpoints/llavanext-mikarbx_mobilenetv2-Qwen_Qwen2-7B-Instruct-mlp2x_gelu-pretrain_blip558k_plain-mid/checkpoint-33000"
+model_path = "mikarbx/llava-next-mobilenetv2"
 model_name = get_model_name_from_path(model_path)
 # Base model path if model_path is lora-based, otherwise None
 # base_model_path = "lmsys/vicuna-13b-v1.5"
