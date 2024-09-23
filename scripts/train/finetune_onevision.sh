@@ -7,7 +7,7 @@ export NCCL_DEBUG=INFO
 export RANK=0
 export PORT=29401
 export NNODES=1
-export NUM_GPUS=1
+export NUM_GPUS=4
 export ADDR=0.0.0.0
 
 LLM_VERSION="Qwen/Qwen2-7B-Instruct" 
@@ -19,7 +19,7 @@ VISION_MODEL_VERSION_CLEAN="${VISION_MODEL_VERSION//\//_}"
 
 ############### Pretrain ################
 
-PROMPT_VERSION="qwen_1_5"
+PROMPT_VERSION="qwen_2"
 
 BASE_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-mlp2x_gelu-pretrain_blip558k_plain"
 MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-mlp2x_gelu-pretrain_blip558k_plain-mid"
@@ -32,10 +32,10 @@ ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${NUM_GPUS}" --nnodes="${NN
     --deepspeed scripts/zero3.json \
     --model_name_or_path ${CKPT_PATH} \
     --version ${PROMPT_VERSION} \
-    --data_path /home/azureuser/llava_video/scripts/train/gobi.yaml \
+    --data_path /home/azureuser/llava-next/scripts/train/gobi.yaml \
     --image_folder /home/azureuser/data/images \
     --video_folder /home/azureuser/data/videos \
-    --pretrain_mm_mlp_adapter="/home/azureuser/llava_video/checkpoints/projectors/${BASE_RUN_NAME}/mm_projector.bin" \
+    --pretrain_mm_mlp_adapter="/home/azureuser/llava-next/checkpoints/projectors/${BASE_RUN_NAME}/mm_projector.bin" \
     --mm_tunable_parts="mm_mlp_adapter,mm_language_model" \
     --mm_vision_tower_lr=2e-6 \
     --vision_tower ${VISION_MODEL_VERSION} \
@@ -43,13 +43,12 @@ ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${NUM_GPUS}" --nnodes="${NN
     --mm_vision_select_layer -2 \
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
-    --group_by_modality_length True \
     --image_aspect_ratio anyres_max_9 \
     --image_grid_pinpoints  "(1x1),...,(6x6)" \
     --mm_patch_merge_type spatial_unpad \
     --bf16 True \
     --run_name $MID_RUN_NAME \
-    --output_dir /home/azureuser/llava_video/checkpoints/${MID_RUN_NAME} \
+    --output_dir /home/azureuser/llava-next/checkpoints/${MID_RUN_NAME} \
     --num_train_epochs 1 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 4 \

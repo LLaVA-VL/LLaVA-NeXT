@@ -9,7 +9,7 @@ datasets:
     sampling_strategy: "all"
   - json_path: /home/azureuser/data/ShareGPT4Video/llava_v1_5_mix665k_with_video_chatgpt72k_share4video28k_cleaned_cleaned.json
     sampling_strategy: "all"
-  # - json_path: /home/azureuser/data/ShareGPT4Video/sharegpt4video_40k.jsonl
-  #   sampling_strategy: "all"
   - json_path: /home/azureuser/data/ShareGPT4Video/sharegpt4video_mix181k_vqa-153k_share-cap-28k.json
     sampling_strategy: "all"
+  # - json_path: /home/azureuser/data/ShareGPT4Video/sharegpt4video_40k.jsonl
+  #   sampling_strategy: "all"
