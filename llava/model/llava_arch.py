@@ -283,7 +283,7 @@ class LlavaMetaForCausalLM(ABC):
             encoded_image_features = torch.split(encoded_image_features, split_sizes)
             image_features = []
             for idx, image_feat in enumerate(encoded_image_features):
-                if idx in video_idx_in_batch:
+                if idx in video_idx_in_batch and self.config.mm_spatial_pool_stride > 1:
                     image_features.append(self.get_2dPool(image_feat))
                 else:
                     image_features.append(image_feat)
