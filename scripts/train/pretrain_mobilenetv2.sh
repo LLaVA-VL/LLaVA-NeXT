@@ -7,17 +7,17 @@ export NCCL_DEBUG=INFO
 export RANK=0
 export PORT=29401
 export NNODES=1
-export NUM_GPUS=1
+export NUM_GPUS=4
 export ADDR=0.0.0.0
 
-LLM_VERSION="Qwen/Qwen2-7B-Instruct"
+LLM_VERSION="Qwen/Qwen2.5-1.5B-Instruct"
 LLM_VERSION_CLEAN="${LLM_VERSION//\//_}"
 VISION_MODEL_VERSION="mikarbx/mobilenetv2"
 VISION_MODEL_VERSION_CLEAN="${VISION_MODEL_VERSION//\//_}"
 
 ############### Pretrain ################
 
-PROMPT_VERSION=plain
+PROMPT_VERSION="qwen_2"
 
 BASE_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-mlp2x_gelu-pretrain_blip558k_plain"
 echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
@@ -36,7 +36,7 @@ ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${NUM_GPUS}" --nnodes="${NN
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
     --bf16 True \
-    --output_dir /home/azureuser/llava_video/checkpoints/projectors/${BASE_RUN_NAME} \
+    --output_dir /home/azureuser/llava-next/checkpoints/projectors/${BASE_RUN_NAME} \
     --num_train_epochs 1 \
     --per_device_train_batch_size 16 \
     --per_device_eval_batch_size 4 \

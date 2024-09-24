@@ -10,7 +10,7 @@ export NNODES=1
 export NUM_GPUS=4
 export ADDR=0.0.0.0
 
-LLM_VERSION="Qwen/Qwen2-7B-Instruct" 
+LLM_VERSION="Qwen/Qwen2.5-1.5B-Instruct"
 # for 7b model we recommend bs=1, accum=2, 16 nodes, 128 gpus, lr=1e-5, warmup=0.03
 # for 72b model we recommend bs=1, accum=1, 32 nodes, 256 gpus, lr=1e-5, warmup=0.03
 LLM_VERSION_CLEAN="${LLM_VERSION//\//_}"
