@@ -283,7 +283,7 @@ class LlavaMetaForCausalLM(ABC):
             encoded_image_features = torch.split(encoded_image_features, split_sizes)
             image_features = []
             for idx, image_feat in enumerate(encoded_image_features):
-                if idx in video_idx_in_batch and self.config.mm_spatial_pool_stride > 1:
+                if idx in video_idx_in_batch:
                     image_features.append(self.get_2dPool(image_feat))
                 else:
                     image_features.append(image_feat)
@@ -351,7 +351,7 @@ class LlavaMetaForCausalLM(ABC):
                         base_image_feature = image_feature[0]
                         image_feature = image_feature[1:]
                         height = width = self.get_vision_tower().num_patches_per_side
-                        assert height * width == base_image_feature.shape[0]
+                        assert base_image_feature.shape[0] % (height * width) == 0
 
                         if "anyres_max" in image_aspect_ratio:
                             matched_anyres_max_num_patches = re.match(r"anyres_max_(\d+)", image_aspect_ratio)

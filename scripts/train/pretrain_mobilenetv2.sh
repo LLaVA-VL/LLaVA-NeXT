@@ -10,14 +10,14 @@ export NNODES=1
 export NUM_GPUS=4
 export ADDR=0.0.0.0
 
-LLM_VERSION="Qwen/Qwen2.5-1.5B-Instruct"
+LLM_VERSION="Qwen/Qwen1.5-1.8B-Chat"
 LLM_VERSION_CLEAN="${LLM_VERSION//\//_}"
 VISION_MODEL_VERSION="mikarbx/mobilenetv2"
 VISION_MODEL_VERSION_CLEAN="${VISION_MODEL_VERSION//\//_}"
 
 ############### Pretrain ################
 
-PROMPT_VERSION="qwen_2"
+PROMPT_VERSION="qwen_1_5"
 
 BASE_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-mlp2x_gelu-pretrain_blip558k_plain"
 echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"

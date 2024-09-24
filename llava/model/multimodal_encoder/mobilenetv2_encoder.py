@@ -127,7 +127,7 @@ class MobileNetV2VisionTower(nn.Module):
 
     @property
     def num_patches_per_side(self):
-        return 1
+        return 224 // 14
 
     @property
     def image_size(self):
