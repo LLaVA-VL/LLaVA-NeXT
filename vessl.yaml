@@ -1,0 +1,37 @@
+name: llava-next-server
+message: LLaVA Next Inference server
+resources:
+  cluster: vessl-gcp-oregon
+  preset: gpu-l4-medium-spot
+image: quay.io/vessl-ai/torch:2.3.1-cuda12.1-r5
+import:
+  /code/:
+    git:
+      url: github.com/gpminsuk/LLaVA-NeXT.git
+      ref: main
+run:
+  - workdir: /code
+    command: |-
+      pip install --upgrade pip  # enable PEP 660 support
+      pip install -e .
+      pip install -e ".[train]"
+      pip install flash-attn --no-build-isolation
+      pip install fastapi[standard] uvicorn
+      pip install fastapi-cli
+      fastapi run vessl.py
+ports:
+  - name: llava-next
+    type: http
+    port: 8000
+service:
+  autoscaling:
+    min: 1
+    max: 2
+    metric: cpu
+    target: 50
+  expose: 8000
+  monitoring:
+    - port: 8000
+      path: /metrics
+env:
+  MODEL_PATH: mikarbx/llava-next-mobilenetv2

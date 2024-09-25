@@ -4,11 +4,17 @@ export NCCL_IB_GID_INDEX=3
 export NCCL_SOCKET_IFNAME=eth0
 export NCCL_DEBUG=INFO
 
-LLM_VERSION="Qwen/Qwen2-7B-Instruct" 
+export RANK=0
+export PORT=29401
+export NNODES=1
+export NUM_GPUS=4
+export ADDR=0.0.0.0
+
+LLM_VERSION="Qwen/Qwen1.5-1.8B-Chat"
 # for 7b model we recommend bs=1, accum=2, 16 nodes, 128 gpus, lr=1e-5, warmup=0.03
 # for 72b model we recommend bs=1, accum=1, 32 nodes, 256 gpus, lr=1e-5, warmup=0.03
 LLM_VERSION_CLEAN="${LLM_VERSION//\//_}"
-VISION_MODEL_VERSION="google/siglip-so400m-patch14-384"
+VISION_MODEL_VERSION="mikarbx/mobilenetv2"
 VISION_MODEL_VERSION_CLEAN="${VISION_MODEL_VERSION//\//_}"
 
 ############### Pretrain ################
@@ -16,6 +22,7 @@ VISION_MODEL_VERSION_CLEAN="${VISION_MODEL_VERSION//\//_}"
 PROMPT_VERSION="qwen_1_5"
 
 BASE_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-mlp2x_gelu-pretrain_blip558k_plain"
+MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-mlp2x_gelu-pretrain_blip558k_plain-mid"
 echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
 CKPT_PATH=$LLM_VERSION # this could also be the previous stage checkpoint
@@ -25,11 +32,11 @@ ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${NUM_GPUS}" --nnodes="${NN
     --deepspeed scripts/zero3.json \
     --model_name_or_path ${CKPT_PATH} \
     --version ${PROMPT_VERSION} \
-    --data_path ./onevision_data.yaml \
-    --image_folder ./onevision_data/images \
-    --video_folder ./onevision_data/videos \
-    --pretrain_mm_mlp_adapter="/checkpoints/projectors/${BASE_RUN_NAME}/mm_projector.bin" \
-    --mm_tunable_parts="mm_vision_tower,mm_mlp_adapter,mm_language_model" \
+    --data_path /home/azureuser/llava-next/scripts/train/gobi.yaml \
+    --image_folder /home/azureuser/data/images \
+    --video_folder /home/azureuser/data/videos \
+    --pretrain_mm_mlp_adapter="/home/azureuser/llava-next/checkpoints/projectors/${BASE_RUN_NAME}/mm_projector.bin" \
+    --mm_tunable_parts="mm_mlp_adapter,mm_language_model" \
     --mm_vision_tower_lr=2e-6 \
     --vision_tower ${VISION_MODEL_VERSION} \
     --mm_projector_type mlp2x_gelu \
@@ -42,7 +49,7 @@ ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${NUM_GPUS}" --nnodes="${NN
     --mm_patch_merge_type spatial_unpad \
     --bf16 True \
     --run_name $MID_RUN_NAME \
-    --output_dir "/checkpoints/${MID_RUN_NAME}" \
+    --output_dir /home/azureuser/llava-next/checkpoints/${MID_RUN_NAME} \
     --num_train_epochs 1 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 4 \
