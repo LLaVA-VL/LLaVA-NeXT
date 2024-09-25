@@ -30,7 +30,7 @@ ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${NUM_GPUS}" --nnodes="${NN
     --deepspeed scripts/zero3.json \
     --model_name_or_path $PREV_STAGE_CHECKPOINT \
     --version $PROMPT_VERSION \
-    --data_path /mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/scripts/i18n/scale_llms/next_ov_stage_july21.yaml \
+    --data_path /mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/scripts/i18n/scale_llms/next_3p2m_single_image.yaml \
     --image_folder /mnt/bn/vl-research/data/llava_data \
     --video_folder /mnt/bn/vl-research/data/llava_video \
     --mm_tunable_parts="mm_vision_tower,mm_mlp_adapter,mm_language_model" \
