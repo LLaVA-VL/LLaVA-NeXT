@@ -351,7 +351,7 @@ class LlavaMetaForCausalLM(ABC):
                         base_image_feature = image_feature[0]
                         image_feature = image_feature[1:]
                         height = width = self.get_vision_tower().num_patches_per_side
-                        assert base_image_feature.shape[0] % (height * width) == 0
+                        assert height * width == base_image_feature.shape[0]
 
                         if "anyres_max" in image_aspect_ratio:
                             matched_anyres_max_num_patches = re.match(r"anyres_max_(\d+)", image_aspect_ratio)
