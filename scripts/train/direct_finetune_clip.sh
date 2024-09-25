@@ -6,7 +6,7 @@ export NCCL_DEBUG=INFO
 
 LLM_VERSION="Qwen/Qwen2-7B-Instruct"
 LLM_VERSION_CLEAN="${LLM_VERSION//\//_}"
-VISION_MODEL_VERSION="google/siglip-so400m-patch14-384"
+VISION_MODEL_VERSION="openai/clip-vit-large-patch14-336"
 VISION_MODEL_VERSION_CLEAN="${VISION_MODEL_VERSION//\//_}"
 
 ############### Pretrain ################
@@ -16,12 +16,10 @@ PROMPT_VERSION="qwen_1_5"
 BASE_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-mlp2x_gelu-pretrain_blip558k_plain"
 echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
-CKPT_PATH=$LLM_VERSION # this could also be the previous stage checkpoint
-
 ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${NUM_GPUS}" --nnodes="${NNODES}" --node_rank="${RANK}" --master_addr="${ADDR}" --master_port="${PORT}" \
     llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
-    --model_name_or_path ${CKPT_PATH} \
+    --model_name_or_path ${LLM_VERSION} \
     --version ${PROMPT_VERSION} \
     --data_path=llava_1_6.json \
     --image_folder your_image_folder \
@@ -35,7 +33,7 @@ ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${NUM_GPUS}" --nnodes="${NN
     --mm_use_im_patch_token False \
     --group_by_modality_length True \
     --image_aspect_ratio anyres \
-    --image_grid_pinpoints "[(384, 768), (768, 384), (768, 768), (1152, 384), (384, 1152)]" \
+    --image_grid_pinpoints "[(336, 672), (672, 336), (672, 672), (1008, 336), (336, 1008)]" \
     --mm_patch_merge_type spatial_unpad \
     --bf16 True \
     --run_name $MID_RUN_NAME \
