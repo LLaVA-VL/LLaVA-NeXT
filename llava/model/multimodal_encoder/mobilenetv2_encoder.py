@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 import tflite_runtime.interpreter as tflite
 from huggingface_hub import hf_hub_download
@@ -16,6 +17,9 @@ class MobileNetV2VisionTower(nn.Module):
         self.is_loaded = False
 
         self.vision_tower_name = vision_tower
+        self._patch_size = 12
+        self._image_size = 224
+        self._output_size = 36 * 36
 
         self.load_model()
 
@@ -25,7 +29,7 @@ class MobileNetV2VisionTower(nn.Module):
             return
 
         self.image_processor = CLIPImageProcessor.from_pretrained(self.vision_tower_name)
-        self.vision_tower = tflite.Interpreter(model_path=hf_hub_download(repo_id=self.vision_tower_name, filename="mobilenet_v2_0.35_224_without_classification_head_int8_float32.tflite", force_download=True))
+        self.vision_tower = tflite.Interpreter(model_path=hf_hub_download(repo_id=self.vision_tower_name, filename=f"mobilenet_v2_0.35_{self._image_size}_without_classification_head_int8_float32.tflite", force_download=True))
         self.vision_tower.allocate_tensors()
 
         self.input_details = self.vision_tower.get_input_details()
@@ -104,6 +108,10 @@ class MobileNetV2VisionTower(nn.Module):
         if torch.cuda.is_available():
             output_batch_tensor = output_batch_tensor.to("cuda")
 
+        assert self._output_size >= self.output_details[0]["shape"][-1]
+        
+        output_batch_tensor = F.pad(output_batch_tensor, (0, self._output_size - self.output_details[0]["shape"][-1]))
+        output_batch_tensor = output_batch_tensor.view(output_batch_tensor.shape[0], self._patch_size * self._patch_size, -1)
         return output_batch_tensor
 
     def run_inference_on_single_image(self, single_image):
@@ -119,7 +127,7 @@ class MobileNetV2VisionTower(nn.Module):
     @property
     def hidden_size(self):
         # Get output size from TFLite model details
-        return int(self.output_details[0]["shape"][-1])
+        return self._output_size // (self._patch_size * self._patch_size)
 
     @property
     def config(self):
@@ -127,8 +135,8 @@ class MobileNetV2VisionTower(nn.Module):
 
     @property
     def num_patches_per_side(self):
-        return 224 // 14
+        return self._patch_size
 
     @property
     def image_size(self):
-        return 224
+        return self._image_size
