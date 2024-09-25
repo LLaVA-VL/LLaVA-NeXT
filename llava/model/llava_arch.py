@@ -178,8 +178,8 @@ class LlavaMetaForCausalLM(ABC):
         elif self.config.mm_spatial_pool_mode == "max":
             image_feature = nn.functional.max_pool2d(image_feature, stride)
         elif self.config.mm_spatial_pool_mode == "bilinear":
-            height, weight = image_feature.shape[2:]
-            scaled_shape = [math.ceil(height / stride), math.ceil(weight / stride)]
+            height, width = image_feature.shape[2:]
+            scaled_shape = [math.ceil(height / stride), math.ceil(width / stride)]
             image_feature = nn.functional.interpolate(image_feature, size=scaled_shape, mode='bilinear')
 
         else:
