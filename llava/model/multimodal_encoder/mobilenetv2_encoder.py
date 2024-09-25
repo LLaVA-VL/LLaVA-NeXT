@@ -17,11 +17,15 @@ class MobileNetV2VisionTower(nn.Module):
         self.is_loaded = False
 
         self.vision_tower_name = vision_tower
-        self._patch_size = 12
+
+        # self._patch_size = 12
+        self._patch_size = 1
         self._image_size = 224
-        self._output_size = 36 * 36
 
         self.load_model()
+
+        # self._output_size = 36 * 36
+        self._output_size = self.output_details[0]["shape"][-1]
 
     def load_model(self, device_map=None):
         if self.is_loaded:
@@ -107,11 +111,6 @@ class MobileNetV2VisionTower(nn.Module):
         output_batch_tensor = output_batch_tensor.to(original_type)
         if torch.cuda.is_available():
             output_batch_tensor = output_batch_tensor.to("cuda")
-
-        assert self._output_size >= self.output_details[0]["shape"][-1]
-        
-        output_batch_tensor = F.pad(output_batch_tensor, (0, self._output_size - self.output_details[0]["shape"][-1]))
-        output_batch_tensor = output_batch_tensor.view(output_batch_tensor.shape[0], self._patch_size * self._patch_size, -1)
         return output_batch_tensor
 
     def run_inference_on_single_image(self, single_image):
@@ -127,7 +126,7 @@ class MobileNetV2VisionTower(nn.Module):
     @property
     def hidden_size(self):
         # Get output size from TFLite model details
-        return self._output_size // (self._patch_size * self._patch_size)
+        return int(self._output_size)
 
     @property
     def config(self):
