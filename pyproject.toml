@@ -38,7 +38,7 @@ train = [
     "torchvision==0.16.2",
     "uvicorn",
     "wandb",
-    "deepspeed==0.14.2",
+    "deepspeed==0.14.4",
     "peft==0.4.0",
     "accelerate>=0.29.1",
     "tokenizers~=0.15.2",
