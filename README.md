@@ -91,6 +91,8 @@ cd LLaVA-NeXT
 ```
 
 #### 2. **Install the inference package:**
+Note: Linux environment is recommended. Some packages may not be available in mac os. 
+
 ```bash
 conda create -n llava python=3.10 -y
 conda activate llava
@@ -146,6 +148,14 @@ Checkout the HTTP Post/Get and SRT usage at [sglang/examples/runtime/llava_onevi
     bash examples/usage/llava_video/srt_example_llava_v.sh K K-1 YOUR_VIDEO_PATH YOUR_MODEL_PATH FRAMES_PER_VIDEO
     ```
 
+## FastAPI Server
+
+If you wish to run just the server, run the following commands. (TODO: some package versions may conflict with dependencies for training. Resolve)
+
+```sh
+pip install -e ".[api]"
+fastapi dev vessl.py
+```
 
 ## Citation
 

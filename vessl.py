@@ -1,12 +1,15 @@
+# Basic
 import os
-import torch
-from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List
+# FastAPI
+from fastapi import FastAPI, HTTPException, Depends, Header
+from contextlib import asynccontextmanager
+# ML
+import torch
 from llava.conversation import Conversation, SeparatorStyle
 from llava.model.language_model.llava_qwen import LlavaQwenConfig, LlavaQwenForCausalLM
 from inference import load_model, run_inference
-from contextlib import asynccontextmanager
 
 class Message(BaseModel):
     role: str
@@ -16,13 +19,21 @@ class GenerateRequest(BaseModel):
     embeddings: List[str]
     conversation: List[Message]
 
-model_path = os.environ['MODEL_PATH']
+model_path = os.getenv(['MODEL_PATH'])
+if not model_path:
+    raise RuntimeError("MODEL_PATH environment variable not set. Set it by running `export MODEL_PATH='...'`")
+api_key = os.getenv('API_KEY')
+if not api_key:
+    raise RuntimeError("API_KEY environment variable not set. Set it by running `export API_KEY='...'`")
 
 config = None
 tokenizer = None
 model = None
 mm_projector = None
 
+async def verify_api_key(x_api_key: str = Header(...)):
+    if x_api_key != api_key:
+        raise HTTPException(status_code=401, detail="Invalid API Key")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -34,12 +45,23 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+@app.post("/v2/generate")
+async def generate(
+    request: GenerateRequest,
+    _: str = Depends(verify_api_key)):
+
+    embeddings = request.embeddings # TODO: support response_type = hexadecimal | vector
+    conversation = request.conversation
+    return await run_inference(embeddings, conversation)
+
 @app.post("/generate")
 async def generate(request: GenerateRequest):
     # Access embeddings and conversation from the request
     embeddings = request.embeddings
     conversation = request.conversation
+    return await run_inference(embeddings, conversation)
 
+async def run_inference(embeddings, conversation):
     embedding_tensors = []
     for embedding in embeddings:
         byte_array = bytes.fromhex(embedding)
