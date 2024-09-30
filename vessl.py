@@ -45,19 +45,12 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-@app.post("/v2/generate")
+@app.post("/generate")
 async def generate(
     request: GenerateRequest,
     _: str = Depends(verify_api_key)):
 
     embeddings = request.embeddings # TODO: support response_type = hexadecimal | vector
-    conversation = request.conversation
-    return await run_inference(embeddings, conversation)
-
-@app.post("/generate")
-async def generate(request: GenerateRequest):
-    # Access embeddings and conversation from the request
-    embeddings = request.embeddings
     conversation = request.conversation
     return await run_inference(embeddings, conversation)
 
