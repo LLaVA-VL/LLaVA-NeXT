@@ -13,22 +13,26 @@ VISION_MODEL_VERSION_CLEAN="${VISION_MODEL_VERSION//\//_}"
 
 ############### Pretrain ################
 
-PROMPT_VERSION="qwen_1_5"
-
-BASE_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-mlp2x_gelu-pretrain_blip558k_plain"
+BASE_RUN_NAME="llavanext-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-mlp2x_gelu-pretrain_blip558k_plain"
 echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
-CKPT_PATH=$LLM_VERSION # this could also be the previous stage checkpoint
+############### Finetune ################
+
+# Stage 2
+PROMPT_VERSION="qwen_1_5"
+RUN_NAME="llava-onevision-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-ov_stage_am9" 
+PREV_STAGE_CHECKPOINT="/mnt/bn/vl-research/checkpoints/onevision/llavanext-google_siglip-so400m-patch14-384-Qwen_Qwen2-7B-Instruct-mid_to_final_next_3m_am9_july14" # replace it with your last checkpoint training from single image collection
+echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"
+echo "MID_RUN_NAME: ${RUN_NAME}"
 
 ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${NUM_GPUS}" --nnodes="${NNODES}" --node_rank="${RANK}" --master_addr="${ADDR}" --master_port="${PORT}" \
     llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
-    --model_name_or_path ${CKPT_PATH} \
-    --version ${PROMPT_VERSION} \
-    --data_path ./onevision_data.yaml \
-    --image_folder ./onevision_data/images \
-    --video_folder ./onevision_data/videos \
-    --pretrain_mm_mlp_adapter="/checkpoints/projectors/${BASE_RUN_NAME}/mm_projector.bin" \
+    --model_name_or_path $PREV_STAGE_CHECKPOINT \
+    --version $PROMPT_VERSION \
+    --data_path /mnt/bn/vl-research/workspace/boli01/projects/LLaVA_Next/scripts/i18n/scale_llms/next_ov_stage_july21.yaml \
+    --image_folder /mnt/bn/vl-research/data/llava_data \
+    --video_folder /mnt/bn/vl-research/data/llava_video \
     --mm_tunable_parts="mm_vision_tower,mm_mlp_adapter,mm_language_model" \
     --mm_vision_tower_lr=2e-6 \
     --vision_tower ${VISION_MODEL_VERSION} \
@@ -41,8 +45,8 @@ ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${NUM_GPUS}" --nnodes="${NN
     --image_grid_pinpoints  "(1x1),...,(6x6)" \
     --mm_patch_merge_type spatial_unpad \
     --bf16 True \
-    --run_name $MID_RUN_NAME \
-    --output_dir "/checkpoints/${MID_RUN_NAME}" \
+    --run_name $RUN_NAME \
+    --output_dir /mnt/bn/vl-research/checkpoints/onevision/$RUN_NAME \
     --num_train_epochs 1 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 4 \
@@ -66,5 +70,6 @@ ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${NUM_GPUS}" --nnodes="${NN
     --torch_compile_backend "inductor" \
     --dataloader_drop_last True \
     --frames_upbound 32
+exit 0;
 
 # You can delete the sdpa attn_implementation if you want to use flash attn
