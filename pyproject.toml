@@ -62,6 +62,11 @@ train = [
     "tflite-runtime",
 ]
 
+api = [
+    "fastapi[standard]",
+    "torch[standard]"
+]
+
 [project.urls]
 "Homepage" = "https://llava-vl.github.io"
 "Bug Tracker" = "https://github.com/haotian-liu/LLaVA/issues"
