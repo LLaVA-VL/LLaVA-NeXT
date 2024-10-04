@@ -153,6 +153,8 @@ def run_inference(args):
     else:
         args.force_sample = False
 
+    # import pdb;pdb.set_trace()
+
     if getattr(model.config, "add_time_instruction", None) is not None:
         args.add_time_instruction = model.config.add_time_instruction
     else:
