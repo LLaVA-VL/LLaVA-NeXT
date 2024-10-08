@@ -4,8 +4,8 @@
 
 ### Key Observations:
 
-- **Impact of Alignment Learning**: By incorporating alignment learning—whether through human feedback or AI-generated feedback—we've observed a notable improvement in LLaVA-OneVision's chat experience. This progress is reflected in the significant performance gains recorded on both the LLaVA-W and WildVision benchmarks.
-- **Success of Self-Generated Feedback**: In LLaVA-OneVision's case, leveraging self-generated feedback data has proven to be a highly effective strategy for enhancing its visual chat capabilities. This approach allows the model to refine its responses autonomously, leading to more natural and coherent conversations.
+- **Impact of Preference Learning**: By incorporating alignment learning—whether through human feedback or AI-generated feedback—we've observed a notable improvement in LLaVA-OneVision's chat experience. This progress is reflected in the significant performance gains recorded on both the LLaVA-W and WildVision benchmarks.
+- **Success of Self-Generated Feedback**: In LLaVA-OneVision's case, leveraging self-generated feedback data has proven to be a highly effective strategy for enhancing its visual chat capabilities. Specifically, [LLaVA-Critic](https://llava-vl.github.io/blog/2024-10-03-llava-critic/) is a utilized as a generalist evaluator to generate the scoring feedback for preference learning. This approach allows the model to refine its responses autonomously, leading to more natural and coherent conversations.
 
 ----
 
@@ -57,7 +57,7 @@ To optimize LLaVA-OneVision’s in-the-wild conversational abilities, we've empl
 
 1. **Human Feedback from [LLaVA-RLHF](https://llava-rlhf.github.io/)**: Real-world human input plays a crucial role in guiding the model toward more intuitive and user-friendly responses.
 
-2. **AI Feedback from LLaVA-OV’s Self-Generated Responses**: Additionally, the AI's own self-generated feedback allows it to continuously improve and adapt, making this a valuable source for iterative learning.
+2. **AI Feedback from LLaVA-OV’s Self-Generated Responses**: Additionally, the AI's own self-generated feedback allows it to continuously improve and adapt, making this a valuable source for iterative learning. [LLaVA-Critic](https://llava-vl.github.io/blog/2024-10-03-llava-critic/) is a utilized as a generalist evaluator to generate the scoring feedback for preference learning
 
 By experimenting with either of these two forms of feedback, we've been able to significantly enhance LLaVA-OneVision's conversation capabilities, bringing it closer to achieving seamless visual chat interactions in dynamic, real-world environments.
 
@@ -76,7 +76,7 @@ For each langauge-image prompt in the dataset, we randomly generate `k = 5` cand
 
 ##### Step 2: Scoring and Acquiring Feedback Data
 
-Once the candidate responses are generated, we utilize a feedback source (e.g., the Reward Model from LLaVA-RLHF) to score each of them. The reward model is responsible for evaluating the quality of the responses based on relevance, coherence, and appropriateness in relation to the given image-question pair. From the scored responses, we then select:
+Once the candidate responses are generated, we utilize a feedback source (e.g., the reward signals from LLaVA-RLHF or reward signals from LLaVA-Critic) to score each of them. The reward model is responsible for evaluating the quality of the responses based on relevance, coherence, and appropriateness in relation to the given image-question pair. From the scored responses, we then select:
 
 - The **best** response (highest score)
 - The **worst** response (lowest score)
@@ -111,7 +111,7 @@ This iterative process is repeated for `N=3` rounds in total, with each round re
 
 ------
 
-Stay tuned on how we develop AI feedback for self-improvement LMMs!
+Check out on how we develop AI feedback for self-improvement LMMs, using [LLaVA-Critic](https://llava-vl.github.io/blog/2024-10-03-llava-critic/) as a generalist evaluator to generate the scoring feedback for preference learning!
 
 *Contributors to LLaVA-OneVision-Chat: [Tianyi Xiong](https://tyxiong23.github.io/), [Bo Li](https://brianboli.com/), [Dong Guo](https://www.linkedin.com/in/dongguoset/), [Huizhuo Yuan](https://scholar.google.com/citations?user=8foZzX4AAAAJ), [Quanquan Gu](https://web.cs.ucla.edu/~qgu/), [Chunyuan Li](https://scholar.google.com/citations?user=Zd7WmXUAAAAJ)*
 
@@ -127,6 +127,16 @@ If you find it useful for your research and applications, please cite related pa
   author={Xiong, Tianyi and Li, Bo and Guo, Dong and Yuan, Huizhuo and Gu, Quanquan and Li, Chunyuan},
   month={September},
   year={2024}
+}
+
+@article{xiong2024llavacritic,
+  title={LLaVA-Critic: Learning to Evaluate Multimodal Models},
+  author={Xiong, Tianyi and Wang, Xiyao and Guo, Dong and Ye, Qinghao and Fan, Haoqi and Gu, Quanquan and Huang, Heng and Li, Chunyuan},
+  year={2024},
+  eprint={2410.02712},
+  archivePrefix={arXiv},
+  primaryClass={cs.CV},
+  url={https://arxiv.org/abs/2410.02712},
 }
 
 @article{li2024llavaov,
