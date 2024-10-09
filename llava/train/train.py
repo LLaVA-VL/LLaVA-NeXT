@@ -562,8 +562,6 @@ def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_im
     roles = {"human": "user", "gpt": "assistant"}
 
     # Add image tokens to tokenizer as a special tokens
-    # Use a deepcopy of tokenizer so that we don't modify on the tokenizer
-    tokenizer = copy.deepcopy(tokenizer)
     # When there is actually an image, we add the image tokens as a special token
     if has_image:
         tokenizer.add_tokens(["<image>"], special_tokens=True)
@@ -644,8 +642,6 @@ def preprocess_llama3(
     roles = {"human": "user", "gpt": "assistant"}
 
     # Add image tokens to tokenizer as a special tokens
-    # Use a deepcopy of tokenizer so that we don't modify on the tokenizer
-    tokenizer = copy.deepcopy(tokenizer)
     # When there is actually an image, we add the image tokens as a special token
     if has_image:
         tokenizer.add_tokens(["<image>"], special_tokens=True)
@@ -1031,7 +1027,7 @@ class LazySupervisedDataset(Dataset):
 
         rank0_print(f"Loaded {len(self.list_data_dict)} samples from {data_path}")
         rank0_print("Formatting inputs...Skip in lazy mode")
-        self.tokenizer = tokenizer
+        self.tokenizer = copy.deepcopy(tokenizer) if conversation_lib.default_conversation.version in ["qwen","llama_v3"] else tokenizer
         self.data_args = data_args
 
     def __len__(self):
