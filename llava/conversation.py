@@ -551,6 +551,20 @@ Answer the questions.""",
     sep="<|im_end|>",
 )
 
+conv_llava_llama_3_swallow = Conversation(
+    #system="You are a helpful language and vision assistant. " "You are able to understand the visual content that the user provides, " "and assist the user with a variety of tasks using natural language.",
+    system="あなたは誠実で優秀な日本人のアシスタントです。 " "特に指示が無い場合は、常に日本語で回答してください。",
+    roles=("user", "assistant"),
+    version="swallow",
+    messages=[],
+    offset=0,
+    sep="<|eot_id|>",
+    sep_style=SeparatorStyle.LLAMA_3,
+    tokenizer_id="tokyotech-llm/Llama-3-Swallow-8B-Instruct-v0.1",
+    tokenizer=safe_load_tokenizer("tokyotech-llm/Llama-3-Swallow-8B-Instruct-v0.1"),
+    stop_token_ids=[128009],
+)
+
 default_conversation = conv_vicuna_v0
 conv_templates = {
     "default": conv_vicuna_v0,
@@ -574,6 +588,7 @@ conv_templates = {
     "llava_llama_2_simple": conv_llava_llama_2_simple,
     "llava_llama_2_mmtag": conv_llava_llama_2_mmtag,
     "llava_mistral_instruct": conv_mistral_instruct,
+    "swallow": conv_llava_llama_3_swallow,
     "mpt": conv_mpt,
     "qwen_1_5": conv_qwen,
     "qwen_2": conv_qwen,
