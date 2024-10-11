@@ -26,7 +26,7 @@ echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 # Stage 2
 PROMPT_VERSION="qwen_1_5"
 MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-ov_to_video_am9"
-PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-72b-ov"
+PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-72b-ov-si"
 echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
