@@ -73,11 +73,22 @@ Here we explain the some technical details on our data.
   }
   ```
 
-- single-image stage data mixture [TBD]
+- single-image stage data mixture
+
+We have placed our single-image stage data in [single-image-yaml](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/scripts/train/single_image.yaml) for users to review. You can download each subset from [onevision-data](https://huggingface.co/datasets/lmms-lab/LLaVA-OneVision-Data). 
+
+Inside the data yaml, the first indicates the previous llava-1.6/next 790K data, you can download them in [llava-next-data](https://huggingface.co/datasets/lmms-lab/LLaVA-NeXT-Data).
+
+Inside the yaml, the naming would be different with our paper figure due to writing consideration. For users who need to explore our dataset, you can check the [upload script](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/0070d0ae4931c9b19d9cc57c38e16a87c270a61c/playground/upload_data.py#L175) to find the mapping from our local dataset to HF's version.
+
 - onevision stage data mixture
 
-  - Around 800K higher-quality data re-sampled from previous stage (yes, it's data replay!). 
+Our onevision stage data is available in [onevision-yaml](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/scripts/train/onevision.yaml). The single-image portion can be downloaded from the above Huggingface link for onevision data. Here's a breakdown of each part:
+
+  - Around 800K higher-quality data re-sampled from the previous stage (yes, it's data replay!).
   - [M4-Instruct Data](https://huggingface.co/datasets/lmms-lab/M4-Instruct-Data)
-  - Video Data
-    - 65595 re-annotated data. The data sources are from a collection of academic datasets, including Youcook2 (32267), Charades (19851), NextQA (7653), activitynet (5153), ego4d (671). The instruction and response are generated via GPT4o provided by AzureAI. More exquisite details are to be completed by Yuanhan's subsequent work on video specific model to introduce the data annotation pipeline. (it's brilliant, stay tuned!)
-    - [ShareGPTVideo](https://huggingface.co/ShareGPTVideo). We use a total of 255000 data from it.
+  - Video Data: We have released the video part along with [llava-video-data](https://huggingface.co/datasets/lmms-lab/LLaVA-Video-178K). Users can download the data, and we utilize the subset used in LLaVA-OneVision:
+    - We have included captions and open-ended questions in the 0_30_s_academic_v0_1 split, along with 240,000 open-ended QA items and 15,000 caption entries, as part of the video data in LLaVA-Hound for LLaVA-OneVision.
+    - 0_30_s_academic_v0_1 captions
+    - 0_30_s_academic_v0_1 open-ended QA
+    - LLaVA-Hound: Same as above.
