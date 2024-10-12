@@ -84,7 +84,7 @@ print(text_outputs)
 
 ## Training
 
-[[Scripts]](/Users/zhangyuanhan/Desktop/LLaVA-NeXT/scripts/video/train): Start training models on your single-image/multi-image/video data.
+[[Scripts]](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/yhzhang/video_dev/scripts/video/train/SO400M_Qwen2_72B_ov_to_video_am9_aug6.sh): Start training models on your single-image/multi-image/video data.
 
 
 ## Evaluation Guidance
