@@ -1713,7 +1713,7 @@ def train(attn_implementation=None):
         safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
 
     rank0_print(f"Model saved to {training_args.output_dir}")
-    LLaVATrainer.create_model_card(license='other')
+    trainer.create_model_card(license='other')
 
 
 if __name__ == "__main__":
