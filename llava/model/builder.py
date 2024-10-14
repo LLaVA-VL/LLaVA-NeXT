@@ -25,6 +25,15 @@ from llava.utils import rank0_print
 
 
 def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map="auto", torch_dtype="float16",attn_implementation="flash_attention_2", customized_config=None, overwrite_config=None, **kwargs):
+    '''
+    Args:
+        model_path (str): path to pretrained module,
+        model_base (str): path to base model,
+        
+    Examples:
+        load model trained only mm projector:
+        tokenizer, model, _, _ = load_pretrained_model(path_to_mm_projector, path_to_llm)
+    '''
     kwargs["device_map"] = device_map
 
     if load_8bit:
@@ -56,8 +65,6 @@ def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, l
                 "There is `lora` in model name but no `model_base` is provided. If you are loading a LoRA model, please provide the `model_base` argument. Detailed instruction: https://github.com/haotian-liu/LLaVA#launch-a-model-worker-lora-weights-unmerged."
             )
         if "lora" in model_name.lower() and model_base is not None:
-            lora_cfg_pretrained = AutoConfig.from_pretrained(model_path)
-            tokenizer = AutoTokenizer.from_pretrained(model_base, use_fast=False)
             rank0_print("Loading LLaVA from base model...")
             if "mixtral" in model_name.lower():
                 from llava.model.language_model.llava_mixtral import LlavaMixtralConfig
