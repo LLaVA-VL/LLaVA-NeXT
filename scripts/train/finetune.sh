@@ -8,8 +8,8 @@ NUM_GPUS=$(nvidia-smi --list-gpus | wc -l)
 # NUM_GPUS=1
 echo "NUM_GPUS: ${NUM_GPUS}"
 
-LLM_VERSION=/remote-home1/share/models/Qwen2.5-0.5B
-VISION_MODEL_VERSION=/remote-home1/share/models/vision_encoder/clip-vit-large-patch14-336-openai
+LLM_VERSION=/remote-home1/share/models/Qwen/Qwen2.5-3B
+VISION_MODEL_VERSION=/remote-home1/share/models/vision_encoder/siglip-so400m-patch14-384
 
 ############### Pretrain ################
 
@@ -24,7 +24,7 @@ echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 SUFFIX=""
 MM_TUNABLE_PARTS="mm_mlp_adapter,mm_language_model"
 
-[[ $MM_TUNABLE_PARTS == *"mm_mm_vision_tower"* ]] && SUFFIX="${SUFFIX}_vt"
+[[ $MM_TUNABLE_PARTS == *"mm_vision_tower"* ]] && SUFFIX="${SUFFIX}_vt"
 [[ $MM_TUNABLE_PARTS == *"mm_mlp_adapter"* ]] && SUFFIX="${SUFFIX}_mlp"
 [[ $MM_TUNABLE_PARTS == *"mm_language_model"* ]] && SUFFIX="${SUFFIX}_lm"
 
@@ -37,7 +37,7 @@ echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
 torchrun --nproc_per_node="${NUM_GPUS}" --master_port=20001 \
     llava/train/train_mem.py \
-    --deepspeed scripts/zero0.json \
+    --deepspeed scripts/zero2.json \
     --model_name_or_path ${LLM_VERSION} \
     --version ${PROMPT_VERSION} \
     --data_path=$DATA_PATH \
@@ -57,9 +57,9 @@ torchrun --nproc_per_node="${NUM_GPUS}" --master_port=20001 \
     --bf16 True \
     --output_dir "./checkpoints/${MID_RUN_NAME}" \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 8 \
+    --per_device_train_batch_size 2 \
     --per_device_eval_batch_size 4 \
-    --gradient_accumulation_steps 1 \
+    --gradient_accumulation_steps 4 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
     --save_steps 30000 \

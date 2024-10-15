@@ -1646,16 +1646,20 @@ def train(attn_implementation=None):
             # Parse the mm_tunable_parts to decide which parts to unfreeze
             tunable_parts = model_args.mm_tunable_parts.split(",")
             if "mm_mlp_adapter" in tunable_parts:
+                rank0_print("Unfreezing mm_mlp_adapter")
                 for p in model.get_model().mm_projector.parameters():
                     p.requires_grad = True
             if "mm_vision_resampler" in tunable_parts:
+                rank0_print("Unfreezing mm_vision_resampler")
                 for p in model.get_model().vision_resampler.parameters():
                     p.requires_grad = True
             if "mm_vision_tower" in tunable_parts:
+                rank0_print("Unfreezing mm_vision_tower")
                 for name, param in model.named_parameters():
                     if "vision_tower" in name:
                         param.requires_grad_(True)
             if "mm_language_model" in tunable_parts:
+                rank0_print("Unfreezing mm_language_model")
                 for name, param in model.named_parameters():
                     if "vision_tower" not in name and "mm_projector" not in name and "vision_resampler" not in name:
                         param.requires_grad_(True)

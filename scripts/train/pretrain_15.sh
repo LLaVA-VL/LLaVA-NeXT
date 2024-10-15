@@ -16,14 +16,14 @@ train_batch_size=64
 per_device_train_batch_size=8
 gradient_accumulation_steps=$((train_batch_size / (per_device_train_batch_size * NUM_GPUS)))
 lr=1e-3
-
+mm_vision_tower_lr=1e-5
 PROMPT_VERSION=plain
 
 # Determine the suffix based on tunable parts
 SUFFIX=""
-MM_TUNABLE_PARTS="mm_mm_vision_tower,mm_mlp_adapter"
+MM_TUNABLE_PARTS="mm_vision_tower,mm_mlp_adapter"
 
-[[ $MM_TUNABLE_PARTS == *"mm_mm_vision_tower"* ]] && SUFFIX="${SUFFIX}_vt"
+[[ $MM_TUNABLE_PARTS == *"mm_vision_tower"* ]] && SUFFIX="${SUFFIX}_vt_${mm_vision_tower_lr}"
 [[ $MM_TUNABLE_PARTS == *"mm_mlp_adapter"* ]] && SUFFIX="${SUFFIX}_mlp"
 [[ $MM_TUNABLE_PARTS == *"mm_language_model"* ]] && SUFFIX="${SUFFIX}_lm"
 
@@ -65,6 +65,7 @@ ACCELERATE_CPU_AFFINITY=1 WANDB_PROJECT=pretrain torchrun --nproc_per_node="${NU
     --lazy_preprocess True \
     --report_to wandb \
     --run_name $BASE_RUN_NAME \
+    --mm_vision_tower_lr ${mm_vision_tower_lr}
     # --attn_implementation sdpa
 
 # You can delete the sdpa attn_implementation if you want to use flash attn
