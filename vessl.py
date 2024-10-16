@@ -3,7 +3,7 @@ import os
 from pydantic import BaseModel
 from typing import List
 # FastAPI
-from fastapi import FastAPI, HTTPException, Depends, Header
+from fastapi import FastAPI, HTTPException, Depends, Header, Query
 from contextlib import asynccontextmanager
 # ML
 import torch
@@ -48,22 +48,24 @@ app = FastAPI(lifespan=lifespan)
 @app.post("/generate")
 async def generate(
     request: GenerateRequest,
+    response_type: str = Query(default="hexadecimal", enum=["hexadecimal", "vectors"]),
     _: str = Depends(verify_api_key)):
 
-    embeddings = request.embeddings # TODO: support response_type = hexadecimal | vector
-    conversation = request.conversation
-    return await run_inference(embeddings, conversation)
-
-async def run_inference(embeddings, conversation):
     embedding_tensors = []
-    for embedding in embeddings:
-        byte_array = bytes.fromhex(embedding)
-        import struct
-        num_floats = len(byte_array) // 4
-        embedding_tensors.append(torch.tensor(struct.unpack('<' + 'f' * num_floats, byte_array), dtype=torch.float16).unsqueeze(0))
+    if response_type == "hexadecimal":
+        for embedding in request.embeddings:
+            byte_array = bytes.fromhex(embedding)
+            import struct
+            num_floats = len(byte_array) // 4
+            embedding_tensors.append(torch.tensor(struct.unpack('<' + 'f' * num_floats, byte_array), dtype=torch.float16).unsqueeze(0))
+    else:
+        embedding_tensors = request.vectors
+        
+    conversation = request.conversation
+    return await run_inference(embedding_tensors, conversation)
 
+async def run_inference(embedding_tensors, conversation):
     embedding_tensors = torch.stack(embedding_tensors).cuda()
-
     conv = Conversation(
         system="""<|im_start|>system
 You are a helpful assistant.""",
