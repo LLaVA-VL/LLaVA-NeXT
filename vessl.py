@@ -16,7 +16,8 @@ class Message(BaseModel):
     content: str
 
 class GenerateRequest(BaseModel):
-    embeddings: List[str]
+    embeddings: List[str] = None
+    vectors: List[List[float]] = None
     conversation: List[Message]
 
 model_path = os.getenv(['MODEL_PATH'])
@@ -53,13 +54,19 @@ async def generate(
 
     embedding_tensors = []
     if response_type == "hexadecimal":
+        if "embeddings" not in request.model_fields:
+            raise HTTPException(status_code=400, detail="response_type is `hexadecimal` but `embeddings` not found in request")
         for embedding in request.embeddings:
             byte_array = bytes.fromhex(embedding)
             import struct
             num_floats = len(byte_array) // 4
             embedding_tensors.append(torch.tensor(struct.unpack('<' + 'f' * num_floats, byte_array), dtype=torch.float16).unsqueeze(0))
+    elif response_type == "vectors":
+        if "vectors" not in request.model_fields:
+            raise HTTPException(status_code=400, detail="response_type is `vectors` but `vectors` not found in request")
+        embedding_tensors = torch.tensor(request.vectors, dtype=torch.float16)
     else:
-        embedding_tensors = request.vectors
+        raise HTTPException(status_code=400, detail="response_type needs to be hexadecimal or vectors")
         
     conversation = request.conversation
     return await run_inference(embedding_tensors, conversation)
