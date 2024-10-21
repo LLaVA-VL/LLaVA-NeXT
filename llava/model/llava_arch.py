@@ -57,6 +57,7 @@ class LlavaMetaModel:
         mm_vision_select_feature = model_args.mm_vision_select_feature
         pretrain_mm_mlp_adapter = model_args.pretrain_mm_mlp_adapter
         mm_patch_merge_type = model_args.mm_patch_merge_type
+        vision_tower_pretrained = model_args.vision_tower_pretrained
 
         self.config.mm_vision_tower = vision_tower
         self.config.vision_tower_pretrained = getattr(model_args, "vision_tower_pretrained", "")
@@ -112,6 +113,13 @@ class LlavaMetaModel:
             for p in self.mm_projector.parameters():
                 p.requires_grad = True
 
+        if vision_tower_pretrained is not None:
+            from safetensors.torch import load_file
+            states = load_file(vision_tower_pretrained)
+            vision_tower_params = {k.replace('model.vision_tower.',''): v for k, v in states.items() if "vision_tower" in k}
+            self.vision_tower.load_state_dict(vision_tower_params, strict=False)
+            rank0_print(f"Loaded vision tower weights from {vision_tower_pretrained}")            
+        
         if pretrain_mm_mlp_adapter is not None:
             mm_projector_weights = torch.load(pretrain_mm_mlp_adapter, map_location="cpu")
 
