@@ -5,7 +5,7 @@ train_batch_sizes=(32 64 128)
 learning_rates=(5e-4 2e-3 1e-3)
 
 NUM_GPUS=$(nvidia-smi --list-gpus | wc -l)
-LLM_VERSION=/remote-home1/share/models/Qwen/Qwen2.5-3B
+LLM_VERSION=/remote-home1/share/models/Qwen/Qwen2.5-0.5B
 VISION_MODEL_VERSION="/remote-home1/share/models/vision_encoder/clip-vit-large-patch14-336-openai"
 
 num_train_epochs=1
@@ -23,9 +23,9 @@ for train_batch_size in "${train_batch_sizes[@]}"; do
         # 生成独特的运行名称
         BASE_RUN_NAME="llavanext-$(basename "$VISION_MODEL_VERSION")-$(basename "$LLM_VERSION")-mlp2x_gelu-pretrain_blip558k_plain-bs${train_batch_size}-lr${lr}"
 
-        # 检查目录是否存在
-        if [ -d "./checkpoints/projectors/${BASE_RUN_NAME}" ]; then
-            echo "Directory ./checkpoints/projectors/${BASE_RUN_NAME} already exists, skipping..."
+        # 检查model_card是否存在
+        if [ -f "./checkpoints/projectors/${BASE_RUN_NAME}/README.md" ]; then
+            echo "Directory ./checkpoints/projectors/${BASE_RUN_NAME}/README.md already exists, skipping..."
             continue
         fi
         
@@ -34,7 +34,7 @@ for train_batch_size in "${train_batch_sizes[@]}"; do
         # 启动训练
         ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${NUM_GPUS}" --master_port=20001 \
             llava/train/train_mem.py \
-            --deepspeed scripts/zero0.json \
+            --deepspeed scripts/zero2.json \
             --model_name_or_path ${LLM_VERSION} \
             --version ${PROMPT_VERSION} \
             --data_path /remote-home1/share/data/LLaVA-Pretrain/blip_laion_cc_sbu_558k.json \
