@@ -111,7 +111,7 @@ translate = {"STOP" : 0,
 acceped_patterns = ["0", "1", "2", "3", "4", "5", "6", "7"]
 
 prompt = """You are navigating a flying drone based on visual input and verbal instructions.
-Analyze the following sequence of images to determine the next action to take from the provided set of options.
+Analyze the following uniform sequence of images from the whole path to determine the next action to take from the provided set of options.
 Try to follow the given instruction as strict as possible to guide your choice. Provide only the number of your choice."""
 
 for episode in tqdm(data):
@@ -154,8 +154,11 @@ for episode in tqdm(data):
             7) MOVE_RIGHT
             [/Options]
         """
-        ans = predict(question, image_tensors[max(0, i - history_context_length + 1) : i + 1])
-
+        if i < 15:
+            ans = predict(question, image_tensors[max(0, i - history_context_length + 1) : i + 1])
+        else:
+            ans = predict(question, image_tensors[i - 14 * (i // 15) : i + 1 : i // 15])
+        
         if ans in acceped_patterns:
             path.append(int(ans))
         elif ans in translate.keys():
@@ -168,8 +171,8 @@ for episode in tqdm(data):
 
     paths[episode['episode_id']] = path
 
-with open("val_seen_results.json", 'w') as f:
+with open("val_seen_results_uniform.json", 'w') as f:
     json.dump(paths, f)
 
-with open("val_seen_gt.json", 'w') as f:
+with open("val_seen_gt_uniform.json", 'w') as f:
     json.dump(gt_paths, f)

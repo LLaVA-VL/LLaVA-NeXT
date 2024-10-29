@@ -111,8 +111,27 @@ translate = {"STOP" : 0,
 acceped_patterns = ["0", "1", "2", "3", "4", "5", "6", "7"]
 
 prompt = """You are navigating a flying drone based on visual input and verbal instructions.
-Analyze the following sequence of images to determine the next action to take from the provided set of options.
+Analyze the following exponentially distributed sequence of images from the whole path to determine the next action to take from the provided set of options.
 Try to follow the given instruction as strict as possible to guide your choice. Provide only the number of your choice."""
+
+def exp_sequence(upper_bound):
+    def generate_exponential_sequence_with_count(lower_bound, upper_bound, num_values):
+        rate = (upper_bound / lower_bound) ** (1 / (num_values - 1))
+        sequence = [int(round(upper_bound + 1 - lower_bound * (rate ** i), 0)) for i in range(num_values)]
+        return sequence
+    lower_bound = 1      
+    num_values = 15
+    sequence = generate_exponential_sequence_with_count(lower_bound, upper_bound, num_values)
+    sequence  = list(set(sequence))
+    current = upper_bound
+    while len(sequence) < num_values:
+        if current in sequence:
+            current -= 1
+        else:
+            sequence.append(current)
+    sequence.sort()
+    return sequence
+
 
 for episode in tqdm(data):
     instruction, trajectory_id = episode['instruction']['instruction_text'], episode['trajectory_id']
@@ -154,7 +173,14 @@ for episode in tqdm(data):
             7) MOVE_RIGHT
             [/Options]
         """
-        ans = predict(question, image_tensors[max(0, i - history_context_length + 1) : i + 1])
+        upper_b = i
+
+        if i < 15:
+            ans = predict(question, image_tensors[max(0, i - history_context_length + 1) : i + 1])
+        else:
+            indices = exp_sequence(upper_b)
+            selected_images = [image_tensors[i - 1] for i in indices]
+            ans = predict(question, selected_images)
 
         if ans in acceped_patterns:
             path.append(int(ans))
@@ -168,8 +194,8 @@ for episode in tqdm(data):
 
     paths[episode['episode_id']] = path
 
-with open("val_seen_results.json", 'w') as f:
+with open("val_seen_results_exp.json", 'w') as f:
     json.dump(paths, f)
 
-with open("val_seen_gt.json", 'w') as f:
+with open("val_seen_gt_exp.json", 'w') as f:
     json.dump(gt_paths, f)
