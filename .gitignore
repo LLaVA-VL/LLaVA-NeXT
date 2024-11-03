@@ -69,3 +69,8 @@ playground/*.json
 mlx_configs/
 data_processing/
 # demo/
+
+# Custom
+.nfs*
+tmp.ipynb
+tmp.py

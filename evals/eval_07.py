@@ -10,7 +10,6 @@ from PIL import Image
 import copy
 import torch
 import numpy as np
-import os
 
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -30,7 +29,7 @@ tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained
 model.to(device)
 model.eval()
 
-history_context_length = 5
+history_context_length = 15
 
 def predict(question, images):
     conv_template = "qwen_1_5"
@@ -98,27 +97,15 @@ def accuracy(paths, ground_truth, n=5):
                 C[i] += 1
     return [c / len(paths) for c in C]
 
-translate = {"STOP" : 0,
-             "MOVE_FORWARD" : 1,
-             "TURN_LEFT" : 2,
-             "TURN_RIGHT" : 3,
-             "GO_UP" : 4,
-             "GO_DOWN" : 5,
-             "MOVE_LEFT" : 6,
-             "MOVE_RIGHT" : 7 
-             }
-
-acceped_patterns = ["0", "1", "2", "3", "4", "5", "6", "7"]
 
 prompt = """You are navigating a flying drone based on visual input and verbal instructions.
-Analyze the following uniform sequence of images from the whole path to determine the next action to take from the provided set of options.
+Analyze the following sequence of images to determine the next action to take from the provided set of options.
 Try to follow the given instruction as strict as possible to guide your choice. Provide only the number of your choice."""
 
-for episode in tqdm(data):
+for episode in tqdm(data[::6]):
     instruction, trajectory_id = episode['instruction']['instruction_text'], episode['trajectory_id']
     scene_id = episode['scene_id']
-    if not os.path.isdir(f'{folder}/{trajectory_id}'):
-        continue
+
     actions = episode['actions']
     trajectory_length = len(actions)
     gt_paths[episode['episode_id']] = actions
@@ -154,25 +141,16 @@ for episode in tqdm(data):
             7) MOVE_RIGHT
             [/Options]
         """
-        if i < 15:
-            ans = predict(question, image_tensors[max(0, i - history_context_length + 1) : i + 1])
-        else:
-            ans = predict(question, image_tensors[i - 14 * (i // 15) : i + 1 : i // 15])
-        
-        if ans in acceped_patterns:
-            path.append(int(ans))
-        elif ans in translate.keys():
-            path.append(int(translate[ans]))
-        else:
-            path.append(-1)
+        ans = predict(question, image_tensors[max(0, i - history_context_length + 1) : i + 1])
+        path.append(int(ans))
 
         if i < history_context_length:
             history += f'{i + 1}: {DEFAULT_IMAGE_TOKEN} , action: {moves[actions[i]]}\n'
 
     paths[episode['episode_id']] = path
 
-with open("val_seen_results_uniform.json", 'w') as f:
+with open("outputs/val_seen_results_07.json", 'w') as f:
     json.dump(paths, f)
 
-with open("val_seen_gt_uniform.json", 'w') as f:
+with open("outputs/val_seen_gt_07.json", 'w') as f:
     json.dump(gt_paths, f)
