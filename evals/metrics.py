@@ -104,9 +104,21 @@ def load_json(file_path):
     with open(file_path, 'r') as f:
         return json.load(f)
 
+def accuracy_path_level(paths, ground_truth):
+    list_result = []
+    for episode_id, path in paths.items():
+        gt = ground_truth[episode_id]
+        count = 0
+        for k in range(len(path)):
+            if int(path[k]) == (gt[k]):
+                    count += 1
+        list_result.append(count / len(path))
+    return list_result
+
+
 
 if __name__ == "__main__":
-    for eval_type in ["qwen_val_seen", "qwen_val_seen_uniform", "qwen_val_seen_exp"]:
+    for eval_type in ["val_seen_uniform_15"]:
         print(f"Evaluating {eval_type}")
         
         paths_file = f"/auto/home/hakobtam/LLaVA-NeXT-AirVLN/evals/outputs/{eval_type}_results.json"
@@ -126,6 +138,7 @@ if __name__ == "__main__":
         accuracy_mean_0_15_ = accuracy_mean_0_15(paths, ground_truth, n=n_steps)
         accuracy_mean_15_end_ = accuracy_mean_15_end(paths, ground_truth, n=n_steps)
         accuracy_mean_0_143_ = accuracy_mean_0_143(paths, ground_truth, n=n_steps)
+        accuracy_path_level_ = np.mean(accuracy_path_level(paths, ground_truth))
 
         print(eval_type)
         # Print the accuracy per step
@@ -138,4 +151,6 @@ if __name__ == "__main__":
         print(f"Accuracy_Mean_0_15 = {accuracy_mean_0_15_}")
         print(f"Accuracy_Mean_15_END = {accuracy_mean_15_end_}")
         print(f"Accuracy_Mean_0_143 = {accuracy_mean_0_143_}")
+        print(f"Accuracy_Path_Level = {accuracy_path_level_}")
         print("-" * 20)
+gi
