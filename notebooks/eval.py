@@ -30,7 +30,7 @@ tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained
 model.to(device)
 model.eval()
 
-history_context_length = 5
+history_context_length = 15
 
 def predict(question, images):
     conv_template = "qwen_1_5"
@@ -168,8 +168,8 @@ for episode in tqdm(data):
 
     paths[episode['episode_id']] = path
 
-with open("val_seen_results.json", 'w') as f:
+with open("val_seen_results_last_15.json", 'w') as f:
     json.dump(paths, f)
 
-with open("val_seen_gt.json", 'w') as f:
+with open("val_seen_gt_last_15.json", 'w') as f:
     json.dump(gt_paths, f)
