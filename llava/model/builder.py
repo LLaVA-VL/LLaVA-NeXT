@@ -26,6 +26,8 @@ from llava.utils import rank0_print
 
 def load_pretrained_model(model_path, model_base, model_name, load_8bit=False, load_4bit=False, device_map="auto", torch_dtype="float16",attn_implementation="flash_attention_2", customized_config=None, overwrite_config=None, **kwargs):
     '''
+    This function sets delay_load=True to avoid loading empty weights in vision_tower when model_base is not None. 
+        
     Args:
         model_path (str): path to pretrained module,
         model_base (str): path to base model,
