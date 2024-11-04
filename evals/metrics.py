@@ -153,4 +153,3 @@ if __name__ == "__main__":
         print(f"Accuracy_Mean_0_143 = {accuracy_mean_0_143_}")
         print(f"Accuracy_Path_Level = {accuracy_path_level_}")
         print("-" * 20)
-gi
