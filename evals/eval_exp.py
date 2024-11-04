@@ -1,60 +1,23 @@
 import sys
 sys.path.append('../')
-
-from llava.model.builder import load_pretrained_model
-from llava.mm_utils import get_model_name_from_path, process_images, tokenizer_image_token
-from llava.constants import IMAGE_TOKEN_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN, IGNORE_INDEX
-from llava.conversation import conv_templates, SeparatorStyle
-
-from PIL import Image
-import copy
-import torch
 import numpy as np
 import os
-
-import warnings
-warnings.filterwarnings("ignore", category=UserWarning)
-
-pretrained = "lmms-lab/llava-next-interleave-qwen-7b"
-model_name = "llava_qwen"
-device = torch.device("cuda:0")
-device_map = {"": device}
-llava_model_args = {
-    "multimodal": True,
-}
-overwrite_config = {}
-overwrite_config["image_aspect_ratio"] =  "square"
-llava_model_args["overwrite_config"] = overwrite_config
-tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained, None, model_name, device_map=device_map, **llava_model_args)
-
-model.to(device)
-model.eval()
-
-history_context_length = 15
-
-def predict(question, images):
-    conv_template = "qwen_1_5"
-    conv = copy.deepcopy(conv_templates[conv_template])
-    conv.append_message(conv.roles[0], question)
-    conv.append_message(conv.roles[1], None)
-    prompt_question = conv.get_prompt()
-    input_ids = tokenizer_image_token(prompt_question, tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt").unsqueeze(
-        0).to(device)
-
-    with torch.inference_mode():
-        cont = model.generate(
-            input_ids,
-            images=images,
-            do_sample=False,
-            temperature=0.0,
-            max_new_tokens=4096,
-        )
-        text_outputs = tokenizer.batch_decode(cont, skip_special_tokens=True)
-    return (text_outputs[0])
-
 from glob import glob
 import json
 from tqdm import tqdm
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning)
+
+from predictors import get_qwen, get_llava
+
+
+
+MODEL_NAME = "qwen"
+
+PredictorClass = get_qwen() if MODEL_NAME == "qwen" else get_llava()
+predictor = PredictorClass(device="cuda:1")
+
+history_context_length = 15
 
 folder = "/nfs/np/mnt/big/tigrann/AirVLN_Data/aerialvln-s_val_seen_448x448"
 trajectory_folders = glob(f'{folder}/*')
@@ -74,29 +37,6 @@ moves = {
     6 : "MOVE_LEFT",
     7 : "MOVE_RIGHT"
 }
-paths = {}
-gt_paths = {}
-
-def dummy_accuracy(ground_truth, n=5):
-    dummy_pred = [4] * n
-    dummy_pred = [np.argmax(np.bincount([g[i] for g in ground_truth.values()])) for i in range(n)]
-    print(dummy_pred)
-    C = [0] * n
-    for episode_id, path in ground_truth.items():
-        for i in range(n):
-            if dummy_pred[i] == path[i]:
-                C[i] += 1
-    return [c / len(ground_truth) for c in C]
-
-
-def accuracy(paths, ground_truth, n=5):
-    C = [0] * n
-    for episode_id, path in paths.items():
-        gt = ground_truth[episode_id][:n]
-        for i in range(n):
-            if int(path[i]) == gt[i]:
-                C[i] += 1
-    return [c / len(paths) for c in C]
 
 translate = {"STOP" : 0,
              "MOVE_FORWARD" : 1,
@@ -108,7 +48,7 @@ translate = {"STOP" : 0,
              "MOVE_RIGHT" : 7 
              }
 
-acceped_patterns = ["0", "1", "2", "3", "4", "5", "6", "7"]
+accepted_patterns = ["0", "1", "2", "3", "4", "5", "6", "7"]
 
 prompt = """You are navigating a flying drone based on visual input and verbal instructions.
 Analyze the following exponentially distributed sequence of images from the whole path to determine the next action to take from the provided set of options.
@@ -133,6 +73,7 @@ def exp_sequence(upper_bound):
     return sequence
 
 
+paths, gt_paths = {}, {}
 for episode in tqdm(data):
     instruction, trajectory_id = episode['instruction']['instruction_text'], episode['trajectory_id']
     scene_id = episode['scene_id']
@@ -141,13 +82,12 @@ for episode in tqdm(data):
     actions = episode['actions']
     trajectory_length = len(actions)
     gt_paths[episode['episode_id']] = actions
-    images = []
+    input_images = []
     path = []
     history = ""
     for i in range(trajectory_length):
-        images.append(Image.open(f'{folder}/{trajectory_id}/{i}.png'))
-        image_tensors = process_images(images, image_processor, model.config)
-        image_tensors = [_image.to(dtype=torch.float16, device=device) for _image in image_tensors]
+        proc_image = predictor.process_image(f'{folder}/{trajectory_id}/{i}.png')
+        input_images.append(proc_image)
 
     for i in range(trajectory_length):
 
@@ -159,7 +99,7 @@ for episode in tqdm(data):
             {history}
             [/History]
 
-            Current image: {DEFAULT_IMAGE_TOKEN}
+            Current image: {predictor.IMAGE_TOKEN}
 
             Pick one of the following options.
             [Options]
@@ -174,28 +114,27 @@ for episode in tqdm(data):
             [/Options]
         """
         upper_b = i
-
-        if i < 15:
-            ans = predict(question, image_tensors[max(0, i - history_context_length + 1) : i + 1])
+        if i < history_context_length:
+            ans = predictor.predict(question, input_images[max(0, i - history_context_length + 1) : i + 1])
         else:
             indices = exp_sequence(upper_b)
-            selected_images = [image_tensors[i - 1] for i in indices]
-            ans = predict(question, selected_images)
-
-        if ans in acceped_patterns:
+            selected_images = [input_images[i - 1] for i in indices]
+            ans = predictor.predict(question, selected_images)
+        
+        if ans in accepted_patterns:
             path.append(int(ans))
         elif ans in translate.keys():
             path.append(int(translate[ans]))
         else:
             path.append(-1)
 
-        if i < history_context_length:
-            history += f'{i + 1}: {DEFAULT_IMAGE_TOKEN} , action: {moves[actions[i]]}\n'
+        if i < history_context_length - 1:
+            history += f'{i + 1}: {predictor.IMAGE_TOKEN} , action: {moves[actions[i]]}\n'
 
     paths[episode['episode_id']] = path
 
-with open("val_seen_results_exp_15.json", 'w') as f:
+with open(f"outputs/{MODEL_NAME}_val_seen_results_exp.json", 'w') as f:
     json.dump(paths, f)
 
-with open("val_seen_gt_exp_15.json", 'w') as f:
+with open(f"outputs/{MODEL_NAME}_val_seen_gt_exp.json", 'w') as f:
     json.dump(gt_paths, f)

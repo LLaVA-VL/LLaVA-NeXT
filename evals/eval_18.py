@@ -149,8 +149,8 @@ for episode in tqdm(data[::6]):
 
     paths[episode['episode_id']] = path
 
-with open("val_seen_results_18.json", 'w') as f:
+with open("outputs/val_seen_results_18.json", 'w') as f:
     json.dump(paths, f)
 
-with open("val_seen_gt_18.json", 'w') as f:
+with open("outputs/val_seen_gt_18.json", 'w') as f:
     json.dump(gt_paths, f)

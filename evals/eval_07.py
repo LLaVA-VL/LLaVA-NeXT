@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 pretrained = "lmms-lab/llava-next-interleave-qwen-7b"
 model_name = "llava_qwen"
-device = torch.device("cuda:1")
+device = torch.device("cuda:0")
 device_map = {"": device}
 llava_model_args = {
     "multimodal": True,
@@ -102,7 +102,7 @@ prompt = """You are navigating a flying drone based on visual input and verbal i
 Analyze the following sequence of images to determine the next action to take from the provided set of options.
 Try to follow the given instruction as strict as possible to guide your choice. Provide only the number of your choice."""
 
-for episode in tqdm(data):
+for episode in tqdm(data[::6]):
     instruction, trajectory_id = episode['instruction']['instruction_text'], episode['trajectory_id']
     scene_id = episode['scene_id']
 
@@ -131,26 +131,26 @@ for episode in tqdm(data):
 
             Pick one of the following options.
             [Options]
-            A) STOP
-            B) MOVE_FORWARD
-            C) TURN_LEFT
-            D) TURN_RIGHT
-            E) GO_UP
-            F) GO_DOWN
-            G) MOVE_LEFT
-            H) MOVE_RIGHT
+            0) STOP
+            1) MOVE_FORWARD
+            2) TURN_LEFT
+            3) TURN_RIGHT
+            4) GO_UP
+            5) GO_DOWN
+            6) MOVE_LEFT
+            7) MOVE_RIGHT
             [/Options]
         """
         ans = predict(question, image_tensors[max(0, i - history_context_length + 1) : i + 1])
-        path.append(str(ans))
+        path.append(int(ans))
 
         if i < history_context_length:
             history += f'{i + 1}: {DEFAULT_IMAGE_TOKEN} , action: {moves[actions[i]]}\n'
 
     paths[episode['episode_id']] = path
 
-with open("val_seen_results_ah_long.json", 'w') as f:
+with open("outputs/val_seen_results_07.json", 'w') as f:
     json.dump(paths, f)
 
-with open("val_seen_gt_ah_long.json", 'w') as f:
+with open("outputs/val_seen_gt_07.json", 'w') as f:
     json.dump(gt_paths, f)
