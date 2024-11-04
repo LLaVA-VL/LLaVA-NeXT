@@ -38,6 +38,8 @@ class LlavaPredict(Predict):
         return inp_image
     
     def predict(self, question, images):
+        assert question.count(self.IMAGE_TOKEN) == len(images)
+        
         conv_template = "qwen_1_5"
         conv = copy.deepcopy(conv_templates[conv_template])
         conv.append_message(conv.roles[0], question)

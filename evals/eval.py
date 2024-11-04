@@ -12,10 +12,11 @@ from predictors import get_qwen, get_llava
 
 
 
-MODEL_NAME = "qwen"
+MODEL_NAME = "llava"
+DEVICE = "cuda:1"
 
 PredictorClass = get_qwen() if MODEL_NAME == "qwen" else get_llava()
-predictor = PredictorClass(device="cuda:1")
+predictor = PredictorClass(device=DEVICE)
 
 history_context_length = 15
 
