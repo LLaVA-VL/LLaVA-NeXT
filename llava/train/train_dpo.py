@@ -38,7 +38,9 @@ import tokenizers
 from llava.constants import IGNORE_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN, IMAGE_TOKEN_INDEX
 from torch.utils.data import Dataset
 from llava.train.llava_trainer import LLaVADPOTrainer
-from data_processing.utils import load_jsonl, load_json
+import sys
+sys.path.append("/remote-home1/cktan/server_tools")
+from scripts import load
 from llava import conversation as conversation_lib
 from llava.model import *
 from llava.model.language_model.llava_qwen import LlavaQwenConfig
@@ -567,7 +569,8 @@ def preprocess_gemma(sources: List[List[Dict[str, str]]], tokenizer: transformer
 def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_image: bool = False, max_len=2048, system_message: str = "You are a helpful assistant.") -> Dict:
     roles = {"human": "<|im_start|>user", "gpt": "<|im_start|>assistant"}
 
-    im_start, im_end = tokenizer.additional_special_tokens_ids
+    # im_start, im_end = tokenizer.additional_special_tokens_ids
+    im_start, im_end = 151644, 151645
     nl_tokens = tokenizer("\n").input_ids
     _system = tokenizer("system").input_ids + nl_tokens
     _user = tokenizer("user").input_ids + nl_tokens
@@ -898,10 +901,7 @@ def preprocess(sources: Sequence[str], tokenizer: transformers.PreTrainedTokeniz
 
 
 def load_data(data_path):
-    if "jsonl" in data_path:
-        data_list = load_jsonl(data_path)
-    else:
-        data_list = load_json(data_path)
+    data_list = load(data_path)
     return data_list
 
 
@@ -983,7 +983,8 @@ class DPODataset(Dataset):
         length_list = []
         for sample in self.list_data_dict:
             # Calculate the length of the prompt, answer, chosen, and rejected text
-            cur_len = len(sample["prompt"].split()) + len(sample["answer"].split()) + len(sample["chosen"].split()) + len(sample["rejected"].split())
+            # cur_len = len(sample["prompt"].split()) + len(sample["answer"].split()) + len(sample["chosen"].split()) + len(sample["rejected"].split())
+            cur_len = len(sample["prompt"].split())  + len(sample["chosen"].split()) + len(sample["rejected"].split())
             # Add additional tokens if an image is present
             img_tokens = 128 if "image" in sample else 0
             length_list.append(cur_len + img_tokens)
@@ -994,7 +995,8 @@ class DPODataset(Dataset):
         length_list = []
         for sample in self.list_data_dict:
             # Calculate the length of the prompt, answer, chosen, and rejected text
-            cur_len = len(sample["prompt"].split()) + len(sample["answer"].split()) + len(sample["chosen"].split()) + len(sample["rejected"].split())
+            # cur_len = len(sample["prompt"].split()) + len(sample["answer"].split()) + len(sample["chosen"].split()) + len(sample["rejected"].split())
+            cur_len = len(sample["prompt"].split())  + len(sample["chosen"].split()) + len(sample["rejected"].split())
             # If the sample includes a video, the length is positive; otherwise, it is negative
             cur_len = cur_len if ("video" in sample or "image" in sample) else -cur_len
             length_list.append(cur_len)
@@ -1480,7 +1482,11 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
         )
     return model, ref_model
 
+import sys
+sys.path.append("/remote-home1/cktan/server_tools/")
+from larknotice import lark_sender
 
+@lark_sender(webhook_url="https://open.feishu.cn/open-apis/bot/v2/hook/6b48f3ee-2174-4a39-8e92-1acadacc54c4")
 def train(attn_implementation=None):
     global local_rank
 
@@ -1776,7 +1782,7 @@ def train(attn_implementation=None):
         safe_save_model_for_hf_trainer(trainer=trainer, output_dir=training_args.output_dir)
 
     rank0_print(f"Model saved to {training_args.output_dir}")
-
+    trainer.create_model_card(license='other')
 
 if __name__ == "__main__":
     train()

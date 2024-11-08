@@ -1443,7 +1443,11 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
         )
     return model
 
+import sys
+sys.path.append("/remote-home1/cktan/server_tools/")
+from larknotice import lark_sender
 
+@lark_sender(webhook_url="https://open.feishu.cn/open-apis/bot/v2/hook/6b48f3ee-2174-4a39-8e92-1acadacc54c4")
 def train(attn_implementation=None):
     global local_rank
 
