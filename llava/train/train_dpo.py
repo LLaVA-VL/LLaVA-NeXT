@@ -125,8 +125,8 @@ class DataArguments:
     video_fps: Optional[int] = field(default=1)
     image_aspect_ratio: str = "square"
     image_grid_pinpoints: Optional[str] = field(default=None)
-    image_crop_resolution: int = 384
-    image_split_resolution: int = 384
+    image_crop_resolution: Optional[int] = field(default=None)
+    image_split_resolution: Optional[int] = field(default=None)
     input_prompt: Optional[str] = field(default=None)
     refine_prompt: Optional[bool] = field(default=False)
     frames_upbound: Optional[int] = field(default=0)
