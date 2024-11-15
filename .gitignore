@@ -74,3 +74,5 @@ data_processing/
 .nfs*
 tmp.ipynb
 tmp.py
+.ipynb_checkpoints
+accuracy_comparison*.png
