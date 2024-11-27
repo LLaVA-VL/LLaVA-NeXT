@@ -1,12 +1,16 @@
 import torch
 import random
 class FIFOMemory:
-    def __init__(self, max_size, tensor_shape):
+    def __init__(self, max_size, tensor_shape, device='cuda'):
         self.max_size = max_size
         self.tensor_shape = tensor_shape
-        self.memory = torch.zeros((0, *tensor_shape))
+        self.device = device
+        self.memory = torch.zeros((0, *tensor_shape), device = self.device)
+
 
     def add_tensor(self, tensor):
+        if isinstance(tensor, list):
+            tensor = torch.cat(tensor, dim=0)  # Convert list to tensor
         self.memory = torch.cat((self.memory, tensor), dim=0)
         if self.memory.shape[0] > self.max_size:
             self.memory = self.memory[-self.max_size:]
@@ -14,31 +18,35 @@ class FIFOMemory:
     def get_tensors(self):
         return self.memory
 
-fifo_memory = FIFOMemory(max_size=5, tensor_shape=(3, 384, 384))
 
-# Adding tensors to the FIFO memory
-for i in range(7):
-    tensor = torch.randn(1, 3, 384, 384)  # Example tensor with batch size 1
-    fifo_memory.add_tensor(tensor)
-    print(f"Added tensor {i + 1}, memory shape: {fifo_memory.get_tensors().shape}")
-
-# Retrieving tensors from the FIFO memory
-tensors = fifo_memory.get_tensors()
-print(f"Total tensors in memory: {tensors.shape}")
+# fifo_memory = FIFOMemory(max_size=5, tensor_shape=(3, 384, 384), device='cpu')
+#
+# # Adding tensors to the FIFO memory
+# for i in range(7):
+#     tensor = torch.randn(1, 3, 384, 384)  # Example tensor with batch size 1
+#     fifo_memory.add_tensor(tensor)
+#     print(f"Added tensor {i + 1}, memory shape: {fifo_memory.get_tensors().shape}")
+#
+# # Retrieving tensors from the FIFO memory
+# tensors = fifo_memory.get_tensors()
+# print(f"Total tensors in memory: {tensors.shape}")
 
 
 
 class KMeansMemory:
-    def __init__(self, max_size, tensor_shape, max_iterations=100):
+    def __init__(self, max_size, tensor_shape, max_iterations=100, device='cuda'):
         self.max_size = max_size
         self.tensor_shape = tensor_shape
         self.max_iterations = max_iterations
-        self.memory = torch.zeros((0, *tensor_shape))
-        self.weights = torch.ones(0)
+        self.device = device
+        self.memory = torch.zeros((0, *tensor_shape), device=self.device)
+        self.weights = torch.ones(0, device=self.device)
 
     def add_tensor(self, tensor):
+        if isinstance(tensor, list):
+            tensor = torch.cat(tensor, dim=0)  # Convert list to tensor
         self.memory = torch.cat((self.memory, tensor), dim=0)
-        new_weights = torch.ones(tensor.shape[0])  # New weights, one for each tensor added
+        new_weights = torch.ones(tensor.shape[0], device=self.device)  # New weights, one for each tensor added
         self.weights = torch.cat((self.weights, new_weights), dim=0)
         if self.memory.shape[0] > self.max_size:
             self.memory, self.weights = self.weighted_kmeans(self.memory, self.max_size, self.max_iterations, self.weights)
@@ -66,21 +74,22 @@ class KMeansMemory:
                     print(weights_sum)
             prev_assignment = current_assignment.clone()
 
-        weights = weights_sum  # Update the weights to the sum of weights assigned to each centroid after iterations
+        new_weights = weights_sum  # Update the weights to the sum of weights assigned to each centroid after iterations
 
-        return centroids[:max_size], weights_sum
+        return centroids[:max_size], new_weights
 
     def get_tensors(self):
         return self.memory
 
-kmeans_memory = KMeansMemory(max_size=5, tensor_shape=(3, 384, 384))
 
-# Adding tensors to the KMeans memory
-for i in range(7):
-    tensor = torch.randn(1, 3, 384, 384)  # Example tensor with batch size 1
-    kmeans_memory.add_tensor(tensor)
-    print(f"Added tensor {i + 1}, memory shape: {kmeans_memory.get_tensors().shape}")
-
-# Retrieving tensors from the KMeans memory
-tensors = kmeans_memory.get_tensors()
-print(f"Total tensors in memory: {tensors.shape}")
+# kmeans_memory = KMeansMemory(max_size=5, tensor_shape=(3, 384, 384), device='cpu')
+#
+# # Adding tensors to the KMeans memory
+# for i in range(7):
+#     tensor = torch.randn(1, 3, 384, 384)  # Example tensor with batch size 1
+#     kmeans_memory.add_tensor(tensor)
+#     print(f"Added tensor {i + 1}, memory shape: {kmeans_memory.get_tensors().shape}")
+#
+# # Retrieving tensors from the KMeans memory
+# tensors = kmeans_memory.get_tensors()
+# print(f"Total tensors in memory: {tensors.shape}")
