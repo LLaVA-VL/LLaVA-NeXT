@@ -59,18 +59,18 @@ image_tensors.append(frames)
 
 
 ##### Insert memory module #####
-print(len(image_tensor)) # 1
-print(f"Shape: {image_tensor[0].shape}, Dtype: {image_tensor[0].dtype}")  # Shape: torch.Size([16, 3, 384, 384]), Dtype: torch.float16
-image_tensor = torch.cat(image_tensor, dim=0).to(device).to(dtype=torch.float16)
+print(len(image_tensors)) # 1
+print(f"Shape: {image_tensors[0].shape}, Dtype: {image_tensors[0].dtype}")  # Shape: torch.Size([16, 3, 384, 384]), Dtype: torch.float16
+image_tensors = torch.cat(image_tensors, dim=0).to(device).to(dtype=torch.float16)
 fifo_memory = FIFOMemory(max_size=10, tensor_shape=(3, 384, 384), device=device)
-fifo_memory.add_tensor(image_tensor)
+fifo_memory.add_tensor(image_tensors)
 kmeans_memory = KMeansMemory(max_size=10, tensor_shape=(3, 384, 384), device=device)
-kmeans_memory.add_tensor(image_tensor)
+kmeans_memory.add_tensor(image_tensors)
 
-image_tensor = fifo_memory.get_tensors() + kmeans_memory.get_tensors()  # Memory interaction
-image_tensor = [image_tensor.to(dtype=torch.float16)]
+image_tensors = fifo_memory.get_tensors() + kmeans_memory.get_tensors()  # Memory interaction
+image_tensors = [image_tensors.to(dtype=torch.float16)]
 
-print(f"Shape: {image_tensor[0].shape}, Dtype: {image_tensor[0].dtype}")
+print(f"Shape: {image_tensors[0].shape}, Dtype: {image_tensors[0].dtype}")
 ##### Insert memory module #####
 
 
