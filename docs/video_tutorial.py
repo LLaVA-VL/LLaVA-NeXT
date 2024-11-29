@@ -57,8 +57,23 @@ image_tensors = []
 frames = image_processor.preprocess(video_frames, return_tensors="pt")["pixel_values"].half().cuda()
 image_tensors.append(frames)
 
-print(len(image_tensors)) # 1
-print(image_tensors[0].shape) # torch.Size([16, 3, 384, 384])
+
+##### Insert memory module #####
+print(len(image_tensor)) # 1
+print(f"Shape: {image_tensor[0].shape}, Dtype: {image_tensor[0].dtype}")  # Shape: torch.Size([16, 3, 384, 384]), Dtype: torch.float16
+image_tensor = torch.cat(image_tensor, dim=0).to(device).to(dtype=torch.float16)
+fifo_memory = FIFOMemory(max_size=10, tensor_shape=(3, 384, 384), device=device)
+fifo_memory.add_tensor(image_tensor)
+kmeans_memory = KMeansMemory(max_size=10, tensor_shape=(3, 384, 384), device=device)
+kmeans_memory.add_tensor(image_tensor)
+
+image_tensor = fifo_memory.get_tensors() + kmeans_memory.get_tensors()  # Memory interaction
+image_tensor = [image_tensor.to(dtype=torch.float16)]
+
+print(f"Shape: {image_tensor[0].shape}, Dtype: {image_tensor[0].dtype}")
+##### Insert memory module #####
+
+
 
 # Prepare conversation input
 conv_template = "qwen_1_5"
