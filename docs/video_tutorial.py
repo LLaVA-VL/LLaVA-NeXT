@@ -13,6 +13,13 @@ import copy
 import warnings
 from decord import VideoReader, cpu
 
+#import memory module
+from memory import FIFOMemory
+from memory import KMeansMemory
+
+
+
+
 warnings.filterwarnings("ignore")
 # Load the OneVision model
 pretrained = "lmms-lab/llava-onevision-qwen2-7b-ov"   # Use this for 7B model
@@ -49,6 +56,9 @@ print(video_frames.shape) # (16, 1024, 576, 3)
 image_tensors = []
 frames = image_processor.preprocess(video_frames, return_tensors="pt")["pixel_values"].half().cuda()
 image_tensors.append(frames)
+
+print(len(image_tensors)) # 1
+print(image_tensors[0].shape) # torch.Size([16, 3, 384, 384])
 
 # Prepare conversation input
 conv_template = "qwen_1_5"
