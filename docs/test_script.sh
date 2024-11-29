@@ -1,5 +1,5 @@
 #!/bin/bash -l
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:a40:1
 #SBATCH --time=01:00:00
 #SBATCH --job-name=testjob_llava
 #SBATCH --export=NONE
