@@ -57,21 +57,30 @@ image_tensors = []
 frames = image_processor.preprocess(video_frames, return_tensors="pt")["pixel_values"].half().cuda()
 image_tensors.append(frames)
 
+memory_inserted = False
+fifo = False
+kmeans = False
+if memory_inserted:
+    ##### Insert memory module #####
+    print(len(image_tensors)) # 1
+    print(f"Shape: {image_tensors[0].shape}, Dtype: {image_tensors[0].dtype}")  # Shape: torch.Size([16, 3, 384, 384]), Dtype: torch.float16
+    image_tensors = torch.cat(image_tensors, dim=0)
+    if fifo:
+        fifo_memory = FIFOMemory(max_size=10, tensor_shape=(3, 384, 384), device=device)
+        fifo_memory.add_tensor(image_tensors)
+        fifo_output = fifo_memory.get_tensors()
 
-##### Insert memory module #####
-print(len(image_tensors)) # 1
-print(f"Shape: {image_tensors[0].shape}, Dtype: {image_tensors[0].dtype}")  # Shape: torch.Size([16, 3, 384, 384]), Dtype: torch.float16
-image_tensors = torch.cat(image_tensors, dim=0).to(device).to(dtype=torch.float16)
-fifo_memory = FIFOMemory(max_size=10, tensor_shape=(3, 384, 384), device=device)
-fifo_memory.add_tensor(image_tensors)
-kmeans_memory = KMeansMemory(max_size=10, tensor_shape=(3, 384, 384), device=device)
-kmeans_memory.add_tensor(image_tensors)
+    if kmeans:
+        kmeans_memory = KMeansMemory(max_size=10, tensor_shape=(3, 384, 384), device=device)
+        kmeans_memory.add_tensor(image_tensors)
+        kmeans_output = kmeans_memory.memory
 
-image_tensors = fifo_memory.get_tensors() + kmeans_memory.get_tensors()  # Memory interaction
-image_tensors = [image_tensors.to(dtype=torch.float16)]
+    image_tensors = (fifo_output + kmeans_output) if fifo and kmeans else (
+        fifo_output if fifo else kmeans_output if kmeans else image_tensors)
+    image_tensors = [image_tensors.to(dtype=torch.float16)]
 
-print(f"Shape: {image_tensors[0].shape}, Dtype: {image_tensors[0].dtype}")
-##### Insert memory module #####
+    print(f"Shape: {image_tensors[0].shape}, Dtype: {image_tensors[0].dtype}")
+    ##### Insert memory module #####
 
 
 
