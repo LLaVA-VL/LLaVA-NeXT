@@ -17,7 +17,12 @@ pretrained = "lmms-lab/llava-onevision-qwen2-0.5b-si"
 model_name = "llava_qwen"
 device = "cuda"
 device_map = "auto"
-tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained, None, model_name, device_map=device_map)  # Add any other thing you want to pass in llava_model_args
+llava_model_args = {
+    "multimodal": True,
+    "attn_implementation": None,  ## defualt “sdpa”
+}
+
+tokenizer, model, image_processor, max_length = (load_pretrained_model(pretrained, None, model_name, device_map=device_map, **llava_model_args))  # Add any other thing you want to pass in llava_model_args
 
 model.eval()
 
