@@ -86,7 +86,10 @@ Inside the yaml, the naming would be different with our paper figure due to writ
 Our onevision stage data is available in [onevision-yaml](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/scripts/train/onevision.yaml). The single-image portion can be downloaded from the above Huggingface link for onevision data. Here's a breakdown of each part:
 
   - Around 800K higher-quality data re-sampled from the previous stage (yes, it's data replay!).
-  - [M4-Instruct Data](https://huggingface.co/datasets/lmms-lab/M4-Instruct-Data)
+  - Multi-image data is released in [M4-Instruct Data](https://huggingface.co/datasets/lmms-lab/M4-Instruct-Data). We combine the different subsets into two jsons (as they are mainly from DEMON and Mantis) in our training yaml, the jsons are:
+    - /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/llava_ofa_DEMON-FULL_filtered_311085.json
+    - /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/llava_ofa_mantis-instruct_reformatted.json
+ 
   - Video Data: We have released the video part along with [llava-video-data](https://huggingface.co/datasets/lmms-lab/LLaVA-Video-178K). Users can download the data, and we utilize the subset used in LLaVA-OneVision:
     - We have included captions and open-ended questions in the 0_30_s_academic_v0_1 split, along with 240,000 open-ended QA items and 15,000 caption entries, as part of the video data in LLaVA-Hound for LLaVA-OneVision.
     - 0_30_s_academic_v0_1 captions
