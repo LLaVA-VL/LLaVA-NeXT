@@ -15,8 +15,8 @@ We need to address the fact that our data has been collected and used in differe
 
 Here we explain the some technical details on our data. 
 
-- pretrain data - BLIP558K (same as previous llava 1.5 series)
-- mid stage data mixture
+- **pretrain data** - BLIP558K (same as previous llava 1.5 series)
+- **mid stage data mixture**
   ```yaml
     datasets:
       - json_path: /mnt/bn/vl-research/data/llava_instruct/blip558k_stage1.5_finetune_w_prompt.json
@@ -73,7 +73,7 @@ Here we explain the some technical details on our data.
   }
   ```
 
-- single-image stage data mixture
+- **single-image stage data mixture**
 
 We have placed our single-image stage data in [single-image-yaml](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/scripts/train/single_image.yaml) for users to review. You can download each subset from [onevision-data](https://huggingface.co/datasets/lmms-lab/LLaVA-OneVision-Data). 
 
@@ -81,14 +81,17 @@ Inside the data yaml, the first indicates the previous llava-1.6/next 790K data,
 
 Inside the yaml, the naming would be different with our paper figure due to writing consideration. For users who need to explore our dataset, you can check the [upload script](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/0070d0ae4931c9b19d9cc57c38e16a87c270a61c/playground/upload_data.py#L175) to find the mapping from our local dataset to HF's version.
 
-- onevision stage data mixture
+- **onevision stage data mixture**
 
 Our onevision stage data is available in [onevision-yaml](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/scripts/train/onevision.yaml). The single-image portion can be downloaded from the above Huggingface link for onevision data. Here's a breakdown of each part:
 
   - Around 800K higher-quality data re-sampled from the previous stage (yes, it's data replay!).
-  - [M4-Instruct Data](https://huggingface.co/datasets/lmms-lab/M4-Instruct-Data)
+  - Multi-image data is released in [M4-Instruct Data](https://huggingface.co/datasets/lmms-lab/M4-Instruct-Data). We combine the different subsets into two jsons (as they are mainly from DEMON and Mantis) in our training yaml, the jsons are:
+    - /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/llava_ofa_DEMON-FULL_filtered_311085.json
+    - /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/llava_ofa_mantis-instruct_reformatted.json
+ 
   - Video Data: We have released the video part along with [llava-video-data](https://huggingface.co/datasets/lmms-lab/LLaVA-Video-178K). Users can download the data, and we utilize the subset used in LLaVA-OneVision:
-    - We have included captions and open-ended questions in the 0_30_s_academic_v0_1 split, along with 240,000 open-ended QA items and 15,000 caption entries, as part of the video data in LLaVA-Hound for LLaVA-OneVision.
+    - We have included captions and open-ended questions in the `0_30_s_academic_v0_1` split, along with 240,000 open-ended QA items and 15,000 caption entries, as part of the video data in LLaVA-Hound for LLaVA-OneVision.
     - 0_30_s_academic_v0_1 captions
     - 0_30_s_academic_v0_1 open-ended QA
     - LLaVA-Hound: Same as above.
