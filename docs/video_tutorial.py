@@ -57,7 +57,7 @@ image_tensors.append(frames)
 
 memory_inserted = False
 fifo = False
-kmeans = True
+kmeans = False
 if memory_inserted:
     ##### Insert memory module #####
     print(len(image_tensors)) # 1
