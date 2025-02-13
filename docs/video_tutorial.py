@@ -22,16 +22,14 @@ from memory import KMeansMemory
 
 warnings.filterwarnings("ignore")
 # Load the OneVision model
-pretrained = "lmms-lab/llava-onevision-qwen2-7b-ov"   # Use this for 7B model
-# pretrained = "lmms-lab/llava-onevision-qwen2-0.5b-si"  #Load forever, does not work
+pretrained = "/home/hpc/b232dd/b232dd16/llava-onevision-qwen2-7b-ov/"   # Use this for 7B model
 model_name = "llava_qwen"
 device = "cuda"
 device_map = "auto"
 llava_model_args = {
     "multimodal": True,
-    "attn_implementation": None,  ## defualt “sdpa”
 }
-tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained, None, model_name, device_map=device_map,  **llava_model_args)
+tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained, None, model_name, device_map=device_map, attn_implementation="sdpa", **llava_model_args)
 
 model.eval()
 
@@ -59,7 +57,7 @@ image_tensors.append(frames)
 
 memory_inserted = False
 fifo = False
-kmeans = False
+kmeans = True
 if memory_inserted:
     ##### Insert memory module #####
     print(len(image_tensors)) # 1
