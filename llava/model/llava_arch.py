@@ -30,7 +30,57 @@ from llava.mm_utils import get_anyres_image_grid_shape
 from llava.utils import rank0_print, rank_print
 import random
 
-
+################################################################
+# Llava OneVision config
+  # "mm_newline_position":"one_token",
+  # "attention_dropout": 0.0,
+  # "bos_token_id": 151643,
+  # "eos_token_id": 151645,
+  # "hidden_act": "silu",
+  # "hidden_size": 3584,
+  # "image_token_index": 151646,
+  # "image_aspect_ratio": "anyres_max_9",
+  # "image_crop_resolution": null,
+  # "image_grid_pinpoints": ...,
+  # "image_split_resolution": null,
+  # "initializer_range": 0.02,
+  # "intermediate_size": 18944,
+  # "max_position_embeddings": 32768,
+  # "max_window_layers": 28,
+  # "mm_hidden_size": 1152,
+  # "mm_patch_merge_type": "spatial_unpad",
+  # "mm_projector_lr": null,
+  # "mm_projector_type": "mlp2x_gelu",
+  # "mm_resampler_type": null,
+  # "mm_spatial_pool_mode": "bilinear",
+  # "mm_tunable_parts": "mm_vision_tower,mm_mlp_adapter,mm_language_model",
+  # "mm_use_im_patch_token": false,
+  # "mm_use_im_start_end": false,
+  # "mm_vision_select_feature": "patch",
+  # "mm_vision_select_layer": -2,
+  # "mm_vision_tower": "google/siglip-so400m-patch14-384",
+  # "mm_vision_tower_lr": 2e-06,
+  # "model_type": "llava",
+  # "num_attention_heads": 28,
+  # "num_hidden_layers": 28,
+  # "num_key_value_heads": 4,
+  # "pos_skipping_range": 4096,
+  # "rms_norm_eps": 1e-06,
+  # "rope_scaling": null,
+  # "rope_theta": 1000000.0,
+  # "sliding_window": 131072,
+  # "tie_word_embeddings": false,
+  # "tokenizer_model_max_length": 32768,
+  # "tokenizer_padding_side": "right",
+  # "torch_dtype": "bfloat16",
+  # "transformers_version": "4.40.0.dev0",
+  # "use_cache": true,
+  # "use_mm_proj": true,
+  # "use_pos_skipping": false,
+  # "use_sliding_window": false,
+  # "vision_tower_pretrained": null,
+  # "vocab_size": 152064
+################################################################
 class LlavaMetaModel:
 
     def __init__(self, config):
@@ -343,7 +393,7 @@ class LlavaMetaForCausalLM(ABC):
                             if 'unpad' in mm_patch_merge_type:
                                 image_feature = torch.cat((
                                     image_feature,
-                                    self.model.image_newline[None].to(image_feature.device)
+                                    self.model.image_newline[None].to(image_feature.device) # Adds a new dimension at the beginning of the tensor
                                 ), dim=0)
                             new_image_features.append(image_feature)
                         elif mm_newline_position == "no_token":
