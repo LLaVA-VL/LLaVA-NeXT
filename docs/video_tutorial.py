@@ -19,7 +19,7 @@ from memory import KMeansMemory
 
 
 
-
+print("load model")
 warnings.filterwarnings("ignore")
 # Load the OneVision model
 pretrained = "/anvme/workspace/b232dd16-LLaVA-OV/llava-onevision-qwen2-7b-ov"   # Use this for 7B model
@@ -46,7 +46,7 @@ def load_video(video_path, max_frames_num):
     spare_frames = vr.get_batch(frame_idx).asnumpy()
     return spare_frames  # (frames, height, width, channels)
 
-
+print("load video")
 # Load and process video
 video_path = "jobs.mp4"
 video_frames = load_video(video_path, 16)

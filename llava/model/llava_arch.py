@@ -311,6 +311,7 @@ class LlavaMetaForCausalLM(ABC):
                         # rank0_print("Video")
                         if mm_newline_position == "grid":
                             # Grid-wise
+                            # 模型将视频帧划分为多个网格（grid），并在每个网格位置添加一个视觉 token
                             image_feature = self.add_token_per_grid(image_feature)
                             if getattr(self.config, "add_faster_video", False):
                                 faster_video_feature = self.add_token_per_grid(all_faster_video_features[image_idx])
@@ -330,12 +331,14 @@ class LlavaMetaForCausalLM(ABC):
                             new_image_features.append(image_feature)
                         elif mm_newline_position == "frame":
                             # Frame-wise
+                            # 直接对视频帧进行处理，每个帧被表示为一个视觉 token
                             image_feature = self.add_token_per_frame(image_feature)
 
                             new_image_features.append(image_feature.flatten(0, 1))
 
                         elif mm_newline_position == "one_token":
                             # one-token
+                            # 模型将整个视频序列展平成一个单一的视觉 token
                             image_feature = image_feature.flatten(0, 1)
                             if 'unpad' in mm_patch_merge_type:
                                 image_feature = torch.cat((
