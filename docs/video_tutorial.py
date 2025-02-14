@@ -22,7 +22,7 @@ from memory import KMeansMemory
 
 warnings.filterwarnings("ignore")
 # Load the OneVision model
-pretrained = "/home/hpc/b232dd/b232dd16/llava-onevision-qwen2-7b-ov/"   # Use this for 7B model
+pretrained = "/anvme/workspace/b232dd16-LLaVA-OV/llava-onevision-qwen2-7b-ov"   # Use this for 7B model
 model_name = "llava_qwen"
 device = "cuda"
 device_map = "auto"
