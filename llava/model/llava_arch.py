@@ -332,7 +332,7 @@ class LlavaMetaForCausalLM(ABC):
 
             # This is a list, each element is [num_images, patch * patch, dim]
             rank_print(f"Concat images : {concat_images.shape}")
-            encoded_image_features = torch.split(encoded_image_features, split_sizes) # [torch.Size([frame_num, token_num, 3584])] 729
+            encoded_image_features = torch.split(encoded_image_features, split_sizes)  # [torch.Size([frame_num, 729, 3584])]
             rank_print(f"Encoded image feats : {[x.shape for x in encoded_image_features]}")
             image_features = []
             for idx, image_feat in enumerate(encoded_image_features):
@@ -341,7 +341,7 @@ class LlavaMetaForCausalLM(ABC):
                 else:
                     image_features.append(image_feat)
             # image_features = self.encode_multimodals(concat_images, video_idx_in_batch, split_sizes)
-            rank_print(f"Encoded image feats after 2dPool : {[x.shape for x in image_features]}") # [torch.Size([frame_num,:, 3584])] 196
+            rank_print(f"Encoded image feats after 2dPool : {[x.shape for x in image_features]}")  # [frame_num, 196, 3584]
             # image_features = torch.split(image_features, split_sizes, dim=0)
             mm_patch_merge_type = getattr(self.config, "mm_patch_merge_type", "flat")
             image_aspect_ratio = getattr(self.config, "image_aspect_ratio", "square")
