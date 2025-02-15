@@ -294,9 +294,9 @@ class LlavaMetaForCausalLM(ABC):
         return image_feature
 
     def add_token_per_frame(self, image_feature):
-        image_feature = image_feature.permute(2, 0, 1).contiguous()
-        image_feature =  torch.cat((image_feature, self.model.image_newline[:, None, None].expand(*image_feature.shape[:-1], 1).to(image_feature.device)), dim=-1)
-        image_feature = image_feature.permute(1, 2, 0).contiguous()
+        image_feature = image_feature.permute(2, 0, 1).contiguous()  # [3584, frame_num, 196]
+        image_feature =  torch.cat((image_feature, self.model.image_newline[:, None, None].expand(*image_feature.shape[:-1], 1).to(image_feature.device)), dim=-1)  # [3584, frame_num, 197]
+        image_feature = image_feature.permute(1, 2, 0).contiguous()  # [frame_num, 197, 3584]
         return image_feature
 
     def prepare_inputs_labels_for_multimodal(self, input_ids, position_ids, attention_mask, past_key_values, labels, images, modalities=["image"], image_sizes=None):
@@ -386,7 +386,7 @@ class LlavaMetaForCausalLM(ABC):
                         elif mm_newline_position == "frame":
                             # Frame-wise
                             # 直接对视频帧进行处理，每个帧被表示为一个视觉 token
-                            image_feature = self.add_token_per_frame(image_feature)
+                            image_feature = self.add_token_per_frame(image_feature)  # [frame_num, 197, 3584]
 
                             new_image_features.append(image_feature.flatten(0, 1))
                             rank_print(f"Image feature shape frame : {new_image_features[0].shape}")  # [n, 3584]
@@ -394,13 +394,13 @@ class LlavaMetaForCausalLM(ABC):
                             # one-token
                             # 模型将整个视频序列展平成一个单一的视觉 token
                             image_feature = image_feature.flatten(0, 1)
-                            rank_print(f"Image feature shape one_token : {image_feature.shape}")  # [n, 3584]
+                            rank_print(f"Image feature shape one_token : {image_feature.shape}")  # [frame_num*196, 3584]
                             if 'unpad' in mm_patch_merge_type:
                                 image_feature = torch.cat((
                                     image_feature,
                                     self.model.image_newline[None].to(image_feature.device) # Adds a new dimension at the beginning of the tensor
                                 ), dim=0)
-                            rank_print(f"Image feature shape one_token after unpad: {image_feature.shape}")  # [n+1, 3584]
+                            rank_print(f"Image feature shape one_token after unpad: {image_feature.shape}")  # [frame_num*196+1, 3584]
                             new_image_features.append(image_feature)
                             rank_print(f"new_image_features length: {len(new_image_features)}")
                         elif mm_newline_position == "no_token":
