@@ -301,7 +301,7 @@ class LlavaMetaForCausalLM(ABC):
 
     def prepare_inputs_labels_for_multimodal(self, input_ids, position_ids, attention_mask, past_key_values, labels, images, modalities=["image"], image_sizes=None):
         vision_tower = self.get_vision_tower()
-        rank_print(modalities)
+        # rank_print(modalities)
         if vision_tower is None or images is None or input_ids.shape[1] == 1:
             return input_ids, position_ids, attention_mask, past_key_values, None, labels
 
@@ -393,13 +393,13 @@ class LlavaMetaForCausalLM(ABC):
                             # one-token
                             # 模型将整个视频序列展平成一个单一的视觉 token
                             image_feature = image_feature.flatten(0, 1)
-                            rank_print(f"Image feature shape one_token : {image_feature.shape}")
+                            rank_print(f"Image feature shape one_token : {image_feature.shape}")  # [n, 3584]
                             if 'unpad' in mm_patch_merge_type:
                                 image_feature = torch.cat((
                                     image_feature,
                                     self.model.image_newline[None].to(image_feature.device) # Adds a new dimension at the beginning of the tensor
                                 ), dim=0)
-                            rank_print(f"Image feature shape one_token after unpad: {image_feature.shape}")
+                            rank_print(f"Image feature shape one_token after unpad: {image_feature.shape}")  # [n+1, 3584]
                             new_image_features.append(image_feature)
                             rank_print(f"new_image_features length: {len(new_image_features)}")
                         elif mm_newline_position == "no_token":
@@ -561,7 +561,7 @@ class LlavaMetaForCausalLM(ABC):
         tokenizer_model_max_length = getattr(self.config, "tokenizer_model_max_length", None)
         rank_print("Finishing Inserting")
         for x, modality in zip(new_input_embeds, modalities):
-            rank_print(f"New input embeds shape with {modality}: {x.shape}")
+            rank_print(f"New input embeds shape with {modality}: {x.shape}") # [squence_length, 3584]
         new_input_embeds = [x[:tokenizer_model_max_length] for x, modality in zip(new_input_embeds, modalities)]
         new_labels = [x[:tokenizer_model_max_length] for x, modality in zip(new_labels, modalities)]
         # TODO: Hard code for control loss spike
@@ -577,7 +577,7 @@ class LlavaMetaForCausalLM(ABC):
         new_labels_padded = torch.full((batch_size, max_len), IGNORE_INDEX, dtype=new_labels[0].dtype, device=new_labels[0].device)
         attention_mask = torch.zeros((batch_size, max_len), dtype=attention_mask.dtype, device=attention_mask.device)
         position_ids = torch.zeros((batch_size, max_len), dtype=position_ids.dtype, device=position_ids.device)
-        # rank0_print("Prepare pos id")
+        # rank_print("Prepare pos id")
 
         for i, (cur_new_embed, cur_new_labels) in enumerate(zip(new_input_embeds, new_labels)):
             cur_len = cur_new_embed.shape[0]
@@ -595,7 +595,7 @@ class LlavaMetaForCausalLM(ABC):
                     position_ids[i, :cur_len] = torch.arange(0, cur_len, dtype=position_ids.dtype, device=position_ids.device)
 
         new_input_embeds = torch.stack(new_input_embeds_padded, dim=0)
-        rank0_print(f"New input embeds shape: {new_input_embeds.shape}")
+        rank_print(f"New input embeds shape: {new_input_embeds.shape}")  # [batch_size, sequence_length, 3584]
 
         if _labels is None:
             new_labels = None
@@ -617,7 +617,7 @@ class LlavaMetaForCausalLM(ABC):
             position_ids[:, :split_position] += left_add
             position_ids[:, split_position:] += right_add
         # import pdb; pdb.set_trace()
-        # rank0_print("Finish preparing")
+        # rank_print("Finish preparing")
         return None, position_ids, attention_mask, past_key_values, new_input_embeds, new_labels
 
     def initialize_vision_tokenizer(self, model_args, tokenizer):
