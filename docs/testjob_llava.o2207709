@@ -1,56 +1,0 @@
-### Starting TaskPrologue of job 2207709 on a0325 at Thu Nov 28 23:59:50 CET 2024
-Running on cores 32-47 with governor ondemand
-Thu Nov 28 23:59:50 2024       
-+-----------------------------------------------------------------------------------------+
-| NVIDIA-SMI 560.35.03              Driver Version: 560.35.03      CUDA Version: 12.6     |
-|-----------------------------------------+------------------------+----------------------+
-| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
-| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
-|                                         |                        |               MIG M. |
-|=========================================+========================+======================|
-|   0  NVIDIA A40                     On  |   00000000:41:00.0 Off |                  Off |
-|  0%   35C    P8             22W /  300W |       1MiB /  49140MiB |      0%      Default |
-|                                         |                        |                  N/A |
-+-----------------------------------------+------------------------+----------------------+
-                                                                                         
-+-----------------------------------------------------------------------------------------+
-| Processes:                                                                              |
-|  GPU   GI   CI        PID   Type   Process name                              GPU Memory |
-|        ID   ID                                                               Usage      |
-|=========================================================================================|
-|  No running processes found                                                             |
-+-----------------------------------------------------------------------------------------+
-### Finished TaskPrologue
-
-/home/atuin/b232dd/b232dd16/software/private/conda/envs/llava/lib/python3.10/site-packages/huggingface_hub/file_download.py:797: FutureWarning: `resume_download` is deprecated and will be removed in version 1.0.0. Downloads always resume when possible. If you want to force a new download, use `force_download=True`.
-  warnings.warn(
-Special tokens have been added in the vocabulary, make sure the associated word embeddings are fine-tuned or trained.
-You are using a model of type llava to instantiate a model of type llava_qwen. This is not supported for all configurations of models and can yield errors.
-Loaded LLaVA model: lmms-lab/llava-onevision-qwen2-7b-ov
-Loading vision tower: google/siglip-so400m-patch14-384
-Loading checkpoint shards:   0%|          | 0/4 [00:00<?, ?it/s]Loading checkpoint shards:  25%|██▌       | 1/4 [00:08<00:24,  8.32s/it]Loading checkpoint shards:  50%|█████     | 2/4 [00:16<00:16,  8.44s/it]Loading checkpoint shards:  75%|███████▌  | 3/4 [00:27<00:09,  9.32s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:29<00:00,  6.55s/it]Loading checkpoint shards: 100%|██████████| 4/4 [00:29<00:00,  7.38s/it]
-Model Class: LlavaQwenForCausalLM
-(16, 1024, 576, 3)
-The video features a person standing on a stage, dressed in a black shirt and dark pants. A large hand appears from the background, reaching towards the person's pocket. The text 'Source: Joshua AG' is displayed at the top left corner of the frames, and 'EVAN CARMICHAEL' is shown in the top right corner. The text 'Anyone know what this pocket is for?' appears as the hand continues to reach into the pocket. The person then looks down at their pocket, and the text 'I've always wondered that' appears. The hand finally pulls out a small white device labeled 'iPod Nano'. The person holds up the iPod Nano, and the text 'is the new iPod Nano' appears. The video concludes with a close-up of the person holding the iPod Nano, showing it from different angles.
-=== JOB_STATISTICS ===
-=== current date     : Fri Nov 29 00:02:18 CET 2024
-= Job-ID             : 2207709 on alex
-= Job-Name           : testjob_llava
-= Job-Command        : /home/hpc/b232dd/b232dd16/LLaVA-OV/docs/test_script.sh
-= Initial workdir    : /home/hpc/b232dd/b232dd16/LLaVA-OV/docs
-= Queue/Partition    : a40
-= Slurm account      : b232dd with QOS=normal
-= Requested resources:  for 01:00:00
-= Elapsed runtime    : 00:02:31
-= Total RAM usage    : 2.8 GiB of assigned  GiB (%)
-= Node list          : a0325
-= Subm/Elig/Start/End: 2024-11-28T23:59:20 / 2024-11-28T23:59:20 / 2024-11-28T23:59:47 / 2024-11-29T00:02:18
-======================
-=== Quota infos ======
-    Path              Used     SoftQ    HardQ    Gracetime  Filec    FileQ    FiHaQ    FileGrace    
-    /home/hpc           44.4G   104.9G   209.7G        N/A   3,597      500K   1,000K        N/A    
-    /home/vault          0.0K  1048.6G  2097.2G        N/A       1      200K     400K        N/A    
-======================
-=== GPU utilization ==
-gpu_name, gpu_bus_id, pid, gpu_utilization [%], mem_utilization [%], max_memory_usage [MiB], time [ms]
-NVIDIA A40, 00000000:41:00.0, 3918510, 11 %, 9 %, 20308 MiB, 61927 ms

@@ -343,6 +343,8 @@ class LlavaMetaForCausalLM(ABC):
             # image_features = self.encode_multimodals(concat_images, video_idx_in_batch, split_sizes)
             rank_print(f"Encoded image feats after 2dPool : {[x.shape for x in image_features]}")  # [frame_num, 196, 3584]
             # image_features = torch.split(image_features, split_sizes, dim=0)
+
+
             mm_patch_merge_type = getattr(self.config, "mm_patch_merge_type", "flat")
             image_aspect_ratio = getattr(self.config, "image_aspect_ratio", "square")
             mm_newline_position = getattr(self.config, "mm_newline_position", "one_token")
