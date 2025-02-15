@@ -389,7 +389,7 @@ class LlavaMetaForCausalLM(ABC):
                             image_feature = self.add_token_per_frame(image_feature)
 
                             new_image_features.append(image_feature.flatten(0, 1))
-
+                            rank_print(f"Image feature shape frame : {new_image_features[0].shape}")  # [n, 3584]
                         elif mm_newline_position == "one_token":
                             # one-token
                             # 模型将整个视频序列展平成一个单一的视觉 token
