@@ -49,7 +49,7 @@ def load_video(video_path, max_frames_num):
 print("load video")
 # Load and process video
 video_path = "/home/hpc/b232dd/b232dd16/LLaVA-OV/docs/needle_32.mp4"
-video_frames = load_video(video_path, 42)
+video_frames = load_video(video_path, 64)
 print(video_frames.shape) # (16, 1024, 576, 3)
 image_tensors = []
 frames = image_processor.preprocess(video_frames, return_tensors="pt")["pixel_values"].half().cuda()
