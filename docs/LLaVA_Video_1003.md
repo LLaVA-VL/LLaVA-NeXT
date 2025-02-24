@@ -81,6 +81,18 @@ text_outputs = tokenizer.batch_decode(cont, skip_special_tokens=True)[0].strip()
 print(text_outputs)
 ```
 
+## Data Preparation
+
+1. **Download LLaVA-OneVision**  
+   Refer to the official instructions here: [LLaVA-OneVision Data](https://github.com/LLaVA-VL/LLaVA-NeXT/tree/main/scripts/train#about-the-llava-onevision-data). Make sure to follow the guidelines provided to obtain and organize the data correctly.
+
+2. **Download LLaVA-Video-178K**  
+   The dataset is available on Hugging Face: [LLaVA-Video-178K](https://huggingface.co/datasets/lmms-lab/LLaVA-Video-178K). After downloading, place it in your desired directory.
+
+3. **Update `exp.yaml`**  
+   In the [`exp.yaml` file](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/scripts/video/train/exp.yaml), update the file paths to point to the directories where you stored the datasets:
+   - **Line 186-Line 263**: Specify the path for the LLaVA-Video-178K dataset.  
+   - For other data references, update them to point to your local LLaVA-OneVision data directory.
 
 ## Training
 
