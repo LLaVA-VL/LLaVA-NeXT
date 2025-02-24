@@ -1,10 +1,10 @@
 datasets:
   - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/llava_next_fit_mix_filtered_text_wild_738590.json
     sampling_strategy: "first:50%"
-  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/llava_wild_4v_39k.json
-    sampling_strategy: "first:10%"
-  - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/llava_wild_4v_12k.json
-    sampling_strategy: "first:10%"
+  # - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/llava_wild_4v_39k.json
+  #   sampling_strategy: "first:10%"
+  # - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/llava_wild_4v_12k.json
+  #   sampling_strategy: "first:10%"
   - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/mavis_math_metagen_87358.json
     sampling_strategy: "first:10%"
   - json_path: /mnt/bn/vl-research/data/llava_instruct/real_vision_flan/mavis_math_rule_geo_100000.json
