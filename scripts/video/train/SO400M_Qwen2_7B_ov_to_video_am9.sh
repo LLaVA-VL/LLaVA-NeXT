@@ -1,9 +1,13 @@
 #!/bin/bash
 
 # Set up the data folder
-IMAGE_FOLDER="XXX"
-VIDEO_FOLDER="XXX"
-DATA_YAML="XXX" # e.g exp.yaml
+#IMAGE_FOLDER="/ssd2/kchoi/experiments/DLT-138/Simone_28_one_video_one_label/videos/"
+#VIDEO_FOLDER="/ssd2/kchoi/experiments/DLT-138/Simone_28_one_video_one_label/videos/"
+#IMAGE_FOLDER="/home/veesion/gemini_engineering_subset/tracks_segments_resampled/"
+#VIDEO_FOLDER="/home/veesion/gemini_engineering_subset/tracks_segments_resampled/"
+IMAGE_FOLDER="/home/veesion/gemini_engineering_subset/tracks_segments/"
+VIDEO_FOLDER="/home/veesion/gemini_engineering_subset/tracks_segments/"
+DATA_YAML="scripts/video/train/exp.yaml" # e.g exp.yaml
 
 ############### Prepare Envs #################
 python3 -m pip install flash-attn --no-build-isolation
@@ -26,7 +30,7 @@ echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 # Stage 2
 PROMPT_VERSION="qwen_1_5"
 MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-ov_to_video_am9"
-PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-7b-ov-si"
+PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-0.5b-ov"
 echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
@@ -56,7 +60,7 @@ deepspeed --master_port 30000 \
     --output_dir ./work_dirs/$MID_RUN_NAME \
     --num_train_epochs 1 \
     --per_device_train_batch_size 1 \
-    --per_device_eval_batch_size 4 \
+    --per_device_eval_batch_size 1 \
     --gradient_accumulation_steps 2 \
     --evaluation_strategy "no" \
     --save_strategy "steps" \
@@ -67,18 +71,20 @@ deepspeed --master_port 30000 \
     --warmup_ratio 0.03 \
     --lr_scheduler_type "cosine" \
     --logging_steps 1 \
-    --tf32 True \
+    --tf32 False \
     --model_max_length 32768 \
     --gradient_checkpointing True \
-    --dataloader_num_workers 2 \
+    --dataloader_num_workers 1 \
     --lazy_preprocess True \
-    --report_to wandb \
     --torch_compile True \
     --torch_compile_backend "inductor" \
     --dataloader_drop_last True \
-    --frames_upbound 64 \
+    --frames_upbound 16 \
+    --video_fps 5 \
     --mm_newline_position grid \
     --add_time_instruction True \
-    --force_sample True \
-    --mm_spatial_pool_stride 2
+    --mm_spatial_pool_stride 2 \
+    --attn_implementation "sdpa" \
+    --verbose_logging
+#    --force_sample False \
 exit 0;
