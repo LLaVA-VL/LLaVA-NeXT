@@ -1,0 +1,18 @@
+name: llava
+channels:
+  - conda-forge
+dependencies:
+  - accelerate=0.29.3
+  - av
+  - deepspeed=0.14
+  - einops
+  - flash-attn
+  - hf-transfer
+  - jmespath
+  - mpi4py
+  - open-clip-torch
+  - pytorch
+  - transformers=4.40.0
+  - wandb
+  - pip:
+      - decord
