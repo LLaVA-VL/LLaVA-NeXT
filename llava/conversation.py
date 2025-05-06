@@ -451,6 +451,17 @@ You are a helpful assistant.""",
     sep="<|im_end|>",
 )
 
+conv_qwen_2_5 = Conversation(
+    system="""<|im_start|>system
+You are Qwen, created by Alibaba Cloud. You are a helpful assistant.""",
+    roles=("<|im_start|>user", "<|im_start|>assistant"),
+    version="qwen",
+    messages=[],
+    offset=0,
+    sep_style=SeparatorStyle.CHATML,
+    sep="<|im_end|>",
+)
+
 conv_gemma_instruct = Conversation(system="", roles=("<start_of_turn>user\n", "<start_of_turn>model\n"), version="gemma", messages=[], offset=0, sep_style=SeparatorStyle.GEMMA, sep="<end_of_turn>\n")
 
 conv_llava_plain = Conversation(
@@ -577,6 +588,7 @@ conv_templates = {
     "mpt": conv_mpt,
     "qwen_1_5": conv_qwen,
     "qwen_2": conv_qwen,
+    "qwen_2_5": conv_qwen_2_5,
     "gemma_instruct": conv_gemma_instruct,
 }
 
