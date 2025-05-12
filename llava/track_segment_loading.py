@@ -1,7 +1,7 @@
 from typing import Literal, Iterator, IO, Any, cast
 from collections import defaultdict
 from pathlib import Path
-from tempfile import NamedTemporaryFile
+from io import BytesIO
 
 import pickle
 import boto3
@@ -32,8 +32,8 @@ TracksBoxes = dict[TrackId, tuple[FrameIds, BoundingBoxes]]
 ALPHA = 0.15
 
 
-def download_from_s3(s3_client, bucket: Bucket, key: Path) -> IO:
-    return s3_client.get_object(Bucket=bucket, Key=str(key))['Body']
+def download_from_s3(s3, bucket: Bucket, key: Path) -> IO:
+    return s3.get_object(Bucket=bucket, Key=str(key))['Body']
 
 
 def transpose_frames_to_tracks(frames: FramesBoxes, start: int, height: int,
@@ -151,14 +151,10 @@ def load_video_tracks(video_id: str, max_size=256
         download_from_s3(s3_client, 'scalable-training-dataset', pkl_key))
     start, end = min(frames_boxes), max(frames_boxes)
 
-    # waiting for torchcodec 0.3 for directly reading from boto3 StreamingBody
-    data = download_from_s3(s3_client, 'scalable-training-dataset', video_key).read()
-    # it is not possible to read bytes directly with torchcodec 0.2
-    with NamedTemporaryFile(suffix='.mp4', buffering=0) as f:
-        f.write(data)
-        decoder = VideoDecoder(f.name, num_ffmpeg_threads=1)
-        height, width = decoder.metadata.height, decoder.metadata.width
-        video_frames = decoder.get_frames_in_range(start, end+1)
+    data = download_from_s3(s3_client, 'scalable-training-dataset', video_key)
+    decoder = VideoDecoder(BytesIO(data.read()), num_ffmpeg_threads=1)
+    height, width = decoder.metadata.height, decoder.metadata.width
+    video_frames = decoder.get_frames_in_range(start, end+1)
 
     tracks_boxes = transpose_frames_to_tracks(
         frames_boxes, start, height, width)
