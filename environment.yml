@@ -14,5 +14,7 @@ dependencies:
   - pytorch
   - transformers=4.40.0
   - wandb
+  - torchvision
+  - torchcodec
   - pip:
       - decord
