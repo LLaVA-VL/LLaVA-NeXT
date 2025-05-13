@@ -1,11 +1,13 @@
 from typing import Literal, Iterator, IO, Any, cast
 from collections import defaultdict
 from pathlib import Path
-from io import BytesIO
+import io
+from io import RawIOBase
 
 import pickle
 import boto3
 import torch
+from torchcodec import FrameBatch
 from torchcodec.decoders import VideoDecoder
 from torchvision.tv_tensors import Image, BoundingBoxes, BoundingBoxFormat, \
     wrap
@@ -29,17 +31,84 @@ FramesBoxes = dict[FrameId, dict[TrackId, tuple[Box, float, int]]]
 TracksBoxes = dict[TrackId, tuple[FrameIds, BoundingBoxes]]
 
 
-ALPHA = 0.15
+class S3File(io.RawIOBase):
+    def __init__(self, s3_object):
+        self.s3_object = s3_object
+        self.position = 0
+        self.cache = {}
+
+    def __repr__(self):
+        return "<%s s3_object=%r>" % (type(self).__name__, self.s3_object)
+
+    @property
+    def size(self):
+        return self.s3_object.content_length
+
+    def tell(self):
+        return self.position
+
+    def seek(self, offset, whence=io.SEEK_SET):
+        if whence == io.SEEK_SET:
+            self.position = offset
+        elif whence == io.SEEK_CUR:
+            self.position += offset
+        elif whence == io.SEEK_END:
+            self.position = self.size + offset
+        else:
+            raise ValueError("invalid whence (%r, should be %d, %d, %d)" % (
+                whence, io.SEEK_SET, io.SEEK_CUR, io.SEEK_END
+            ))
+
+        return self.position
+
+    def seekable(self):
+        return True
+
+    def read(self, size=-1):
+        # boto3 does not support reading with start at the end of the file
+        if self.size == self.position:
+            return b''
+
+        if size == -1:
+            # Read to the end of the file
+            range_header = "bytes=%d-" % self.position
+            self.seek(offset=0, whence=io.SEEK_END)
+        else:
+            new_position = self.position + size
+
+            # If we're going to read beyond the end of the object, return
+            # the entire object.
+            if new_position >= self.size:
+                return self.read()
+
+            range_header = "bytes=%d-%d" % (self.position, new_position - 1)
+            self.seek(offset=size, whence=io.SEEK_CUR)
+
+        return self.get(range_header)
+
+    def readable(self):
+        return True
+
+    def get(self, range_header: str) -> bytes:
+        if range_header in self.cache:
+            return self.cache[range_header]
+        res = self.s3_object.get(Range=range_header)
+        self.cache[range_header] = data = res['Body'].read()
+        return data
 
 
-def download_from_s3(s3, bucket: Bucket, key: Path) -> IO:
-    return s3.get_object(Bucket=bucket, Key=str(key))['Body']
+def download_from_s3(s3, bucket: Bucket, key: Path, seekable: bool = False
+                     ) -> S3File:
+    obj = s3.Object(bucket_name=bucket, key=str(key))
+    if seekable:
+        return S3File(obj)
+    return obj.get()['Body']
 
 
 def transpose_frames_to_tracks(frames: FramesBoxes, start: int, height: int,
                                width: int) -> TracksBoxes:
     tracks_ = defaultdict(list)
-    for frameid, frame in frames.items():
+    for frameid, frame in sorted(frames.items()):
         for trackid, (box, _, _) in frame.items():
             tracks_[trackid].append((frameid - start, box))
     tracks = {}
@@ -50,6 +119,16 @@ def transpose_frames_to_tracks(frames: FramesBoxes, start: int, height: int,
             boxes_, format='XYXY', canvas_size=(height, width))
         tracks[trackid] = (frame_ids, boxes)
     return tracks
+
+
+def get_track_segment_boxes(frames: FramesBoxes, track_id: int, height: int,
+                            width: int, frame_ids: FrameIds
+                            ) -> BoundingBoxes:
+    boxes = []
+    for frame_id in frame_ids:
+        frame = frames[frame_id]
+        boxes.append(frame[track_id][0])
+    return BoundingBoxes(boxes, format='XYXY', canvas_size=(height, width))
 
 
 def smooth_boxes(boxes: torch.Tensor, format: BoundingBoxFormat, alpha: float
@@ -142,32 +221,43 @@ class BoxCrop(torch.nn.Module):
                                 max_size=self.max_size))
 
 
-def load_video_tracks(video_id: str, max_size=256
-                      ) -> Iterator[tuple[TrackId, torch.Tensor]]:
-    s3_client = boto3.client('s3')
+ALPHA = 0.15
+MAX_SIZE = 256
+transforms = Compose([
+    Smooth(ALPHA),
+    ClampBoundingBoxes(),
+    ToDtype(dtype={BoundingBoxes: torch.int32, "others": None}),
+    ConvertBoundingBoxFormat('XYWH'),
+    BoxCrop(MAX_SIZE),
+])
+
+
+def load_video_track_segment(
+    video_id: str, track_id: int, timespan: tuple[float, float],
+    num_frames: int
+) -> FrameBatch:
+    s3_client = boto3.resource('s3')
     video_key = VIDEO_PREFIX / video_id
     pkl_key = (PICKLE_PREFIX / video_id).with_suffix(".pkl")
     frames_boxes = pickle.load(
         download_from_s3(s3_client, 'scalable-training-dataset', pkl_key))
-    start, end = min(frames_boxes), max(frames_boxes)
 
-    data = download_from_s3(s3_client, 'scalable-training-dataset', video_key)
-    decoder = VideoDecoder(BytesIO(data.read()), num_ffmpeg_threads=1)
+    data = download_from_s3(s3_client, 'scalable-training-dataset', video_key,
+                            seekable=True)
+    decoder = VideoDecoder(data)
+
+    start = int(round(timespan[0] * decoder.metadata.average_fps))
+    end = int(round(timespan[1] * decoder.metadata.average_fps))
+    frame_ids = torch.linspace(
+        start, end - 1, num_frames, dtype=torch.int32).tolist()
     height, width = decoder.metadata.height, decoder.metadata.width
-    video_frames = decoder.get_frames_in_range(start, end+1)
+    boxes = get_track_segment_boxes(frames_boxes, track_id, height, width,
+                                    frame_ids)
 
-    tracks_boxes = transpose_frames_to_tracks(
-        frames_boxes, start, height, width)
+    video_frames = decoder.get_frames_at(frame_ids)
 
-    transforms = Compose([
-        Smooth(ALPHA),
-        # Margin(1.5),
-        ClampBoundingBoxes(),
-        ToDtype(dtype={BoundingBoxes: torch.int32, "others": None}),
-        ConvertBoundingBoxFormat('XYWH'),
-        BoxCrop(max_size),
-    ])
-    for track_id, (frame_ids, boxes) in tracks_boxes.items():
-        track_frames = Image(video_frames.data[frame_ids])
-        track_frames = transforms(track_frames, boxes)
-        yield track_id, track_frames
+    assert len(boxes) == len(video_frames), (len(boxes), len(video_frames))
+    track_frames = transforms(Image(video_frames.data), boxes)
+
+    return FrameBatch(track_frames, video_frames.pts_seconds,
+                      video_frames.duration_seconds)
