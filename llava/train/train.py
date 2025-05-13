@@ -46,6 +46,7 @@ from llava import conversation as conversation_lib
 from llava.model import *
 from llava.mm_utils import process_highres_image, process_anyres_image, process_highres_image_crop_split, tokenizer_image_token
 from llava.utils import rank0_print, process_video_with_pyav, process_video_with_decord
+from llava.track_segment_loading import load_video_track_segment
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
@@ -605,7 +606,7 @@ def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_im
                 content = conv["value"]
 
             role =  roles.get(role, role)
-            
+
             conv = [{"role" : role, "content" : content}]
             encode_id = tokenizer.apply_chat_template(conv)
             input_id += encode_id
@@ -613,9 +614,9 @@ def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_im
                 target += [IGNORE_INDEX] * len(encode_id)
             else:
                 target += encode_id
-        
 
-                    
+
+
         assert len(input_id) == len(target), f"{len(input_id)} != {len(target)}"
         for idx, encode_id in enumerate(input_id):
             if encode_id in unmask_tokens_idx:
@@ -690,7 +691,7 @@ def preprocess_llama3(
                 content = conv["value"]
 
             role =  roles.get(role, role)
-            
+
             conv = [{"role" : role, "content" : content}]
             # First is bos token we don't need here
             encode_id = tokenizer.apply_chat_template(conv)[1:]
@@ -699,9 +700,9 @@ def preprocess_llama3(
                 target += [IGNORE_INDEX] * len(encode_id)
             else:
                 target += encode_id
-        
 
-                    
+
+
         assert len(input_id) == len(target), f"{len(input_id)} != {len(target)}"
         for idx, encode_id in enumerate(input_id):
             if encode_id in unmask_tokens_idx:
@@ -952,6 +953,64 @@ def preprocess(sources: Sequence[str], tokenizer: transformers.PreTrainedTokeniz
     return dict(input_ids=input_ids, labels=targets)
 
 
+class TrackSegmentDataset(Dataset):
+
+    def __init__(self, data_path: str,
+                 tokenizer: transformers.PreTrainedTokenizer,
+                 data_args: DataArguments):
+        super(TrackSegmentDataset, self).__init__()
+        self.tokenizer = tokenizer
+        with open(data_path) as f:
+            self.data = json.load(f)
+        self.data_args = data_args
+
+    def __len__(self):
+        return len(self.data)
+
+    @property
+    def modality_lengths(self):
+        length_list = []
+        for sample in self.data:
+            cur_len = sum(len(conv["value"].split()) for conv in sample["conversations"])
+            assert cur_len > 0, f"Conversation length is 0 for {sample}"
+            if "image" in sample or "video" in sample or self.data_args.early_mix_text:
+                length_list.append(cur_len)
+            else:
+                length_list.append(-cur_len)
+        return length_list
+
+    def __getitem__(self, i):
+        data = self.data[i]
+        start, end = timespan = data['timespan']
+        frame_batch = load_video_track_segment(
+            data['video'], data['track_id'], timespan,
+            self.data_args.frames_upbound)
+        image = self.data_args.image_processor.preprocess(
+            frame_batch.data, return_tensors="pt")["pixel_values"]
+        source = copy.deepcopy(data["conversations"])
+        if self.data_args.add_time_instruction:
+            duration = end - start
+            pts_seconds = frame_batch.pts_seconds.tolist()
+            num_frames = len(frame_batch)
+            time_instruction = f"The video lasts for {duration:.2f} seconds," \
+                f" and {num_frames} frames are uniformly sampled from it. " \
+                f"These frames are located at {pts_seconds}. " \
+                "Please answer the following questions related to this video."
+            conv0 = source[0]["value"]
+            conv0 = conv0.replace(DEFAULT_IMAGE_TOKEN, "")
+            source[0]["value"] = \
+                f'{DEFAULT_IMAGE_TOKEN}\n{time_instruction}\n{conv0}'
+
+        sources = preprocess_multimodal([source], self.data_args)
+        data_dict = preprocess(sources, self.tokenizer, has_image=True)
+        if isinstance(i, int):
+            data_dict = dict(input_ids=data_dict["input_ids"][0],
+                             labels=data_dict["labels"][0])
+        data_dict["image"] = [(image, frame_batch.data[0].size(), "video")]
+        data_dict['id'] = data['id']
+        return data_dict
+
+
 class LazySupervisedDataset(Dataset):
     def __init__(self, data_path: str, tokenizer: transformers.PreTrainedTokenizer, data_args: DataArguments):
         super(LazySupervisedDataset, self).__init__()
@@ -1142,7 +1201,7 @@ class LazySupervisedDataset(Dataset):
             if type(image_file) is list:
                 image = [self.process_image(f) for f in image_file]
                 # Handling multi images
-                # overwrite to process with simple pad 
+                # overwrite to process with simple pad
                 if len(image_file) > 1:
                     image = [self.process_image(f, "pad") for f in image_file]
                     image = [[im[0], im[1], "image"] for im in image]
@@ -1170,7 +1229,7 @@ class LazySupervisedDataset(Dataset):
                         num_frames_to_sample = 10
 
                     avg_fps = 2
-                    
+
                     total_frames = len(frame_files)
                     sampled_indices = np.linspace(0, total_frames - 1, num_frames_to_sample, dtype=int)
 
@@ -1288,7 +1347,8 @@ class DataCollatorForSupervisedDataset(object):
 
 def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer, data_args) -> Dict:
     """Make dataset and collator for supervised fine-tuning."""
-    train_dataset = LazySupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, data_args=data_args)
+    # train_dataset = LazySupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, data_args=data_args)
+    train_dataset = TrackSegmentDataset(tokenizer=tokenizer, data_path=data_args.data_path, data_args=data_args)
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
     return dict(train_dataset=train_dataset, eval_dataset=None, data_collator=data_collator)
 
@@ -1606,7 +1666,7 @@ def train(attn_implementation=None):
         model.config.faster_token_stride = model_args.faster_token_stride
         model.config.add_time_instruction = data_args.add_time_instruction
         model.config.force_sample = data_args.force_sample
-        model.config.mm_spatial_pool_stride = model_args.mm_spatial_pool_stride 
+        model.config.mm_spatial_pool_stride = model_args.mm_spatial_pool_stride
 
         ### Deciding train which part of the model
         if model_args.mm_tunable_parts is None:  # traditional way of deciding which part to train

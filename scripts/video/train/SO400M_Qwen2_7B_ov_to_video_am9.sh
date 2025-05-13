@@ -7,7 +7,8 @@
 #VIDEO_FOLDER="/home/veesion/gemini_engineering_subset/tracks_segments_resampled/"
 IMAGE_FOLDER="/home/veesion/gemini_engineering_subset/tracks_segments/"
 VIDEO_FOLDER="/home/veesion/gemini_engineering_subset/tracks_segments/"
-DATA_YAML="scripts/video/train/exp.yaml" # e.g exp.yaml
+# DATA_YAML="scripts/video/train/exp.yaml" # e.g exp.yaml
+DATA_YAML="data/gemini_finetuning_subset_cheating_description.json"
 
 ############### Prepare Envs #################
 python3 -m pip install flash-attn --no-build-isolation
