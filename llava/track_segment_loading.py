@@ -1,8 +1,7 @@
-from typing import Literal, Iterator, IO, Any, cast
+from typing import Literal, Any, cast
 from collections import defaultdict
 from pathlib import Path
 import io
-from io import RawIOBase
 
 import pickle
 import boto3
@@ -124,10 +123,16 @@ def transpose_frames_to_tracks(frames: FramesBoxes, start: int, height: int,
 def get_track_segment_boxes(frames: FramesBoxes, track_id: int, height: int,
                             width: int, frame_ids: FrameIds
                             ) -> BoundingBoxes:
-    boxes = []
-    for frame_id in frame_ids:
-        frame = frames[frame_id]
-        boxes.append(frame[track_id][0])
+    # the track is not guaranted to have box in all consecutive frames
+    # get the box from the closest frame id
+    all_frame_ids = [frame_id for frame_id, frame in frames.items()
+                     if track_id in frame]
+    diff_matrix = torch.tensor(all_frame_ids).reshape([-1, 1]) \
+        - torch.tensor(frame_ids)
+    min_indices = abs(diff_matrix).argmin(0).tolist()
+    frame_ids = [all_frame_ids[i] for i in min_indices]
+
+    boxes = [frames[frame_id][track_id][0] for frame_id in frame_ids]
     return BoundingBoxes(boxes, format='XYXY', canvas_size=(height, width))
 
 
@@ -237,7 +242,7 @@ def load_video_track_segment(
     num_frames: int
 ) -> FrameBatch:
     s3_client = boto3.resource('s3')
-    video_key = VIDEO_PREFIX / video_id
+    video_key = (VIDEO_PREFIX / video_id).with_suffix(".mp4")
     pkl_key = (PICKLE_PREFIX / video_id).with_suffix(".pkl")
     frames_boxes = pickle.load(
         download_from_s3(s3_client, 'scalable-training-dataset', pkl_key))
@@ -247,7 +252,8 @@ def load_video_track_segment(
     decoder = VideoDecoder(data)
 
     start = int(round(timespan[0] * decoder.metadata.average_fps))
-    end = int(round(timespan[1] * decoder.metadata.average_fps))
+    end = min(int(round(timespan[1] * decoder.metadata.average_fps)),
+              decoder.metadata.num_frames)
     frame_ids = torch.linspace(
         start, end - 1, num_frames, dtype=torch.int32).tolist()
     height, width = decoder.metadata.height, decoder.metadata.width
