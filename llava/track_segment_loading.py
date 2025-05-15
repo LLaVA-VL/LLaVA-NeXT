@@ -120,6 +120,28 @@ def transpose_frames_to_tracks(frames: FramesBoxes, start: int, height: int,
     return tracks
 
 
+def get_track_boxes(frames: FramesBoxes, track_id: TrackId, width: int,
+                    height: int) -> tuple[FrameIds, BoundingBoxes]:
+    boxes = []
+    frame_ids = []
+    for frame_id, frame in frames.items():
+        if track_id in frame:
+            frame_ids.append(frame_id)
+            boxes.append(frame[track_id][0])
+    return frame_ids, BoundingBoxes(boxes, format='XYXY',
+                                    canvas_size=(height, width))
+
+
+def get_boxes_at(boxes: BoundingBoxes, all_frame_ids: FrameIds,
+                 frame_ids: FrameIds) -> BoundingBoxes:
+    # the track is not guaranted to have box in all consecutive frames
+    # get the box from the closest frame id
+    diff_matrix = torch.tensor(all_frame_ids).reshape([-1, 1]) \
+        - torch.tensor(frame_ids)
+    min_indices = abs(diff_matrix).argmin(0)
+    return wrap(boxes.data[min_indices], like=boxes)
+
+
 def get_track_segment_boxes(frames: FramesBoxes, track_id: int, height: int,
                             width: int, frame_ids: FrameIds
                             ) -> BoundingBoxes:
@@ -229,7 +251,6 @@ class BoxCrop(torch.nn.Module):
 ALPHA = 0.15
 MAX_SIZE = 256
 transforms = Compose([
-    Smooth(ALPHA),
     ClampBoundingBoxes(),
     ToDtype(dtype={BoundingBoxes: torch.int32, "others": None}),
     ConvertBoundingBoxFormat('XYWH'),
@@ -257,8 +278,10 @@ def load_video_track_segment(
     frame_ids = torch.linspace(
         start, end - 1, num_frames, dtype=torch.int32).tolist()
     height, width = decoder.metadata.height, decoder.metadata.width
-    boxes = get_track_segment_boxes(frames_boxes, track_id, height, width,
-                                    frame_ids)
+    track_frame_ids, boxes = get_track_boxes(frames_boxes, track_id, height,
+                                             width)
+    boxes = Smooth(ALPHA)(boxes)
+    boxes = get_boxes_at(boxes, track_frame_ids, frame_ids)
 
     video_frames = decoder.get_frames_at(frame_ids)
 
