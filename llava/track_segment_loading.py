@@ -2,6 +2,7 @@ from typing import Literal, Any, cast
 from collections import defaultdict
 from pathlib import Path
 import io
+from math import ceil
 
 import pickle
 import boto3
@@ -228,9 +229,17 @@ def boxes_crop(images: torch.Tensor, boxes: torch.Tensor,
                format: BoundingBoxFormat, max_size: int) -> torch.Tensor:
     def box_crop(image: torch.Tensor, box: torch.Tensor) -> torch.Tensor:
         left, top, width, height = box[0], box[1], box[2], box[3]
-        image = crop(image, top, left, height, width)
-        image = resize(image, size=None, max_size=max_size)
-        image = square_pad(image)
+        # minimum size for resizing
+        min_size = ceil(max(width, height) / max_size)
+        if width >= min_size and height >= min_size:
+            # can't crop with 0 width or height
+            image = crop(image, top, left, height, width)
+            # output size should be > 0 for height or width
+            image = resize(image, size=None, max_size=max_size)
+            image = square_pad(image)
+        else:
+            image = torch.full([image.shape[0], max_size, max_size],
+                               fill_value=127, dtype=image.dtype)
         return image
     boxes = convert_bounding_box_format(boxes, format, BoundingBoxFormat.XYWH)
     return torch.stack([box_crop(image, box)
@@ -286,7 +295,12 @@ def load_video_track_segment(
     video_frames = decoder.get_frames_at(frame_ids)
 
     assert len(boxes) == len(video_frames), (len(boxes), len(video_frames))
-    track_frames = transforms(Image(video_frames.data), boxes)
+    assert len(boxes) > 0, len(boxes)
+    try:
+        track_frames = transforms(Image(video_frames.data), boxes)
+    except Exception as e:
+        print(video_id, track_id, timespan, video_frames.data.shape)
+        raise e
 
     return FrameBatch(track_frames, video_frames.pts_seconds,
                       video_frames.duration_seconds)
