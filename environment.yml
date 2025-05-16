@@ -2,19 +2,21 @@ name: llava
 channels:
   - conda-forge
 dependencies:
+  - flash-attn
   - accelerate=0.29.3
   - av
   - deepspeed=0.14
-  - einops
-  - flash-attn
+  - cuda-compiler
   - hf-transfer
   - jmespath
   - mpi4py
   - open-clip-torch
-  - pytorch
   - transformers=4.40.0
   - wandb
   - torchvision
   - torchcodec
+  - boto3
+  - tyro
+  - pip
   - pip:
       - decord
