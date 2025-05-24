@@ -117,7 +117,7 @@ pip install -e ".[train]"
 Please checkout the following page for more inference & evaluation details.
 
 #### - **LLaVA-OneVision: Easy Task Transfer**
-- [LLaVA-OneVision]([./docs/LLaVA-NeXT.md](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/docs/LLaVA_OneVision.md)): for demo inference. The evaluation code is in [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval).
+- [LLaVA-OneVision](https://github.com/LLaVA-VL/LLaVA-NeXT/blob/main/docs/LLaVA_OneVision.md): for demo inference. The evaluation code is in [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval).
 
 #### - **LLaVA-NeXT: Stronger LLMs Supercharge Multimodal Capabilities in the Wild**
 - [LLaVA-NeXT-Image](./docs/LLaVA-NeXT.md): for image demo inference and evaluation of stronger LMMs using [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval).
