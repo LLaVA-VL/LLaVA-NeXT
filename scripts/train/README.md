@@ -1,5 +1,15 @@
 # About Training Scripts
 
+🔧 [2025-05] Release Update: Clarification on Missing Files
+
+We have received feedback regarding missing files in the current lmms-lab/LLaVA-OneVision-Data release. Specifically, the following datasets referenced in our config or documentation are currently not included in the repository:
+	•	llava_wild_4v_39k.json
+	•	llava_wild_4v_12k.json
+	•	MathV360K_TQA_10181.json
+	•	MathV360K_VQA-AS_5907.json
+	•	MathV360K_VQA-RAD_2130.json
+	•	Evol-Instruct-GPT4-Turbo-143000.json
+
 We first release the basic training scripts for LLaVA-NeXT. It's based on previous LLaVA's training scripts and researchers familiar with LLaVA will find it easy to use.
 
 We will gradually release the more detailed training scripts for our LLaVA OneVision models including the mid stage, single-image final stage and one-vision final stage.
