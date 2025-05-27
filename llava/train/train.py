@@ -38,7 +38,7 @@ import tokenizers
 import deepspeed
 
 from transformers import AutoConfig
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Subset, random_split
 from llava.constants import IGNORE_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN, IMAGE_TOKEN_INDEX
 from llava.train.llava_trainer import LLaVATrainer
 
@@ -953,24 +953,18 @@ def preprocess(sources: Sequence[str], tokenizer: transformers.PreTrainedTokeniz
     return dict(input_ids=input_ids, labels=targets)
 
 
-class TrackSegmentDataset(Dataset):
+class LLaVASubset(Subset):
 
-    def __init__(self, data_path: str,
-                 tokenizer: transformers.PreTrainedTokenizer,
-                 data_args: DataArguments):
-        super(TrackSegmentDataset, self).__init__()
-        self.tokenizer = tokenizer
-        with open(data_path) as f:
-            self.data = json.load(f)
-        self.data_args = data_args
-
-    def __len__(self):
-        return len(self.data)
+    def __init__(self, subset: Subset):
+        self.dataset = subset.dataset
+        self.indices = subset.indices
+        self.list_data_dict = self.dataset.list_data_dict
 
     @property
     def modality_lengths(self):
         length_list = []
-        for sample in self.data:
+        for i in self.indices:
+            sample = self.list_data_dict[i]
             cur_len = sum(len(conv["value"].split()) for conv in sample["conversations"])
             assert cur_len > 0, f"Conversation length is 0 for {sample}"
             if "image" in sample or "video" in sample or self.data_args.early_mix_text:
@@ -979,8 +973,23 @@ class TrackSegmentDataset(Dataset):
                 length_list.append(-cur_len)
         return length_list
 
+
+class TrackSegmentDataset(Dataset):
+
+    def __init__(self, data_path: str,
+                 tokenizer: transformers.PreTrainedTokenizer,
+                 data_args: DataArguments):
+        super(TrackSegmentDataset, self).__init__()
+        self.tokenizer = tokenizer
+        with open(data_path) as f:
+            self.list_data_dict = json.load(f)
+        self.data_args = data_args
+
+    def __len__(self):
+        return len(self.list_data_dict)
+
     def __getitem__(self, i):
-        data = self.data[i]
+        data = self.list_data_dict[i]
         start, end = timespan = data['timespan']
         frame_batch = load_video_track_segment(
             data['video'], data['track_id'], timespan,
@@ -1348,9 +1357,14 @@ class DataCollatorForSupervisedDataset(object):
 def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer, data_args) -> Dict:
     """Make dataset and collator for supervised fine-tuning."""
     # train_dataset = LazySupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, data_args=data_args)
-    train_dataset = TrackSegmentDataset(tokenizer=tokenizer, data_path=data_args.data_path, data_args=data_args)
+    dataset = TrackSegmentDataset(tokenizer=tokenizer, data_path=data_args.data_path, data_args=data_args)
+    generator = torch.Generator().manual_seed(42)
+    # dataset = LLaVASubset(Subset(dataset, range(100)))
+    train_dataset, eval_dataset = random_split(dataset, [0.8, 0.2], generator=generator)
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
-    return dict(train_dataset=train_dataset, eval_dataset=None, data_collator=data_collator)
+    return dict(train_dataset=LLaVASubset(train_dataset),
+                eval_dataset=LLaVASubset(eval_dataset),
+                data_collator=data_collator)
 
 
 def get_model(model_args, training_args, bnb_model_from_pretrained_args):

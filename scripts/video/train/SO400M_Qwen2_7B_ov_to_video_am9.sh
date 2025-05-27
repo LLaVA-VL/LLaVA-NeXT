@@ -45,7 +45,7 @@ deepspeed --master_port 30000 \
     --data_path $DATA_YAML \
     --image_folder $IMAGE_FOLDER \
     --video_folder $VIDEO_FOLDER \
-    --mm_tunable_parts="mm_vision_tower,mm_mlp_adapter,mm_language_model" \
+    --mm_tunable_parts="mm_vision_tower" \
     --mm_vision_tower_lr=2e-6 \
     --vision_tower ${VISION_MODEL_VERSION} \
     --mm_projector_type mlp2x_gelu \
@@ -60,7 +60,7 @@ deepspeed --master_port 30000 \
     --run_name $MID_RUN_NAME \
     --output_dir ./work_dirs/$MID_RUN_NAME \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 1 \
+    --per_device_train_batch_size 2 \
     --per_device_eval_batch_size 1 \
     --gradient_accumulation_steps 2 \
     --evaluation_strategy "no" \
@@ -75,17 +75,17 @@ deepspeed --master_port 30000 \
     --tf32 False \
     --model_max_length 32768 \
     --gradient_checkpointing True \
-    --dataloader_num_workers 1 \
+    --dataloader_num_workers 7 \
     --lazy_preprocess True \
     --torch_compile True \
     --torch_compile_backend "inductor" \
     --dataloader_drop_last True \
-    --frames_upbound 16 \
+    --frames_upbound 20 \
     --video_fps 5 \
     --mm_newline_position grid \
     --add_time_instruction True \
     --mm_spatial_pool_stride 2 \
-    --attn_implementation "sdpa" \
     --verbose_logging
+    # --attn_implementation "sdpa" \
 #    --force_sample False \
 exit 0;
