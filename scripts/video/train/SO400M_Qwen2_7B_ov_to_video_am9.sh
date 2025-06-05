@@ -38,12 +38,18 @@ echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
 
-ACCELERATE_CPU_AFFINITY=1 torchrun \
-  --nnodes="${GPU_INSTANCES_NUMBER}" \
-  --node_rank="${NODE_RANK}" \
-  --nproc_per_node="${GPU_COUNT}" \
-  --master_addr="${MASTER_PRIVATE_IP}" \
-  --master_port=1234 \
+# ACCELERATE_CPU_AFFINITY=1 torchrun \
+#   --nnodes="${GPU_INSTANCES_NUMBER}" \
+#   --node_rank="${NODE_RANK}" \
+#   --nproc_per_node="${GPU_COUNT}" \
+#   --master_addr="${MASTER_PRIVATE_IP}" \
+#   --master_port=1234 \
+deepspeed \
+    --master_port 1234 \
+    --num_nodes ${GPU_INSTANCES_NUMBER} \
+    --node_rank ${NODE_RANK} \
+    --num_gpus ${GPU_COUNT} \
+    --master_addr ${MASTER_PRIVATE_IP} \
   llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
     --model_name_or_path $PREV_STAGE_CHECKPOINT \
