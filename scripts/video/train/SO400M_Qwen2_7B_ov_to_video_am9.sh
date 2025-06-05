@@ -41,7 +41,7 @@ ACCELERATE_CPU_AFFINITY=1 torchrun \
   --node_rank="${NODE_RANK}" \
   --nproc_per_node="${GPU_COUNT}" \
   --master_addr="${MASTER_PRIVATE_IP}" \
-  --master_port=1234\
+  --master_port=1234 \
 deepspeed --master_port 30000 \
     llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
