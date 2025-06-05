@@ -50,6 +50,7 @@ deepspeed \
     --node_rank ${NODE_RANK} \
     --num_gpus ${GPU_COUNT} \
     --master_addr ${MASTER_PRIVATE_IP} \
+    --hostfile ~/hostfile \
   llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
     --model_name_or_path $PREV_STAGE_CHECKPOINT \
