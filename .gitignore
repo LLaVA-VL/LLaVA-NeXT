@@ -32,14 +32,12 @@ ckpts*
 
 .ipynb_checkpoints
 chunyl_scripts
-*.ipynb
 
 # DevContainer
 !.devcontainer/*
 
 # Demo
 serve_images/
-notebooks/
 logs
 scripts/dist_*
 logs/
@@ -71,3 +69,10 @@ playground/*.json
 mlx_configs/
 data_processing/
 # demo/
+
+# Custom
+.nfs*
+tmp.ipynb
+tmp.py
+.ipynb_checkpoints
+accuracy_comparison*.png
