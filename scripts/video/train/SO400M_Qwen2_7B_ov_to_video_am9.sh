@@ -36,7 +36,12 @@ echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
 
-# ACCELERATE_CPU_AFFINITY=1 torchrun --nproc_per_node="${ARNOLD_WORKER_GPU}" --nnodes="${ARNOLD_WORKER_NUM}" --node_rank="${ARNOLD_ID}" --master_addr="${METIS_WORKER_0_HOST}" --master_port="${port_in_cmd}" \
+ACCELERATE_CPU_AFFINITY=1 torchrun \
+  --nnodes="${GPU_INSTANCES_NUMBER}" \
+  --node_rank="${NODE_RANK}" \
+  --nproc_per_node="${GPU_COUNT}" \
+  --master_addr="${MASTER_PRIVATE_IP}" \
+  --master_port=1234\
 deepspeed --master_port 30000 \
     llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
@@ -60,7 +65,7 @@ deepspeed --master_port 30000 \
     --run_name $MID_RUN_NAME \
     --output_dir ./work_dirs/$MID_RUN_NAME \
     --num_train_epochs 1 \
-    --per_device_train_batch_size 2 \
+    --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \
     --gradient_accumulation_steps 2 \
     --evaluation_strategy "no" \
@@ -80,7 +85,7 @@ deepspeed --master_port 30000 \
     --torch_compile True \
     --torch_compile_backend "inductor" \
     --dataloader_drop_last True \
-    --frames_upbound 20 \
+    --frames_upbound 40 \
     --video_fps 5 \
     --mm_newline_position grid \
     --add_time_instruction True \
