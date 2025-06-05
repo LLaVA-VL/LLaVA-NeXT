@@ -17,6 +17,7 @@ dependencies:
   - torchcodec
   - boto3
   - tyro
+  - pynvml
   - pip
   - pip:
       - decord

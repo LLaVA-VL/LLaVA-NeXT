@@ -8,6 +8,8 @@
 IMAGE_FOLDER="/home/veesion/gemini_engineering_subset/tracks_segments/"
 VIDEO_FOLDER="/home/veesion/gemini_engineering_subset/tracks_segments/"
 # DATA_YAML="scripts/video/train/exp.yaml" # e.g exp.yaml
+mkdir data
+aws s3 cp s3://scalable-training-dataset/gemini_fine_tuning/32k/gemini_finetuning_subset_cheating_description.json data/gemini_finetuning_subset_cheating_description.json
 DATA_YAML="data/gemini_finetuning_subset_cheating_description.json"
 
 ############### Prepare Envs #################
