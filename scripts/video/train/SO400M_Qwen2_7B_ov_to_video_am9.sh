@@ -38,23 +38,26 @@ echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 
 
-# ACCELERATE_CPU_AFFINITY=1 torchrun \
-#   --nnodes="${GPU_INSTANCES_NUMBER}" \
-#   --node_rank="${NODE_RANK}" \
-#   --nproc_per_node="${GPU_COUNT}" \
-#   --master_addr="${MASTER_PRIVATE_IP}" \
-#   --master_port=1234 \
 
 # Pass SSH options to deepspeed's underlying pdsh/ssh
 export PDSH_SSH_ARGS_APPEND="-o StrictHostKeyChecking=no"
 
-deepspeed \
-    --master_port 1234 \
-    --num_nodes ${GPU_INSTANCES_NUMBER} \
-    --node_rank ${NODE_RANK} \
-    --num_gpus ${GPU_COUNT} \
-    --master_addr ${MASTER_PRIVATE_IP} \
-    --hostfile ~/hostfile \
+# Ensure .ssh directory exists
+mkdir -p ~/.ssh
+
+# deepspeed \
+#     --master_port 1234 \
+#     --num_nodes ${GPU_INSTANCES_NUMBER} \
+#     --node_rank ${NODE_RANK} \
+#     --num_gpus ${GPU_COUNT} \
+#     --master_addr ${MASTER_PRIVATE_IP} \
+#     --hostfile ~/hostfile \
+ACCELERATE_CPU_AFFINITY=1 torchrun \
+    --nnodes="${GPU_INSTANCES_NUMBER}" \
+    --node_rank="${NODE_RANK}" \
+    --nproc_per_node="${GPU_COUNT}" \
+    --master_addr="${MASTER_PRIVATE_IP}" \
+    --master_port=1234 \
   llava/train/train_mem.py \
     --deepspeed scripts/zero3.json \
     --model_name_or_path $PREV_STAGE_CHECKPOINT \
