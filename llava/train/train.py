@@ -961,6 +961,23 @@ class LLaVASubset(Subset):
         self.indices = subset.indices
         self.list_data_dict = self.dataset.list_data_dict
 
+
+class TrackSegmentDataset(Dataset):
+
+    def __init__(self, data_path: str,
+                 tokenizer: transformers.PreTrainedTokenizer,
+                 data_args: DataArguments):
+        super(TrackSegmentDataset, self).__init__()
+        self.tokenizer = tokenizer
+        with open(data_path) as f:
+            self.list_data_dict = json.load(f)
+        self.data_args = data_args
+        self.indices = list(range(len(self.list_data_dict)))
+        rank0_print(f"TrackSegmentDataset length: {len(self.list_data_dict)}")
+
+    def __len__(self):
+        return len(self.list_data_dict)
+
     @property
     def modality_lengths(self):
         length_list = []
@@ -973,21 +990,6 @@ class LLaVASubset(Subset):
             else:
                 length_list.append(-cur_len)
         return length_list
-
-
-class TrackSegmentDataset(Dataset):
-
-    def __init__(self, data_path: str,
-                 tokenizer: transformers.PreTrainedTokenizer,
-                 data_args: DataArguments):
-        super(TrackSegmentDataset, self).__init__()
-        self.tokenizer = tokenizer
-        with open(data_path) as f:
-            self.list_data_dict = json.load(f)
-        self.data_args = data_args
-
-    def __len__(self):
-        return len(self.list_data_dict)
 
     def __getitem__(self, i):
         data = self.list_data_dict[i]
@@ -1359,12 +1361,12 @@ def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer, dat
     """Make dataset and collator for supervised fine-tuning."""
     # train_dataset = LazySupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, data_args=data_args)
     dataset = TrackSegmentDataset(tokenizer=tokenizer, data_path=data_args.data_path, data_args=data_args)
-    generator = torch.Generator().manual_seed(42)
+    # generator = torch.Generator().manual_seed(42)
     # dataset = LLaVASubset(Subset(dataset, range(100)))
-    train_dataset, eval_dataset = random_split(dataset, [0.8, 0.2], generator=generator)
+    # train_dataset, eval_dataset = random_split(dataset, [0.8, 0.2], generator=generator)
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
-    return dict(train_dataset=LLaVASubset(train_dataset),
-                eval_dataset=LLaVASubset(eval_dataset),
+    return dict(train_dataset=dataset,
+                # eval_dataset=LLaVASubset(eval_dataset),
                 data_collator=data_collator)
 
 
