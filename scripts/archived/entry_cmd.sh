@@ -4,7 +4,7 @@ export http_proxy=http://sys-proxy-rd-relay.byted.org:8118;
 export https_proxy=http://sys-proxy-rd-relay.byted.org:8118;
 
 export HF_HOME=/mnt/bn/vl-research-boli01-cn/.cache/huggingface;
-export HF_TOKEN="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";
+export HF_TOKEN="HF_TOKEN";
 export HF_HUB_ENABLE_HF_TRANSFER="1";
 
 cd /mnt/bn/vl-research-boli01-cn/projects/zzz/lmms-eval;
