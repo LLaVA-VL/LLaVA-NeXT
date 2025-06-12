@@ -954,12 +954,29 @@ def preprocess(sources: Sequence[str], tokenizer: transformers.PreTrainedTokeniz
     return dict(input_ids=input_ids, labels=targets)
 
 
+def modality_lengths(self):
+    length_list = []
+    for i in self.indices:
+        sample = self.list_data_dict[i]
+        cur_len = sum(len(conv["value"].split()) for conv in sample["conversations"])
+        assert cur_len > 0, f"Conversation length is 0 for {sample}"
+        if "image" in sample or "video" in sample or self.data_args.early_mix_text:
+            length_list.append(cur_len)
+        else:
+            length_list.append(-cur_len)
+    return length_list
+
+
 class LLaVASubset(Subset):
 
     def __init__(self, subset: Subset):
         self.dataset = subset.dataset
         self.indices = subset.indices
         self.list_data_dict = self.dataset.list_data_dict
+
+    @property
+    def modality_lengths(self):
+        return modality_lengths(self)
 
 
 class TrackSegmentDataset(Dataset):
@@ -980,16 +997,7 @@ class TrackSegmentDataset(Dataset):
 
     @property
     def modality_lengths(self):
-        length_list = []
-        for i in self.indices:
-            sample = self.list_data_dict[i]
-            cur_len = sum(len(conv["value"].split()) for conv in sample["conversations"])
-            assert cur_len > 0, f"Conversation length is 0 for {sample}"
-            if "image" in sample or "video" in sample or self.data_args.early_mix_text:
-                length_list.append(cur_len)
-            else:
-                length_list.append(-cur_len)
-        return length_list
+        return modality_lengths(self)
 
     def __getitem__(self, i):
         data = self.list_data_dict[i]
