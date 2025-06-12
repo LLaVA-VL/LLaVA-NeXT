@@ -83,7 +83,8 @@ ACCELERATE_CPU_AFFINITY=1 torchrun \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \
     --gradient_accumulation_steps 2 \
-    --evaluation_strategy "no" \
+    --evaluation_strategy "steps" \
+    --eval_steps 100 \
     --save_strategy "steps" \
     --save_steps 100 \
     --save_total_limit 1 \
@@ -105,7 +106,8 @@ ACCELERATE_CPU_AFFINITY=1 torchrun \
     --mm_newline_position grid \
     --add_time_instruction True \
     --mm_spatial_pool_stride 2 \
-    --verbose_logging
+    --verbose_logging \
+    --report_to tensorboard
     # --attn_implementation "sdpa" \
 #    --force_sample False \
 exit 0;
