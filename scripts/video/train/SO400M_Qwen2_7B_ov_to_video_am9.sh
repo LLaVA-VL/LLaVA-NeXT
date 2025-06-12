@@ -84,9 +84,9 @@ ACCELERATE_CPU_AFFINITY=1 torchrun \
     --per_device_eval_batch_size 1 \
     --gradient_accumulation_steps 2 \
     --evaluation_strategy "steps" \
-    --eval_steps 100 \
+    --eval_steps 10 \
     --save_strategy "steps" \
-    --save_steps 100 \
+    --save_steps 10 \
     --save_total_limit 1 \
     --learning_rate 1e-5 \
     --weight_decay 0. \
