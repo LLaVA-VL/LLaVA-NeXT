@@ -239,11 +239,11 @@ class LengthGroupedSampler(Sampler):
 
 class LLaVATrainer(Trainer):
 
-    def training_step(self, model, inputs, num_items_in_batch=None):
-        logger.info(f"{self.state.global_step}")
-        for key, value in inputs.items():
-            logger.info(f"{key}: {value.shape}")
-        super().training_step(model, inputs, num_items_in_batch)
+    # def training_step(self, model, inputs):
+    #     logger.info(f"{self.state.global_step}")
+    #     for key, value in inputs.items():
+    #         logger.info(f"{key}: {len(value)}")
+    #     super().training_step(model, inputs)
 
     def create_accelerator_and_postprocess(self):
         grad_acc_kwargs = {"num_steps": self.args.gradient_accumulation_steps}
