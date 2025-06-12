@@ -1361,12 +1361,12 @@ def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer, dat
     """Make dataset and collator for supervised fine-tuning."""
     # train_dataset = LazySupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, data_args=data_args)
     dataset = TrackSegmentDataset(tokenizer=tokenizer, data_path=data_args.data_path, data_args=data_args)
-    # generator = torch.Generator().manual_seed(42)
-    # dataset = LLaVASubset(Subset(dataset, range(100)))
-    # train_dataset, eval_dataset = random_split(dataset, [0.8, 0.2], generator=generator)
+    generator = torch.Generator().manual_seed(42)
+    dataset = LLaVASubset(Subset(dataset, range(100)))
+    train_dataset, eval_dataset = random_split(dataset, [0.8, 0.2], generator=generator)
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
-    return dict(train_dataset=dataset,
-                # eval_dataset=LLaVASubset(eval_dataset),
+    return dict(train_dataset=LLaVASubset(train_dataset),
+                eval_dataset=LLaVASubset(eval_dataset),
                 data_collator=data_collator)
 
 
