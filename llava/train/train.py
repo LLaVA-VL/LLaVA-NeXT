@@ -20,7 +20,7 @@ import copy
 from dataclasses import dataclass, field
 import json
 import logging
-import pathlib
+from pathlib import Path
 from typing import Dict, Optional, Sequence, List
 from PIL import Image, ImageFile
 from packaging import version
@@ -37,7 +37,7 @@ import transformers
 import tokenizers
 import deepspeed
 
-from transformers import AutoConfig
+from transformers import AutoConfig, TrainerCallback
 from torch.utils.data import Dataset, Subset, random_split
 from llava.constants import IGNORE_INDEX, DEFAULT_IMAGE_TOKEN, DEFAULT_IM_START_TOKEN, DEFAULT_IM_END_TOKEN, IMAGE_TOKEN_INDEX
 from llava.train.llava_trainer import LLaVATrainer
@@ -47,6 +47,7 @@ from llava.model import *
 from llava.mm_utils import process_highres_image, process_anyres_image, process_highres_image_crop_split, tokenizer_image_token
 from llava.utils import rank0_print, process_video_with_pyav, process_video_with_decord
 from llava.track_segment_loading import load_video_track_segment
+import boto3
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 
@@ -54,6 +55,25 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 local_rank = None
 
 IS_TOKENIZER_GREATER_THAN_0_14 = version.parse(tokenizers.__version__) >= version.parse("0.14")
+
+
+class S3UploadCallback(TrainerCallback):
+
+    def on_init_end(self, args, state, control, **kwargs):
+        self.client = boto3.client('s3')
+        self.bucket = 'scalable-training-dataset'
+        name = Path(args.output_dir).absolute().parent.parent.name
+        self.prefix = Path('training_checkpoints') / name
+
+    def on_save(self, args, state, control, **kwargs):
+        start = time.time()
+        for file in Path(args.output_dir).glob('**/*'):
+            if file.is_file():
+                prefix = str(self.prefix / file)
+                rank0_print(f"saving {file} to s3://{self.bucket}/{prefix}")
+                self.client.upload_file(file, self.bucket, prefix)
+        end = time.time()
+        rank0_print(f"saving to s3 took {end - start} seconds")
 
 
 @dataclass
@@ -1369,7 +1389,6 @@ def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer, dat
     # train_dataset = LazySupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, data_args=data_args)
     dataset = TrackSegmentDataset(tokenizer=tokenizer, data_path=data_args.data_path, data_args=data_args)
     generator = torch.Generator().manual_seed(42)
-    dataset = LLaVASubset(Subset(dataset, range(200)))
     train_dataset, eval_dataset = random_split(dataset, [0.8, 0.2], generator=generator)
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
     return dict(train_dataset=LLaVASubset(train_dataset),
@@ -1777,9 +1796,11 @@ def train(attn_implementation=None):
                         module = module.to(torch.bfloat16)
 
     data_module = make_supervised_data_module(tokenizer=tokenizer, data_args=data_args)
-    trainer = LLaVATrainer(model=model, tokenizer=tokenizer, args=training_args, **data_module)
+    trainer = LLaVATrainer(
+            model=model, tokenizer=tokenizer, args=training_args,
+            callbacks=[S3UploadCallback()], **data_module)
 
-    if list(pathlib.Path(training_args.output_dir).glob("checkpoint-*")):
+    if list(Path(training_args.output_dir).glob("checkpoint-*")):
         trainer.train(resume_from_checkpoint=True)
     else:
         trainer.train()
