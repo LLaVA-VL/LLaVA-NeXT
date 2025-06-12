@@ -19,6 +19,7 @@ dependencies:
   - tyro
   - pynvml
   - py-spy
+  - tensorboardx
   - pip
   - pip:
       - decord
