@@ -16,6 +16,23 @@ alias python=python3
 ############### Show Envs ####################
 nvidia-smi
 
+################ ULTIMATE SYSTEM OPTIMIZATIONS ################
+# CPU Performance Mode
+echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor > /dev/null 2>&1 || true
+
+# OpenMP optimizations for CPU utilization
+export OMP_NUM_THREADS=16
+export OMP_PLACES=threads
+export OMP_PROC_BIND=spread
+export OMP_WAIT_POLICY=active
+
+# NUMA optimizations
+export NUMA_BALANCING_DISABLE=1
+
+# I/O optimizations
+export PYTORCH_CUDA_MEMORY_FRACTION=0.95
+ulimit -n 65536
+
 ################ ULTIMATE H100 OPTIMIZATIONS ################
 export NCCL_ASYNC_ERROR_HANDLING=1
 export NCCL_DEBUG=INFO
@@ -29,15 +46,20 @@ export NCCL_NET_GDR_READ=1
 export NCCL_BUFFSIZE=8388608
 export NCCL_P2P_NET_CHUNKSIZE=524288
 export NCCL_NET_SHARED_BUFFERS=0
+export NCCL_PROTO=Simple
+export NCCL_ALGO=Ring,Tree
 
 # CUDA optimizations for H100
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export CUBLAS_WORKSPACE_CONFIG=:16:8
 export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512,garbage_collection_threshold:0.6,expandable_segments:True
+export CUDA_LAUNCH_BLOCKING=0
+export CUDA_CACHE_DISABLE=0
 
 # Compiler optimizations
 export TORCH_CUDNN_V8_API_ENABLED=1
 export TORCH_CUDNN_ALLOW_TF32=1
+export TORCH_ALLOW_TF32_CUBLAS_OVERRIDE=1
 
 ################ Model Configuration ################
 LLM_VERSION="Qwen/Qwen2-7B-Instruct"
@@ -104,7 +126,7 @@ ACCELERATE_CPU_AFFINITY=1 torchrun \
     --tf32 True \
     --model_max_length 32768 \
     --gradient_checkpointing True \
-    --dataloader_num_workers 8 \
+    --dataloader_num_workers 16 \
     --lazy_preprocess True \
     --torch_compile True \
     --torch_compile_backend "inductor" \
@@ -112,6 +134,8 @@ ACCELERATE_CPU_AFFINITY=1 torchrun \
     --dataloader_drop_last True \
     --dataloader_pin_memory True \
     --dataloader_persistent_workers True \
+    --remove_unused_columns False \
+    --optim "adamw_torch_fused" \
     --frames_upbound 40 \
     --video_fps 5 \
     --mm_newline_position grid \
@@ -122,6 +146,8 @@ ACCELERATE_CPU_AFFINITY=1 torchrun \
     --attn_implementation "flash_attention_2" \
     --max_grad_norm 1.0 \
     --ddp_timeout 18000 \
-    --save_safetensors True
+    --save_safetensors True \
+    --ddp_find_unused_parameters False \
+    --ddp_bucket_cap_mb 25
 
 exit 0; 
