@@ -1559,7 +1559,12 @@ def train(attn_implementation=None):
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     rank0_print(f"DEBUG_LOG: Args parsed. torch_compile: {training_args.torch_compile}, torch_compile_backend: {training_args.torch_compile_backend}, torch_compile_mode: {training_args.torch_compile_mode}")
 
+    # This print statement is the one that successfully executed in the previous run
     rank0_print(f"DEBUG_LOG: Before get_model. Bits for quantization: {training_args.bits if hasattr(training_args, 'bits') and training_args.bits in [4,8] else 'Not 4/8 bit'}. Vision Tower: {model_args.vision_tower}")
+
+    # Initialize bnb_model_from_pretrained_args right before it's used in the get_model call
+    bnb_model_from_pretrained_args = {}
+    rank0_print(f"DEBUG_LOG: Initialized bnb_model_from_pretrained_args = {bnb_model_from_pretrained_args}")
 
     model = get_model(model_args, training_args, bnb_model_from_pretrained_args)
     rank0_print(f"DEBUG_LOG: After get_model. Model type: {type(model)}")
@@ -1574,7 +1579,7 @@ def train(attn_implementation=None):
     if model_args.freeze_backbone:
         model.model.requires_grad_(False)
 
-        if training_args.bits in [4, 8]:
+    if training_args.bits in [4, 8]:
             from peft import prepare_model_for_kbit_training
 
             model.config.torch_dtype = torch.float32 if training_args.fp16 else (torch.bfloat16 if training_args.bf16 else torch.float32)
