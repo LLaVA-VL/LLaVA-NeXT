@@ -1039,7 +1039,9 @@ class TrackSegmentDataset(Dataset):
         data = self.list_data_dict[i]
         rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Original data: {data}")
         start, end = timespan = data['timespan']
-        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Timespan: {timespan}, Video: {data['video']}, Track ID: {data['track_id']}")
+        video_id_for_load = data['video'] # Store for logging
+        track_id_for_load = data['track_id'] # Store for logging
+        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - >>>>> Preparing to load video_id: {video_id_for_load}, track_id: {track_id_for_load}, timespan: {timespan} <<<<<")
 
         rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Before load_video_track_segment. Frames upbound: {self.data_args.frames_upbound}")
         frame_batch = load_video_track_segment(
@@ -1059,14 +1061,14 @@ class TrackSegmentDataset(Dataset):
             duration = end - start
             pts_seconds = frame_batch.pts_seconds.tolist()
             num_frames = len(frame_batch)
-            time_instruction = f"The video lasts for {duration:.2f} seconds," \\\
-                f" and {num_frames} frames are uniformly sampled from it. " \\\
-                f"These frames are located at {pts_seconds}. " \\\
+            time_instruction = f"The video lasts for {duration:.2f} seconds," \
+                f" and {num_frames} frames are uniformly sampled from it. " \
+                f"These frames are located at {pts_seconds}. " \
                 "Please answer the following questions related to this video."
             conv0 = source[0]["value"]
             conv0 = conv0.replace(DEFAULT_IMAGE_TOKEN, "")
-            source[0]["value"] = \\\
-                f'{DEFAULT_IMAGE_TOKEN}\\n{time_instruction}\\n{conv0}'
+            source[0]["value"] = \
+                f'{DEFAULT_IMAGE_TOKEN}\n{time_instruction}\n{conv0}'
             rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Modified source with time instruction: {source}")
 
         rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Before preprocess_multimodal. Has_image=True")
@@ -1382,32 +1384,50 @@ class DataCollatorForSupervisedDataset(object):
     tokenizer: transformers.PreTrainedTokenizer
 
     def pad_sequence(self, input_ids, batch_first, padding_value):
+        rank0_print(f"DEBUG_LOG: DataCollator.pad_sequence called. Padding side: {self.tokenizer.padding_side}")
         if self.tokenizer.padding_side == "left":
             input_ids = [torch.flip(_input_ids, [0]) for _input_ids in input_ids]
         input_ids = torch.nn.utils.rnn.pad_sequence(input_ids, batch_first=batch_first, padding_value=padding_value)
         if self.tokenizer.padding_side == "left":
             input_ids = torch.flip(input_ids, [1])
+        rank0_print(f"DEBUG_LOG: DataCollator.pad_sequence finished. Input_ids shape after padding: {input_ids.shape if hasattr(input_ids, 'shape') else 'N/A'}")
         return input_ids
 
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
+        rank0_print(f"DEBUG_LOG: DataCollator.__call__ called. Number of instances: {len(instances)}")
         input_ids, labels = tuple([instance[key] for instance in instances] for key in ("input_ids", "labels"))
+        rank0_print(f"DEBUG_LOG: DataCollator.__call__ - Extracted input_ids and labels. Num input_ids: {len(input_ids)}, Num labels: {len(labels)}")
         # input_ids, labels, ids = tuple([instance[key] for instance in instances] for key in ("input_ids", "labels", "id"))
         input_ids = [_input_ids[: self.tokenizer.model_max_length] for _input_ids in input_ids]
         labels = [_labels[: self.tokenizer.model_max_length] for _labels in labels]
+        rank0_print(f"DEBUG_LOG: DataCollator.__call__ - Truncated input_ids and labels to model_max_length: {self.tokenizer.model_max_length}")
+
         if self.tokenizer.pad_token_id is None:
+            rank0_print(f"DEBUG_LOG: DataCollator.__call__ - Pad token ID is None. Setting to 0.")
             # self.tokenizer.pad_token_id = self.tokenizer.eos_token_id  # FIXME: this could only be triggered for llama3 model.
             self.tokenizer.pad_token_id = 0 # This gets the best result. Don't know why.
+        
+        rank0_print(f"DEBUG_LOG: DataCollator.__call__ - Before padding input_ids.")
         input_ids = self.pad_sequence(input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id)
+        rank0_print(f"DEBUG_LOG: DataCollator.__call__ - After padding input_ids. Shape: {input_ids.shape if hasattr(input_ids, 'shape') else 'N/A'}")
+
+        rank0_print(f"DEBUG_LOG: DataCollator.__call__ - Before padding labels.")
         labels = self.pad_sequence(labels, batch_first=True, padding_value=IGNORE_INDEX)
+        rank0_print(f"DEBUG_LOG: DataCollator.__call__ - After padding labels. Shape: {labels.shape if hasattr(labels, 'shape') else 'N/A'}")
+
         batch = dict(input_ids=input_ids, labels=labels.long() if labels.dtype == torch.int32 else labels, attention_mask=input_ids.ne(self.tokenizer.pad_token_id))
+        rank0_print(f"DEBUG_LOG: DataCollator.__call__ - Created initial batch dict. Keys: {batch.keys()}")
         # batch = dict(input_ids=input_ids, labels=labels, attention_mask=input_ids.ne(self.tokenizer.pad_token_id), ids=ids)
 
         if "image" in instances[0]:
+            rank0_print(f"DEBUG_LOG: DataCollator.__call__ - Processing 'image' data.")
             images = [instance["image"] for instance in instances]
+            rank0_print(f"DEBUG_LOG: DataCollator.__call__ - Extracted 'images'. Number of image lists: {len(images)}")
 
             batch["image_sizes"] = [im[1] for im_list in images for im in im_list]
             batch["modalities"] = [im[2] for im_list in images for im in im_list]
-            images = [im[0] for im_list in images for im in im_list]
+            raw_images_for_batch = [im[0] for im_list in images for im in im_list] # Renamed to avoid confusion
+            rank0_print(f"DEBUG_LOG: DataCollator.__call__ - Extracted image_sizes, modalities. Number of raw images for batch: {len(raw_images_for_batch)}")
 
             # if all(x is not None and x.shape == images[0].shape for x in images):
                 # Image: (N, P, C, H, W)
