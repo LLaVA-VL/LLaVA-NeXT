@@ -3,9 +3,11 @@ from collections import defaultdict
 from pathlib import Path
 import io
 from math import ceil
+import traceback
 
 import pickle
 import boto3
+from botocore.client import Config
 import torch
 from torchcodec import FrameBatch
 from torchcodec.decoders import VideoDecoder
@@ -33,16 +35,38 @@ TracksBoxes = dict[TrackId, tuple[FrameIds, BoundingBoxes]]
 
 class S3File(io.RawIOBase):
     def __init__(self, s3_object):
+        from llava.utils import rank0_print
+        rank0_print(f"DEBUG_LOG: S3File.__init__ called for s3_object: {s3_object.key if hasattr(s3_object, 'key') else 'N/A'}")
         self.s3_object = s3_object
         self.position = 0
         self.cache = {}
+        self._size = None
+        try:
+            rank0_print(f"DEBUG_LOG: S3File.__init__ - Attempting to get content_length for {s3_object.key if hasattr(s3_object, 'key') else 'N/A'}")
+            self._size = self.s3_object.content_length
+            rank0_print(f"DEBUG_LOG: S3File.__init__ - Got content_length: {self._size} for {s3_object.key if hasattr(s3_object, 'key') else 'N/A'}")
+        except Exception as e:
+            rank0_print(f"DEBUG_LOG: ERROR in S3File.__init__ getting content_length for {s3_object.key if hasattr(s3_object, 'key') else 'N/A'}: {e}. Traceback: {traceback.format_exc()}")
+            # If content_length fails, it's a significant issue, but let's not crash here.
+            # Subsequent operations will likely fail or use a None size.
 
     def __repr__(self):
         return "<%s s3_object=%r>" % (type(self).__name__, self.s3_object)
 
     @property
     def size(self):
-        return self.s3_object.content_length
+        from llava.utils import rank0_print
+        rank0_print(f"DEBUG_LOG: S3File.size property accessed for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}. Cached size: {self._size}")
+        if self._size is None:
+            # Attempt to fetch again if not set during init (e.g., due to an earlier error)
+            try:
+                rank0_print(f"DEBUG_LOG: S3File.size - Attempting to re-fetch content_length for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}")
+                self._size = self.s3_object.content_length
+                rank0_print(f"DEBUG_LOG: S3File.size - Re-fetched content_length: {self._size} for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}")
+            except Exception as e:
+                rank0_print(f"DEBUG_LOG: ERROR in S3File.size re-fetching content_length for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}: {e}. Traceback: {traceback.format_exc()}")
+                return 0 # Or raise an error, returning 0 might cause issues downstream
+        return self._size
 
     def tell(self):
         return self.position
@@ -65,8 +89,11 @@ class S3File(io.RawIOBase):
         return True
 
     def read(self, size=-1):
+        from llava.utils import rank0_print
+        rank0_print(f"DEBUG_LOG: S3File.read called for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}. Position: {self.position}, Read size: {size}")
         # boto3 does not support reading with start at the end of the file
         if self.size == self.position:
+            rank0_print(f"DEBUG_LOG: S3File.read - At EOF for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}. Returning empty bytes.")
             return b''
 
         if size == -1:
@@ -79,30 +106,52 @@ class S3File(io.RawIOBase):
             # If we're going to read beyond the end of the object, return
             # the entire object.
             if new_position >= self.size:
-                return self.read()
+                rank0_print(f"DEBUG_LOG: S3File.read - Read request exceeds EOF for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}. Reading till end.")
+                return self.read() # This will recursively call read with size=-1
 
             range_header = "bytes=%d-%d" % (self.position, new_position - 1)
             self.seek(offset=size, whence=io.SEEK_CUR)
-
+        rank0_print(f"DEBUG_LOG: S3File.read - Range header for S3 GET: {range_header} for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}")
         return self.get(range_header)
 
     def readable(self):
         return True
 
     def get(self, range_header: str) -> bytes:
+        from llava.utils import rank0_print
+        rank0_print(f"DEBUG_LOG: S3File.get called for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'} with range: {range_header}")
         if range_header in self.cache:
+            rank0_print(f"DEBUG_LOG: S3File.get - Cache hit for range {range_header} in {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}")
             return self.cache[range_header]
-        res = self.s3_object.get(Range=range_header)
-        self.cache[range_header] = data = res['Body'].read()
-        return data
+        try:
+            rank0_print(f"DEBUG_LOG: S3File.get - S3 GET Object for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'} with range: {range_header}")
+            res = self.s3_object.get(Range=range_header)
+            data = res['Body'].read()
+            self.cache[range_header] = data
+            rank0_print(f"DEBUG_LOG: S3File.get - S3 GET successful for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'} with range: {range_header}. Data length: {len(data)}")
+            return data
+        except Exception as e:
+            rank0_print(f"DEBUG_LOG: ERROR in S3File.get for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'} with range {range_header}: {e}. Traceback: {traceback.format_exc()}")
+            raise
 
 
 def download_from_s3(s3, bucket: Bucket, key: Path, seekable: bool = False
                      ) -> S3File:
-    obj = s3.Object(bucket_name=bucket, key=str(key))
-    if seekable:
-        return S3File(obj)
-    return obj.get()['Body']
+    from llava.utils import rank0_print
+    rank0_print(f"DEBUG_LOG: download_from_s3 called. Bucket: {bucket}, Key: {key}, Seekable: {seekable}")
+    try:
+        obj = s3.Object(bucket_name=bucket, key=str(key))
+        rank0_print(f"DEBUG_LOG: download_from_s3 - s3.Object() created for Key: {key}")
+        if seekable:
+            rank0_print(f"DEBUG_LOG: download_from_s3 - Returning S3File for Key: {key}")
+            return S3File(obj)
+        rank0_print(f"DEBUG_LOG: download_from_s3 - Attempting obj.get()['Body'] for Key: {key}")
+        body = obj.get()['Body']
+        rank0_print(f"DEBUG_LOG: download_from_s3 - Successfully got Body for Key: {key}. Returning Body.")
+        return body
+    except Exception as e:
+        rank0_print(f"DEBUG_LOG: ERROR in download_from_s3 for Bucket: {bucket}, Key: {key}: {e}. Traceback: {traceback.format_exc()}")
+        raise
 
 
 def transpose_frames_to_tracks(frames: FramesBoxes, start: int, height: int,
@@ -273,12 +322,19 @@ def load_video_track_segment(
 ) -> FrameBatch:
     """Load a video track segment for the given `track_id` and `timespan`,
     resized to `num_frames`."""
-    from llava.utils import rank0_print # Ensure rank0_print is available
+    from llava.utils import rank0_print
     rank0_print(f"DEBUG_LOG: load_video_track_segment entered for video_id: {video_id}, track_id: {track_id}, timespan: {timespan}, num_frames: {num_frames}")
 
     start, end = timespan
     bucket = "scalable-training-dataset"
-    s3 = boto3.client('s3')
+    # Configure S3 client with timeouts
+    s3_config = Config(
+        connect_timeout=10,  # seconds
+        read_timeout=30      # seconds
+    )
+    s3 = boto3.client('s3', config=s3_config)
+    rank0_print(f"DEBUG_LOG: load_video_track_segment - boto3.client('s3') initialized with timeouts.")
+
     video_file = download_from_s3(
         s3, bucket, VIDEO_PREFIX / f'{video_id}.mp4', seekable=True)
     rank0_print(f"DEBUG_LOG: load_video_track_segment - Downloaded video file from S3.")
@@ -363,6 +419,3 @@ def load_video_track_segment(
 
     rank0_print(f"DEBUG_LOG: load_video_track_segment finished for video_id: {video_id}. Returning FrameBatch with {len(frames) if frames else 0} frames.")
     return frames
-
-# Add traceback import if not already present at the top of the file
-import traceback 
