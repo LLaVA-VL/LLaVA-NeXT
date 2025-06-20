@@ -288,6 +288,36 @@ class LLaVATrainer(Trainer):
 
         return loss.detach() / self.args.gradient_accumulation_steps
 
+    def compute_loss(self, model, inputs, return_outputs=False):
+        """
+        How the loss is computed by Trainer. By default, all models return the loss in the first element of the tuple
+        from model().
+        """
+        rank0_print(f"DEBUG_LOG: LLaVATrainer.compute_loss entered. Input keys: {list(inputs.keys())}")
+        
+        # Log shapes and types of input tensors
+        for key, value in inputs.items():
+            if isinstance(value, torch.Tensor):
+                rank0_print(f"DEBUG_LOG: LLaVATrainer.compute_loss - Input '{key}': shape={value.shape}, dtype={value.dtype}, device={value.device}")
+            elif isinstance(value, list) and len(value) > 0 and isinstance(value[0], torch.Tensor):
+                 rank0_print(f"DEBUG_LOG: LLaVATrainer.compute_loss - Input '{key}' (list of tensors, first elem): shape={value[0].shape}, dtype={value[0].dtype}, device={value[0].device}")
+            else:
+                rank0_print(f"DEBUG_LOG: LLaVATrainer.compute_loss - Input '{key}': type={type(value)}")
+
+        rank0_print(f"DEBUG_LOG: LLaVATrainer.compute_loss - Before model(**inputs) (forward pass)")
+        outputs = model(**inputs)
+        rank0_print(f"DEBUG_LOG: LLaVATrainer.compute_loss - After model(**inputs) (forward pass).")
+        
+        # Save past state if it exists
+        # TODO: this needs to be fixed and made cleaner later.
+        if self.args.past_index >= 0:
+            self._past = outputs[self.args.past_index]
+
+        loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
+        rank0_print(f"DEBUG_LOG: LLaVATrainer.compute_loss - Loss extracted: {loss.item() if loss is not None and hasattr(loss, 'item') else 'N/A'}")
+
+        return (loss, outputs) if return_outputs else loss
+
     def create_accelerator_and_postprocess(self):
         grad_acc_kwargs = {"num_steps": self.args.gradient_accumulation_steps}
         grad_acc_kwargs["sync_with_dataloader"] = False
