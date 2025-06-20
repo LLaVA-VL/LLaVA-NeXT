@@ -1,0 +1,49 @@
+import os
+from veesion_data_core.tools import (
+    get_training_request,
+    request_training,
+    resume_training,
+    stop_training,
+)
+from datetime import datetime, timezone
+
+date = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d-%H-%M-%S")
+
+# training_request = get_training_request(training_name=training_name)
+# print("Training name:", training_request.training_name)
+# print("Training status:", training_request.status)
+# print("Number of Training Run attempted ", training_request.scheduling_attempt)
+# stop_training(training_name=training_name)
+# resume_training(training_name=training_name, force_resume=True)
+
+training_name = f"llava_cheater-14"
+simone_branch = "local_debug_hang"
+
+request_training(
+    training_name=training_name,
+    script_path="LLaVA-NeXT/scripts/video/train/SO400M_Qwen2_7B_ov_to_video_am9_h100.sh",
+    instance_type="p5en.48xlarge",
+    n_epochs=50,
+    terraform_scalable_training_branch="llava_training",
+    simone_branch=simone_branch
+)
+
+print(f"Training request '{training_name}' submitted.")
+
+# # Get the training request
+
+training_request = get_training_request(training_name=training_name)
+
+
+print("Training name:", training_request.training_name)
+print("Training status:", training_request.status)
+print("Number of Training Run attempted ", training_request.scheduling_attempt)
+# stop_training(training_name=training_name)
+# import time
+# # Removed the following while loop
+# while 1:
+#     try:
+#         resume_training(training_name=training_name, force_resume=True)
+#     except:
+#         pass
+#     time.sleep(600)
