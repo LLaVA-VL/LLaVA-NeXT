@@ -9,14 +9,12 @@ from datetime import datetime, timezone
 
 date = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d-%H-%M-%S")
 
-# training_request = get_training_request(training_name=training_name)
-# print("Training name:", training_request.training_name)
-# print("Training status:", training_request.status)
-# print("Number of Training Run attempted ", training_request.scheduling_attempt)
-# stop_training(training_name=training_name)
-# resume_training(training_name=training_name, force_resume=True)
+# training_name_to_stop = "llava_cheater-15"
+# print(f"Attempting to stop training: {training_name_to_stop}")
+# stop_training(training_name=training_name_to_stop)
+# print(f"Stop request for training '{training_name_to_stop}' submitted.")
 
-training_name = f"llava_cheater-15"
+training_name = f"llava_cheater-16" # Or a new name for the next run
 simone_branch = "local_debug_hang"
 
 request_training(
@@ -42,9 +40,9 @@ print("Number of Training Run attempted ", training_request.scheduling_attempt)
 # stop_training(training_name=training_name)
 # import time
 # # Removed the following while loop
-# while 1:
-#     try:
-#         resume_training(training_name=training_name, force_resume=True)
-#     except:
-#         pass
-#     time.sleep(600)
+# # while 1:
+# #     try:
+# #         resume_training(training_name=training_name, force_resume=True)
+# #     except:
+# #         pass
+# #     time.sleep(600)
