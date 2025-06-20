@@ -22,8 +22,11 @@ simone_branch = "local_debug_hang"
 request_training(
     training_name=training_name,
     n_epochs=50,
+    dataset_version=28,
+    cpu_instances_count=0,
+    gpu_instances_count=1,
     terraform_scalable_training_branch="llava_training",
-    simone_branch=simone_branch
+    simone_branch=simone_branch,
 )
 
 print(f"Training request '{training_name}' submitted.")
