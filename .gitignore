@@ -18,6 +18,7 @@ dist
 .vscode
 
 # Other
+env/
 .DS_Store
 wandb
 output

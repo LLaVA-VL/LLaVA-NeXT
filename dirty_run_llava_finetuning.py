@@ -21,8 +21,6 @@ simone_branch = "local_debug_hang"
 
 request_training(
     training_name=training_name,
-    script_path="LLaVA-NeXT/scripts/video/train/SO400M_Qwen2_7B_ov_to_video_am9_h100.sh",
-    instance_type="p5en.48xlarge",
     n_epochs=50,
     terraform_scalable_training_branch="llava_training",
     simone_branch=simone_branch

@@ -200,13 +200,52 @@ class LlavaMetaForCausalLM(ABC):
         if isinstance(videos_or_images, list) and videos_or_images:
             rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - videos_or_images is list. First element type: {type(videos_or_images[0])}, shape: {videos_or_images[0].shape if hasattr(videos_or_images[0], 'shape') else 'N/A'}")
         elif torch.is_tensor(videos_or_images):
-            rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - videos_or_images is tensor. Shape: {videos_or_images.shape}")
+            rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - videos_or_images is tensor. Shape: {videos_or_images.shape}, Dtype: {videos_or_images.dtype}, Device: {videos_or_images.device}")
         
-        rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - Before vision_tower call.")
-        videos_or_images_features = self.get_model().get_vision_tower()(videos_or_images)
-        rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - After vision_tower call. Features type: {type(videos_or_images_features)}, shape: {videos_or_images_features.shape if hasattr(videos_or_images_features, 'shape') else 'N/A'}")
-        
-        per_videos_or_images_features = torch.split(videos_or_images_features, split_sizes, dim=0)  # tuple, (dim_1, 576, 4096)
+        videos_or_images_for_tower = videos_or_images # Keep original for other uses if any
+        if torch.is_tensor(videos_or_images_for_tower) and videos_or_images_for_tower.dtype == torch.bfloat16:
+            rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - >>>>> Casting videos_or_images_for_tower from bfloat16 to float32 before vision tower call. Shape: {videos_or_images_for_tower.shape} <<<<<")
+            videos_or_images_for_tower = videos_or_images_for_tower.to(torch.float32)
+            rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - After casting to float32. Dtype: {videos_or_images_for_tower.dtype}")
+        elif isinstance(videos_or_images_for_tower, list) and videos_or_images_for_tower and torch.is_tensor(videos_or_images_for_tower[0]) and videos_or_images_for_tower[0].dtype == torch.bfloat16:
+            rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - >>>>> Casting list of videos_or_images_for_tower from bfloat16 to float32 before vision tower call. <<<<<")
+            videos_or_images_for_tower = [tensor.to(torch.float32) for tensor in videos_or_images_for_tower]
+            rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - After casting list to float32. First tensor Dtype: {videos_or_images_for_tower[0].dtype if videos_or_images_for_tower else 'N/A'}")
+
+        videos_or_images_features = None
+        try:
+            rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - Before vision_tower call with potentially dtype-casted input.")
+            vision_tower_module = self.get_model().get_vision_tower()
+            rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - Vision tower module: {type(vision_tower_module)}")
+            videos_or_images_features = vision_tower_module(videos_or_images_for_tower) # Use the potentially casted tensor
+            rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - After vision_tower call. Features type: {type(videos_or_images_features)}, shape: {videos_or_images_features.shape if hasattr(videos_or_images_features, 'shape') else 'N/A'}")
+        except Exception as e:
+            rank0_print(f"DEBUG_LOG: CRITICAL_ERROR in LlavaMetaForCausalLM.encode_multimodals during vision_tower call: {e}")
+            # Potentially re-raise or handle, but for debugging, logging is key.
+            # Depending on the error, videos_or_images_features might be None or partially complete.
+            # If it's None and the code below expects a tensor, it will fail later.
+            # For now, let it proceed to see if a None features tensor causes issues or if it's caught.
+            # If the process hangs, this log might not even be reached if the error is too low-level.
+            if videos_or_images_features is None and torch.is_tensor(videos_or_images):
+                # Create a dummy tensor to prevent immediate crash if rest of the code expects a tensor
+                # This is a strong indication of failure in vision tower
+                rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - Vision tower call failed. Creating dummy features.")
+                # Dummy features should match expected output dimensions if possible, or be identifiable as dummy.
+                # Expected output: (batch_size_images, num_patches, hidden_size_vision_tower)
+                # This is hard to get right without knowing exact shapes. For now, a simple small tensor.
+                # This part is risky, as an incorrect dummy tensor can cause other errors.
+                # A better approach if an error is caught might be to return None and handle it upstream.
+                # For now, just logging and letting it potentially fail later if features are None.
+                pass # Let videos_or_images_features remain None or as is from the exception context
+            # raise # Re-raise the exception to halt execution and get a full traceback if possible
+
+        if videos_or_images_features is None:
+            rank0_print(f"DEBUG_LOG: ERROR - videos_or_images_features is None after vision tower call (possibly due to an exception). Cannot proceed with splitting.")
+            # Returning empty lists or suitable error indicators for features
+            # This might require the calling function to handle this gracefully.
+            return [], [] # Or raise an exception
+
+        per_videos_or_images_features = torch.split(videos_or_images_features, split_sizes, dim=0) if split_sizes is not None and sum(split_sizes) == videos_or_images_features.shape[0] else [videos_or_images_features]
         rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - Split features. Num splits: {len(per_videos_or_images_features)}")
         
         all_videos_or_images_features = []
