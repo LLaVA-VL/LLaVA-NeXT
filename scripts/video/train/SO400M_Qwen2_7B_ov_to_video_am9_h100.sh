@@ -130,7 +130,7 @@ ACCELERATE_CPU_AFFINITY=1 torchrun \
     --lazy_preprocess True \
     --torch_compile True \
     --torch_compile_backend "inductor" \
-    --torch_compile_mode "max-autotune" \
+    --torch_compile_mode "reduce-overhead" \
     --dataloader_drop_last True \
     --dataloader_pin_memory True \
     --dataloader_persistent_workers True \
