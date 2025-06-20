@@ -9,12 +9,12 @@ from datetime import datetime, timezone
 
 date = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d-%H-%M-%S")
 
-# training_name_to_stop = "llava_cheater-16"
+# training_name_to_stop = "llava_cheater-17"
 # print(f"Attempting to stop training: {training_name_to_stop}")
 # stop_training(training_name=training_name_to_stop)
 # print(f"Stop request for training '{training_name_to_stop}' submitted.")
 
-training_name = f"llava_cheater-17"
+training_name = f"llava_cheater-18"
 simone_branch = "local_debug_hang"
 
 request_training(
