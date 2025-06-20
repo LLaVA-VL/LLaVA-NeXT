@@ -16,7 +16,7 @@ date = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d-%H-%M-%S")
 # stop_training(training_name=training_name)
 # resume_training(training_name=training_name, force_resume=True)
 
-training_name = f"llava_cheater-14"
+training_name = f"llava_cheater-15"
 simone_branch = "local_debug_hang"
 
 request_training(
