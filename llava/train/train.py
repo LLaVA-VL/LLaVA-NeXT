@@ -1577,10 +1577,10 @@ def train(attn_implementation=None):
         model.model.requires_grad_(False)
 
         if training_args.bits in [4, 8]:
-        from peft import prepare_model_for_kbit_training
+            from peft import prepare_model_for_kbit_training
 
-        model.config.torch_dtype = torch.float32 if training_args.fp16 else (torch.bfloat16 if training_args.bf16 else torch.float32)
-        model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=training_args.gradient_checkpointing)
+            model.config.torch_dtype = torch.float32 if training_args.fp16 else (torch.bfloat16 if training_args.bf16 else torch.float32)
+            model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=training_args.gradient_checkpointing)
 
     if training_args.gradient_checkpointing:
         if hasattr(model, "enable_input_require_grads"):
