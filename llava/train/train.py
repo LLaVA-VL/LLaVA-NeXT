@@ -57,6 +57,22 @@ local_rank = None
 IS_TOKENIZER_GREATER_THAN_0_14 = version.parse(tokenizers.__version__) >= version.parse("0.14")
 
 
+class DebugCallback(TrainerCallback):
+    def on_step_begin(self, args, state, control, **kwargs):
+        rank0_print(f"DEBUG_LOG: Callback - on_step_begin. Step: {state.global_step}")
+
+    def on_step_end(self, args, state, control, **kwargs):
+        rank0_print(f"DEBUG_LOG: Callback - on_step_end. Step: {state.global_step}")
+        # It might be useful to see the logs that the trainer itself produces
+        # but only log if there's something new to avoid too much noise.
+        # This requires checking if new logs are available since the last call,
+        # which can be complex. For now, let's log every N steps or based on time.
+        # Or simply rely on on_log.
+
+    def on_log(self, args, state, control, logs=None, **kwargs):
+        rank0_print(f"DEBUG_LOG: Callback - on_log. Step: {state.global_step}, Logs: {logs}")
+
+
 class S3UploadCallback(TrainerCallback):
 
     def on_init_end(self, args, state, control, **kwargs):
@@ -1918,7 +1934,7 @@ def train(attn_implementation=None):
     rank0_print("DEBUG_LOG: Before LLaVATrainer()") # DEBUG
     trainer = LLaVATrainer(
         model=model, tokenizer=tokenizer, args=training_args,
-        callbacks=[S3UploadCallback()] if os.environ.get("RUN_ENV") == "prod" else [],
+        callbacks=[S3UploadCallback(), DebugCallback()] if os.environ.get("RUN_ENV") == "prod" else [DebugCallback()],
         **data_module)
     rank0_print("DEBUG_LOG: After LLaVATrainer()") # DEBUG
 
