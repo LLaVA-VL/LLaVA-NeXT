@@ -332,8 +332,8 @@ def load_video_track_segment(
         connect_timeout=10,  # seconds
         read_timeout=30      # seconds
     )
-    s3 = boto3.client('s3', config=s3_config)
-    rank0_print(f"DEBUG_LOG: load_video_track_segment - boto3.client('s3') initialized with timeouts.")
+    s3 = boto3.resource('s3', config=s3_config)
+    rank0_print(f"DEBUG_LOG: load_video_track_segment - boto3.resource('s3') initialized with timeouts.")
 
     video_file = download_from_s3(
         s3, bucket, VIDEO_PREFIX / f'{video_id}.mp4', seekable=True)
