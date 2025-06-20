@@ -1557,14 +1557,12 @@ def train(attn_implementation=None):
 
     parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
-    rank0_print(f"DEBUG_LOG: Args parsed. torch_compile: {training_args.torch_compile}, torch_compile_backend: {training_args.torch_compile_backend}, torch_compile_mode: {training_args.torch_compile_mode}") # DEBUG
+    rank0_print(f"DEBUG_LOG: Args parsed. torch_compile: {training_args.torch_compile}, torch_compile_backend: {training_args.torch_compile_backend}, torch_compile_mode: {training_args.torch_compile_mode}")
 
-    if training_args.verbose_logging:
-        rank0_print(f"DEBUG_LOG: Before get_model. Bits for quantization: {training_args.bits if 'bits' in training_args and training_args.bits in [4,8] else 'Not 4/8 bit'}. Vision Tower: {model_args.vision_tower}")
+    rank0_print(f"DEBUG_LOG: Before get_model. Bits for quantization: {training_args.bits if hasattr(training_args, 'bits') and training_args.bits in [4,8] else 'Not 4/8 bit'}. Vision Tower: {model_args.vision_tower}")
 
-    rank0_print("DEBUG_LOG: Before get_model()") # DEBUG
     model = get_model(model_args, training_args, bnb_model_from_pretrained_args)
-    rank0_print(f"DEBUG_LOG: After get_model(). Model type: {type(model)}") # DEBUG
+    rank0_print(f"DEBUG_LOG: After get_model. Model type: {type(model)}")
 
     model.config.use_cache = False
     if model_args.rope_scaling_factor is not None and model_args.rope_scaling_type is not None:
