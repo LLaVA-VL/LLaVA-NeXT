@@ -2,6 +2,7 @@ import os
 import torch
 import torch.nn as nn
 import datetime
+from typing import Dict, Union, Any, List, Optional
 
 from accelerate import Accelerator
 from accelerate.utils import InitProcessGroupKwargs, GradientAccumulationPlugin
@@ -15,16 +16,13 @@ from transformers.trainer import is_sagemaker_mp_enabled, get_parameter_names, h
 from transformers.trainer_utils import seed_worker
 from transformers.trainer_pt_utils import get_length_grouped_indices as get_length_grouped_indices_hf
 from transformers.trainer_pt_utils import AcceleratorConfig
-from typing import List, Optional
-from datetime import timedelta
+from llava.utils import rank0_print
 
 if is_accelerate_available():
     from accelerate import Accelerator, skip_first_batches, InitProcessGroupKwargs
 
 if is_datasets_available():
     import datasets
-
-from llava.utils import rank0_print
 
 
 def maybe_zero_3(param, ignore_status=False, name=None):
@@ -239,11 +237,56 @@ class LengthGroupedSampler(Sampler):
 
 class LLaVATrainer(Trainer):
 
-    # def training_step(self, model, inputs):
-    #     logger.info(f"{self.state.global_step}")
-    #     for key, value in inputs.items():
-    #         logger.info(f"{key}: {len(value)}")
-    #     super().training_step(model, inputs)
+    def training_step(self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]) -> torch.Tensor:
+        """
+        Perform a training step on a batch of inputs.
+        Subclass and override to inject custom behavior.
+        Args:
+            model (:obj:`nn.Module`):
+                The model to train.
+            inputs (:obj:`Dict[str, Union[torch.Tensor, Any]]`):
+                The inputs and targets of the model.
+                The dictionary will be unpacked before being fed to the model. Most models expect the targets under the
+                argument :obj:`labels`.
+        Return:
+            :obj:`torch.Tensor`: The tensor with training loss on this batch.
+        """
+        rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step entered. Input keys: {list(inputs.keys())}")
+
+        model.train()
+        rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - model.train() called.")
+
+        rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - before _prepare_inputs.")
+        inputs = self._prepare_inputs(inputs)
+        rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - after _prepare_inputs. Input keys: {list(inputs.keys())}")
+        if "images" in inputs and isinstance(inputs["images"], list) and len(inputs["images"]) > 0 and hasattr(inputs["images"][0], 'device'):
+             rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - images[0] device after _prepare_inputs: {inputs['images'][0].device}")
+        elif "images" in inputs and hasattr(inputs["images"], 'device'): # if images is a tensor already
+             rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - images tensor device after _prepare_inputs: {inputs['images'].device}")
+
+        if "input_ids" in inputs and hasattr(inputs["input_ids"], 'device'):
+            rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - input_ids device after _prepare_inputs: {inputs['input_ids'].device}")
+
+        with self.compute_loss_context_manager():
+            rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - before compute_loss.")
+            loss = self.compute_loss(model, inputs)
+            rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - after compute_loss. Loss: {loss.item() if loss is not None and hasattr(loss, 'item') else 'N/A'}")
+
+        if self.args.n_gpu > 1:
+            loss = loss.mean()  # mean() to average on multi-gpu parallel training
+            rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - Loss averaged for multi-GPU: {loss.item() if loss is not None and hasattr(loss, 'item') else 'N/A'}")
+
+        rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - before backward pass. Loss: {loss.item() if loss is not None and hasattr(loss, 'item') else 'N/A'}")
+        if self.do_grad_scaling:
+            self.scaler.scale(loss).backward()
+        elif self.use_apex: # For NVIDIA Apex
+            with self.accelerator.scaled_loss(loss) as scaled_loss: # type: ignore
+                scaled_loss.backward()
+        else: # General case with Hugging Face Accelerate
+            self.accelerator.backward(loss)
+        rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - after backward pass.")
+
+        return loss.detach() / self.args.gradient_accumulation_steps
 
     def create_accelerator_and_postprocess(self):
         grad_acc_kwargs = {"num_steps": self.args.gradient_accumulation_steps}
