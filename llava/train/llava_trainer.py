@@ -1,25 +1,23 @@
 import os
 import torch
 import torch.nn as nn
-import datetime
+from datetime import timedelta
 from typing import Dict, Union, Any, List, Optional
 
 from accelerate import Accelerator
 from accelerate.utils import InitProcessGroupKwargs, GradientAccumulationPlugin
-from torch.utils.data import Dataset, Sampler, DataLoader
+from torch.utils.data import Sampler, DataLoader
 
 from trl.trainer import DPOTrainer
-from trl.trainer.utils import DPODataCollatorWithPadding
 
 from transformers import Trainer
-from transformers.trainer import is_sagemaker_mp_enabled, get_parameter_names, has_length, ALL_LAYERNORM_LAYERS, logger, is_accelerate_available, is_datasets_available, GradientAccumulationPlugin
+from transformers.trainer import is_sagemaker_mp_enabled, get_parameter_names, has_length, ALL_LAYERNORM_LAYERS, logger, is_accelerate_available, is_datasets_available
 from transformers.trainer_utils import seed_worker
 from transformers.trainer_pt_utils import get_length_grouped_indices as get_length_grouped_indices_hf
-from transformers.trainer_pt_utils import AcceleratorConfig
 from llava.utils import rank0_print
 
 if is_accelerate_available():
-    from accelerate import Accelerator, skip_first_batches, InitProcessGroupKwargs
+    from accelerate import Accelerator, InitProcessGroupKwargs
 
 if is_datasets_available():
     import datasets
@@ -98,12 +96,12 @@ def get_modality_length_grouped_indices(lengths, batch_size, world_size, generat
     """
 
     # We need to use torch for the random part as a distributed sampler will set the random seed for torch.
-    assert all(l != 0 for l in lengths), "Should not have zero length."
-    if all(l > 0 for l in lengths) or all(l < 0 for l in lengths):
+    assert all(length_val != 0 for length_val in lengths), "Should not have zero length."
+    if all(length_val > 0 for length_val in lengths) or all(length_val < 0 for length_val in lengths):
         # all samples are in the same modality
         return get_length_grouped_indices(lengths, batch_size, world_size, generator=generator)
-    mm_indices, mm_lengths = zip(*[(i, l) for i, l in enumerate(lengths) if l > 0])
-    lang_indices, lang_lengths = zip(*[(i, -l) for i, l in enumerate(lengths) if l < 0])
+    mm_indices, mm_lengths = zip(*[(i, length_val) for i, length_val in enumerate(lengths) if length_val > 0])
+    lang_indices, lang_lengths = zip(*[(i, -length_val) for i, length_val in enumerate(lengths) if length_val < 0])
 
     mm_shuffle = [mm_indices[i] for i in get_length_grouped_indices(mm_lengths, batch_size, world_size, generator=None)]
     lang_shuffle = [lang_indices[i] for i in get_length_grouped_indices(lang_lengths, batch_size, world_size, generator=None)]
@@ -111,15 +109,16 @@ def get_modality_length_grouped_indices(lengths, batch_size, world_size, generat
     mm_megabatches = [mm_shuffle[i : i + megabatch_size] for i in range(0, len(mm_shuffle), megabatch_size)]
     lang_megabatches = [lang_shuffle[i : i + megabatch_size] for i in range(0, len(lang_shuffle), megabatch_size)]
 
-    last_mm = mm_megabatches[-1]
-    last_lang = lang_megabatches[-1]
-    additional_batch = last_mm + last_lang
+    # last_mm = mm_megabatches[-1] # Commented out as it's unused
+    # last_lang = lang_megabatches[-1] # Commented out as it's unused
+    # additional_batch = last_mm + last_lang # Commented out as it's unused due to FIXME below
     megabatches = mm_megabatches[:-1] + lang_megabatches[:-1]
     megabatch_indices = torch.randperm(len(megabatches), generator=generator)
     megabatches = [megabatches[i] for i in megabatch_indices]
 
-    if len(additional_batch) > 0:
-        megabatches.append(sorted(additional_batch))
+    # FIXME: Hard code to avoid last batch mixed with different modalities
+    # if len(additional_batch) > 0:
+    #     megabatches.append(sorted(additional_batch))
 
     return [i for megabatch in megabatches for i in megabatch]
 
@@ -164,12 +163,12 @@ def get_length_grouped_indices_auto_single(lengths, batch_size, world_size, gene
 
 def get_modality_length_grouped_indices_auto(lengths, batch_size, world_size, generator=None):
     # We need to use torch for the random part as a distributed sampler will set the random seed for torch.
-    assert all(l != 0 for l in lengths), "Should not have zero length."
-    if all(l > 0 for l in lengths) or all(l < 0 for l in lengths):
+    assert all(length_val != 0 for length_val in lengths), "Should not have zero length."
+    if all(length_val > 0 for length_val in lengths) or all(length_val < 0 for length_val in lengths):
         # all samples are in the same modality
         return get_length_grouped_indices_auto_single(lengths, batch_size, world_size, generator=generator)
-    mm_indices, mm_lengths = zip(*[(i, l) for i, l in enumerate(lengths) if l > 0])
-    lang_indices, lang_lengths = zip(*[(i, -l) for i, l in enumerate(lengths) if l < 0])
+    mm_indices, mm_lengths = zip(*[(i, length_val) for i, length_val in enumerate(lengths) if length_val > 0])
+    lang_indices, lang_lengths = zip(*[(i, -length_val) for i, length_val in enumerate(lengths) if length_val < 0])
 
     mm_shuffle = [mm_indices[i] for i in get_length_grouped_indices_auto_single(mm_lengths, batch_size, world_size, generator=None)]
     lang_shuffle = [lang_indices[i] for i in get_length_grouped_indices_auto_single(lang_lengths, batch_size, world_size, generator=None)]
@@ -177,9 +176,9 @@ def get_modality_length_grouped_indices_auto(lengths, batch_size, world_size, ge
     mm_megabatches = [mm_shuffle[i : i + megabatch_size] for i in range(0, len(mm_shuffle), megabatch_size)]
     lang_megabatches = [lang_shuffle[i : i + megabatch_size] for i in range(0, len(lang_shuffle), megabatch_size)]
 
-    last_mm = mm_megabatches[-1]
-    last_lang = lang_megabatches[-1]
-    additional_batch = last_mm + last_lang
+    # last_mm = mm_megabatches[-1] # Commented out as it's unused
+    # last_lang = lang_megabatches[-1] # Commented out as it's unused
+    # additional_batch = last_mm + last_lang # Commented out as it's unused due to FIXME below
     megabatches = mm_megabatches[:-1] + lang_megabatches[:-1]
     megabatch_indices = torch.randperm(len(megabatches), generator=generator)
     megabatches = [megabatches[i] for i in megabatch_indices]
@@ -254,9 +253,9 @@ class LLaVATrainer(Trainer):
         rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step entered. Input keys: {list(inputs.keys())}")
 
         model.train()
-        rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - model.train() called.")
+        rank0_print("DEBUG_LOG: LLaVATrainer.training_step - model.train() called.")
 
-        rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - before _prepare_inputs.")
+        rank0_print("DEBUG_LOG: LLaVATrainer.training_step - before _prepare_inputs.")
         inputs = self._prepare_inputs(inputs)
         rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - after _prepare_inputs. Input keys: {list(inputs.keys())}")
         if "images" in inputs and isinstance(inputs["images"], list) and len(inputs["images"]) > 0 and hasattr(inputs["images"][0], 'device'):
@@ -268,7 +267,7 @@ class LLaVATrainer(Trainer):
             rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - input_ids device after _prepare_inputs: {inputs['input_ids'].device}")
 
         with self.compute_loss_context_manager():
-            rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - before compute_loss.")
+            rank0_print("DEBUG_LOG: LLaVATrainer.training_step - before compute_loss.")
             loss = self.compute_loss(model, inputs)
             rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - after compute_loss. Loss: {loss.item() if loss is not None and hasattr(loss, 'item') else 'N/A'}")
 
@@ -284,7 +283,7 @@ class LLaVATrainer(Trainer):
                 scaled_loss.backward()
         else: # General case with Hugging Face Accelerate
             self.accelerator.backward(loss)
-        rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - after backward pass.")
+        rank0_print("DEBUG_LOG: LLaVATrainer.training_step - after backward pass.")
 
         return loss.detach() / self.args.gradient_accumulation_steps
 
@@ -304,9 +303,9 @@ class LLaVATrainer(Trainer):
             else:
                 rank0_print(f"DEBUG_LOG: LLaVATrainer.compute_loss - Input '{key}': type={type(value)}")
 
-        rank0_print(f"DEBUG_LOG: LLaVATrainer.compute_loss - Before model(**inputs) (forward pass)")
+        rank0_print("DEBUG_LOG: LLaVATrainer.compute_loss - Before model(**inputs) (forward pass)")
         outputs = model(**inputs)
-        rank0_print(f"DEBUG_LOG: LLaVATrainer.compute_loss - After model(**inputs) (forward pass).")
+        rank0_print("DEBUG_LOG: LLaVATrainer.compute_loss - After model(**inputs) (forward pass).")
         
         # Save past state if it exists
         # TODO: this needs to be fixed and made cleaner later.
@@ -531,7 +530,7 @@ class LLaVATrainer(Trainer):
 
             if self.args.local_rank == 0 or self.args.local_rank == -1:
                 self.model.config.save_pretrained(output_dir)
-                torch.save(weight_to_save, os.path.join(output_dir, f"mm_projector.bin"))
+                torch.save(weight_to_save, os.path.join(output_dir, "mm_projector.bin"))
         else:
             super(LLaVATrainer, self)._save_checkpoint(model, trial, metrics)
 
@@ -579,7 +578,7 @@ class LLaVADPOTrainer(DPOTrainer):
 
             if self.args.local_rank == 0 or self.args.local_rank == -1:
                 self.model.config.save_pretrained(output_dir)
-                torch.save(weight_to_save, os.path.join(output_dir, f"mm_projector.bin"))
+                torch.save(weight_to_save, os.path.join(output_dir, "mm_projector.bin"))
         else:
             # super(LLaVADPOTrainer, self)._save_checkpoint(model, trial, metrics)
             # print(type(model))
