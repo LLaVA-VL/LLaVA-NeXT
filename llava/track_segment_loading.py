@@ -8,6 +8,7 @@ import traceback
 import pickle
 import boto3
 from botocore.client import Config
+from botocore.exceptions import ClientError
 import torch
 from torchcodec import FrameBatch
 from torchcodec.decoders import VideoDecoder
@@ -45,10 +46,16 @@ class S3File(io.RawIOBase):
             rank0_print(f"DEBUG_LOG: S3File.__init__ - Attempting to get content_length for {s3_object.key if hasattr(s3_object, 'key') else 'N/A'}")
             self._size = self.s3_object.content_length
             rank0_print(f"DEBUG_LOG: S3File.__init__ - Got content_length: {self._size} for {s3_object.key if hasattr(s3_object, 'key') else 'N/A'}")
+        except ClientError as e:
+            if e.response.get('Error', {}).get('Code') == '404':
+                rank0_print(f"DEBUG_LOG: S3File.__init__ - S3 404 Not Found for {s3_object.key if hasattr(s3_object, 'key') else 'N/A'}. Setting size to 0.")
+                self._size = 0
+            else:
+                rank0_print(f"DEBUG_LOG: ClientError in S3File.__init__ getting content_length for {s3_object.key if hasattr(s3_object, 'key') else 'N/A'}: {e}. Traceback: {traceback.format_exc()}")
+                self._size = 0
         except Exception as e:
             rank0_print(f"DEBUG_LOG: ERROR in S3File.__init__ getting content_length for {s3_object.key if hasattr(s3_object, 'key') else 'N/A'}: {e}. Traceback: {traceback.format_exc()}")
-            # If content_length fails, it's a significant issue, but let's not crash here.
-            # Subsequent operations will likely fail or use a None size.
+            self._size = 0
 
     def __repr__(self):
         return "<%s s3_object=%r>" % (type(self).__name__, self.s3_object)
@@ -56,17 +63,22 @@ class S3File(io.RawIOBase):
     @property
     def size(self):
         from llava.utils import rank0_print
-        rank0_print(f"DEBUG_LOG: S3File.size property accessed for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}. Cached size: {self._size}")
         if self._size is None:
-            # Attempt to fetch again if not set during init (e.g., due to an earlier error)
             try:
                 rank0_print(f"DEBUG_LOG: S3File.size - Attempting to re-fetch content_length for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}")
                 self._size = self.s3_object.content_length
                 rank0_print(f"DEBUG_LOG: S3File.size - Re-fetched content_length: {self._size} for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}")
+            except ClientError as e:
+                if e.response.get('Error', {}).get('Code') == '404':
+                    rank0_print(f"DEBUG_LOG: S3File.size - S3 404 Not Found (re-fetch) for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}. Setting size to 0.")
+                    self._size = 0
+                else:
+                    rank0_print(f"DEBUG_LOG: ClientError in S3File.size re-fetching content_length for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}: {e}. Traceback: {traceback.format_exc()}")
+                    self._size = 0
             except Exception as e:
                 rank0_print(f"DEBUG_LOG: ERROR in S3File.size re-fetching content_length for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}: {e}. Traceback: {traceback.format_exc()}")
-                return 0 # Or raise an error, returning 0 might cause issues downstream
-        return self._size
+                self._size = 0
+        return self._size if self._size is not None else 0
 
     def tell(self):
         return self.position
@@ -343,7 +355,7 @@ def load_video_track_segment(
     try:
         rank0_print(f"DEBUG_LOG: load_video_track_segment - Before VideoDecoder.read_video_from_stream. Start: {start}, End: {end}")
         decoder = VideoDecoder(
-            video_file, stream_index=0, pts_range=(start, end), device='cpu')
+            video_file, stream_index=0, start_time_sec=start, end_time_sec=end, device='cpu')
         rank0_print(f"DEBUG_LOG: load_video_track_segment - VideoDecoder initialized.")
         
         # Attempt to get frames. This is where pyav/ffmpeg might raise low-level errors for corrupted streams/frames.
