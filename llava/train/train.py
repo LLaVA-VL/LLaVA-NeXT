@@ -1035,34 +1035,56 @@ class TrackSegmentDataset(Dataset):
         return modality_lengths(self)
 
     def __getitem__(self, i):
+        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ called for index {i}")
         data = self.list_data_dict[i]
+        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Original data: {data}")
         start, end = timespan = data['timespan']
+        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Timespan: {timespan}, Video: {data['video']}, Track ID: {data['track_id']}")
+
+        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Before load_video_track_segment. Frames upbound: {self.data_args.frames_upbound}")
         frame_batch = load_video_track_segment(
             data['video'], data['track_id'], timespan,
             self.data_args.frames_upbound)
+        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - After load_video_track_segment. Frame batch data shape: {frame_batch.data.shape if hasattr(frame_batch, 'data') and hasattr(frame_batch.data, 'shape') else 'N/A'}, PTS: {frame_batch.pts_seconds if hasattr(frame_batch, 'pts_seconds') else 'N/A'}")
+
+        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Before image_processor.preprocess")
         image = self.data_args.image_processor.preprocess(
             frame_batch.data, return_tensors="pt")["pixel_values"]
+        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - After image_processor.preprocess. Image shape: {image.shape if hasattr(image, 'shape') else 'N/A'}")
+
         source = copy.deepcopy(data["conversations"])
+        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Original source conversations: {source}")
         if self.data_args.add_time_instruction:
+            rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Adding time instruction.")
             duration = end - start
             pts_seconds = frame_batch.pts_seconds.tolist()
             num_frames = len(frame_batch)
-            time_instruction = f"The video lasts for {duration:.2f} seconds," \
-                f" and {num_frames} frames are uniformly sampled from it. " \
-                f"These frames are located at {pts_seconds}. " \
+            time_instruction = f"The video lasts for {duration:.2f} seconds," \\\
+                f" and {num_frames} frames are uniformly sampled from it. " \\\
+                f"These frames are located at {pts_seconds}. " \\\
                 "Please answer the following questions related to this video."
             conv0 = source[0]["value"]
             conv0 = conv0.replace(DEFAULT_IMAGE_TOKEN, "")
-            source[0]["value"] = \
-                f'{DEFAULT_IMAGE_TOKEN}\n{time_instruction}\n{conv0}'
+            source[0]["value"] = \\\
+                f'{DEFAULT_IMAGE_TOKEN}\\n{time_instruction}\\n{conv0}'
+            rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Modified source with time instruction: {source}")
 
+        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Before preprocess_multimodal. Has_image=True")
         sources = preprocess_multimodal([source], self.data_args)
+        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - After preprocess_multimodal. Sources: {sources}")
+
+        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Before preprocess (general). Has_image=True")
         data_dict = preprocess(sources, self.tokenizer, has_image=True)
+        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - After preprocess (general). Data_dict keys: {data_dict.keys() if data_dict else 'None'}")
+
         if isinstance(i, int):
             data_dict = dict(input_ids=data_dict["input_ids"][0],
                              labels=data_dict["labels"][0])
+            rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Applied isinstance(i, int) processing. Data_dict keys: {data_dict.keys()}")
+        
         data_dict["image"] = [(image, frame_batch.data[0].size(), "video")]
         data_dict['id'] = data['id']
+        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Final data_dict prepared. ID: {data_dict['id']}. Returning.")
         return data_dict
 
 
