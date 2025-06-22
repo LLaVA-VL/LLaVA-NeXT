@@ -5,7 +5,6 @@ import io
 from math import ceil
 import traceback
 
-import pickle
 import boto3
 from botocore.client import Config
 from botocore.exceptions import ClientError
@@ -154,6 +153,28 @@ def download_from_s3(s3, bucket: Bucket, key: Path, seekable: bool = False
     try:
         obj = s3.Object(bucket_name=bucket, key=str(key))
         rank0_print(f"DEBUG_LOG: download_from_s3 - s3.Object() created for Key: {key}")
+        
+        # Check if object exists by trying to get its metadata
+        try:
+            obj.load()  # This will raise ClientError if object doesn't exist
+            rank0_print(f"DEBUG_LOG: download_from_s3 - Object exists for Key: {key}")
+        except ClientError as e:
+            if e.response.get('Error', {}).get('Code') == '404':
+                rank0_print(f"DEBUG_LOG: download_from_s3 - S3 404 Not Found for Key: {key}. Creating dummy file.")
+                # Return a dummy S3File that will return empty data
+                class DummyS3Object:
+                    def __init__(self, key):
+                        self.key = key
+                        self.content_length = 0
+                    
+                    def get(self, **kwargs):
+                        return {'Body': io.BytesIO(b'')}
+                
+                dummy_obj = DummyS3Object(str(key))
+                return S3File(dummy_obj)
+            else:
+                raise
+        
         if seekable:
             rank0_print(f"DEBUG_LOG: download_from_s3 - Returning S3File for Key: {key}")
             return S3File(obj)
@@ -345,73 +366,85 @@ def load_video_track_segment(
         read_timeout=30      # seconds
     )
     s3 = boto3.resource('s3', config=s3_config)
-    rank0_print(f"DEBUG_LOG: load_video_track_segment - boto3.resource('s3') initialized with timeouts.")
+    rank0_print("DEBUG_LOG: load_video_track_segment - boto3.resource('s3') initialized with timeouts.")
 
     video_file = download_from_s3(
         s3, bucket, VIDEO_PREFIX / f'{video_id}.mp4', seekable=True)
-    rank0_print(f"DEBUG_LOG: load_video_track_segment - Downloaded video file from S3.")
+    rank0_print("DEBUG_LOG: load_video_track_segment - Downloaded video file from S3.")
 
-    # pts_range is in seconds
+    # Check if video file is empty or missing
+    if hasattr(video_file, 'size') and video_file.size == 0:
+        rank0_print(f"DEBUG_LOG: load_video_track_segment - Video file is empty for {video_id}. Creating dummy FrameBatch.")
+        dummy_data = torch.zeros((num_frames if num_frames > 0 else 1, 3, 224, 224), dtype=torch.uint8)
+        dummy_pts = torch.zeros(num_frames if num_frames > 0 else 1, dtype=torch.float64)
+        dummy_duration = torch.full((num_frames if num_frames > 0 else 1,), 0.033, dtype=torch.float64)  # ~30fps
+        return FrameBatch(dummy_data, dummy_pts, dummy_duration)
+
+    # Use torchcodec VideoDecoder API correctly
     try:
-        rank0_print(f"DEBUG_LOG: load_video_track_segment - Before VideoDecoder.read_video_from_stream. Start: {start}, End: {end}")
-        decoder = VideoDecoder(
-            video_file, stream_index=0, start_time_sec=start, end_time_sec=end, device='cpu')
-        rank0_print(f"DEBUG_LOG: load_video_track_segment - VideoDecoder initialized.")
+        rank0_print(f"DEBUG_LOG: load_video_track_segment - Before VideoDecoder initialization. Start: {start}, End: {end}")
+        decoder = VideoDecoder(video_file, device='cpu')
+        rank0_print("DEBUG_LOG: load_video_track_segment - VideoDecoder initialized.")
         
-        # Attempt to get frames. This is where pyav/ffmpeg might raise low-level errors for corrupted streams/frames.
-        # The .frames() call itself might trigger decoding of a certain number of frames.
-        # We are trying to see if errors occur during this initial attempt to access frames.
-        # Note: The actual SEI errors might still occur later if subtle corruption passes this stage
-        # and is only detected by later GPU processing in the vision tower.
-        
-        # The original code fetches all frames and then samples.
-        # We will try to add a loop to fetch frames one by one or in small chunks if possible,
-        # to isolate problematic sections. However, VideoDecoder API might not support this easily.
-        # For now, let's log before and after the main frame fetching/sampling step.
+        # Use get_frames_played_in_range to get frames in the time range
+        rank0_print(f"DEBUG_LOG: load_video_track_segment - Before get_frames_played_in_range({start}, {end})")
+        decoded_frames = decoder.get_frames_played_in_range(start, end)
+        rank0_print(f"DEBUG_LOG: load_video_track_segment - After get_frames_played_in_range. Number of decoded frames: {len(decoded_frames.data) if decoded_frames and decoded_frames.data is not None else 'None'}")
 
-        rank0_print(f"DEBUG_LOG: load_video_track_segment - Before decoder.frames() call.")
-        decoded_frames = decoder.frames()
-        rank0_print(f"DEBUG_LOG: load_video_track_segment - After decoder.frames() call. Number of decoded frames: {len(decoded_frames) if decoded_frames is not None else 'None'}")
-
-        if decoded_frames is None or len(decoded_frames) == 0:
+        if decoded_frames is None or decoded_frames.data is None or len(decoded_frames.data) == 0:
             rank0_print(f"DEBUG_LOG: ERROR in load_video_track_segment - No frames decoded for {video_id} between {start} and {end}. Creating dummy FrameBatch.")
             # Create a dummy FrameBatch to avoid crashing downstream, though this indicates a problem.
             # A single black frame of a common size.
             dummy_data = torch.zeros((1, 3, 224, 224), dtype=torch.uint8)
             dummy_pts = torch.tensor([0.0], dtype=torch.float64)
-            return FrameBatch(dummy_data, dummy_pts)
+            dummy_duration = torch.tensor([0.033], dtype=torch.float64)  # ~30fps
+            return FrameBatch(dummy_data, dummy_pts, dummy_duration)
 
-        # The rest of the sampling logic from the original code
-        interval = (len(decoded_frames) -1) / (num_frames -1) if num_frames > 1 else 0
-        indices = [round(i * interval) for i in range(num_frames)]
-        rank0_print(f"DEBUG_LOG: load_video_track_segment - Frame indices for sampling: {indices}")
-        
-        frames_data = []
-        frames_pts = []
-        for i, frame_idx in enumerate(indices):
-            try:
-                rank0_print(f"DEBUG_LOG: load_video_track_segment - Accessing decoded_frames at index {frame_idx} (sample {i})")
-                current_frame_data = decoded_frames.data[frame_idx]
-                current_frame_pts = decoded_frames.pts_seconds[frame_idx]
-                frames_data.append(current_frame_data)
-                frames_pts.append(current_frame_pts)
-                rank0_print(f"DEBUG_LOG: load_video_track_segment - Successfully accessed frame {frame_idx}. Shape: {current_frame_data.shape}, PTS: {current_frame_pts}")
-            except IndexError as ie:
-                rank0_print(f"DEBUG_LOG: WARNING in load_video_track_segment - IndexError when accessing frame {frame_idx} (sample {i}) for video {video_id}. Total decoded: {len(decoded_frames)}. Skipping this frame sample.")
-                # If we skip, the number of frames might be less than num_frames. Handle this if necessary.
-                # For now, this will result in fewer frames in the output batch.
-                pass
-            except Exception as e:
-                rank0_print(f"DEBUG_LOG: ERROR in load_video_track_segment - Exception when accessing frame {frame_idx} (sample {i}) for video {video_id}: {e}. Skipping this frame sample.")
-                pass # Skip problematic frame
-        
-        if not frames_data:
-            rank0_print(f"DEBUG_LOG: ERROR in load_video_track_segment - No frames could be sampled for {video_id} (all frames in indices failed or indices out of bound). Creating dummy FrameBatch.")
-            dummy_data = torch.zeros((1, 3, 224, 224), dtype=torch.uint8)
-            dummy_pts = torch.tensor([0.0], dtype=torch.float64)
-            return FrameBatch(dummy_data, dummy_pts)
+        # Sample num_frames from the decoded frames
+        total_frames = len(decoded_frames.data)
+        if total_frames <= num_frames:
+            # Use all available frames if we have fewer than requested
+            frames_data = decoded_frames.data
+            frames_pts = decoded_frames.pts_seconds
+            frames_duration = decoded_frames.duration_seconds
+        else:
+            # Sample evenly from the available frames
+            interval = (total_frames - 1) / (num_frames - 1) if num_frames > 1 else 0
+            indices = [round(i * interval) for i in range(num_frames)]
+            rank0_print(f"DEBUG_LOG: load_video_track_segment - Frame indices for sampling: {indices}")
+            
+            frames_data = []
+            frames_pts = []
+            frames_duration = []
+            for i, frame_idx in enumerate(indices):
+                try:
+                    rank0_print(f"DEBUG_LOG: load_video_track_segment - Accessing decoded_frames at index {frame_idx} (sample {i})")
+                    current_frame_data = decoded_frames.data[frame_idx]
+                    current_frame_pts = decoded_frames.pts_seconds[frame_idx]
+                    current_frame_duration = decoded_frames.duration_seconds[frame_idx]
+                    frames_data.append(current_frame_data)
+                    frames_pts.append(current_frame_pts)
+                    frames_duration.append(current_frame_duration)
+                    rank0_print(f"DEBUG_LOG: load_video_track_segment - Successfully accessed frame {frame_idx}. Shape: {current_frame_data.shape}, PTS: {current_frame_pts}")
+                except IndexError:
+                    rank0_print(f"DEBUG_LOG: WARNING in load_video_track_segment - IndexError when accessing frame {frame_idx} (sample {i}) for video {video_id}. Total decoded: {total_frames}. Skipping this frame sample.")
+                    pass
+                except Exception as e:
+                    rank0_print(f"DEBUG_LOG: ERROR in load_video_track_segment - Exception when accessing frame {frame_idx} (sample {i}) for video {video_id}: {e}. Skipping this frame sample.")
+                    pass
+            
+            if frames_data:
+                frames_data = torch.stack(frames_data)
+                frames_pts = torch.tensor(frames_pts)
+                frames_duration = torch.tensor(frames_duration)
+            else:
+                rank0_print(f"DEBUG_LOG: ERROR in load_video_track_segment - No frames could be sampled for {video_id} (all frames in indices failed or indices out of bound). Creating dummy FrameBatch.")
+                dummy_data = torch.zeros((1, 3, 224, 224), dtype=torch.uint8)
+                dummy_pts = torch.tensor([0.0], dtype=torch.float64)
+                dummy_duration = torch.tensor([0.033], dtype=torch.float64)  # ~30fps
+                return FrameBatch(dummy_data, dummy_pts, dummy_duration)
 
-        frames = FrameBatch(torch.stack(frames_data), torch.tensor(frames_pts))
+        frames = FrameBatch(frames_data, frames_pts, frames_duration)
         rank0_print(f"DEBUG_LOG: load_video_track_segment - FrameBatch created. Num frames: {len(frames)}, Shape of data: {frames.data.shape if frames else 'N/A'}")
 
     except RuntimeError as re:
@@ -419,15 +452,17 @@ def load_video_track_segment(
         # Create a dummy FrameBatch
         dummy_data = torch.zeros((num_frames if num_frames > 0 else 1, 3, 224, 224), dtype=torch.uint8) # try to match num_frames
         dummy_pts = torch.zeros(num_frames if num_frames > 0 else 1, dtype=torch.float64)
-        frames = FrameBatch(dummy_data, dummy_pts)
-        rank0_print(f"DEBUG_LOG: load_video_track_segment - Created dummy FrameBatch due to RuntimeError.")
+        dummy_duration = torch.full((num_frames if num_frames > 0 else 1,), 0.033, dtype=torch.float64)  # ~30fps
+        frames = FrameBatch(dummy_data, dummy_pts, dummy_duration)
+        rank0_print("DEBUG_LOG: load_video_track_segment - Created dummy FrameBatch due to RuntimeError.")
     except Exception as e:
         rank0_print(f"DEBUG_LOG: UNEXPECTED_ERROR in load_video_track_segment for video {video_id}: {e}. Traceback: {traceback.format_exc()}")
         # Create a dummy FrameBatch
         dummy_data = torch.zeros((num_frames if num_frames > 0 else 1, 3, 224, 224), dtype=torch.uint8)
         dummy_pts = torch.zeros(num_frames if num_frames > 0 else 1, dtype=torch.float64)
-        frames = FrameBatch(dummy_data, dummy_pts)
-        rank0_print(f"DEBUG_LOG: load_video_track_segment - Created dummy FrameBatch due to UNEXPECTED_ERROR.")
+        dummy_duration = torch.full((num_frames if num_frames > 0 else 1,), 0.033, dtype=torch.float64)  # ~30fps
+        frames = FrameBatch(dummy_data, dummy_pts, dummy_duration)
+        rank0_print("DEBUG_LOG: load_video_track_segment - Created dummy FrameBatch due to UNEXPECTED_ERROR.")
 
     rank0_print(f"DEBUG_LOG: load_video_track_segment finished for video_id: {video_id}. Returning FrameBatch with {len(frames) if frames else 0} frames.")
     return frames

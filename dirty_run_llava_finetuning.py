@@ -9,12 +9,15 @@ from datetime import datetime, timezone
 
 date = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d-%H-%M-%S")
 
-# training_name_to_stop = "llava_cheater-17"
-# print(f"Attempting to stop training: {training_name_to_stop}")
-# stop_training(training_name=training_name_to_stop)
-# print(f"Stop request for training '{training_name_to_stop}' submitted.")
+training_name_to_stop = "llava_cheater-20"
+print(f"Attempting to stop training: {training_name_to_stop}")
+try:
+    stop_training(training_name=training_name_to_stop)
+    print(f"Stop request for training '{training_name_to_stop}' submitted.")
+except Exception as e:
+    print(f"Training {training_name_to_stop} already stopped or error: {e}")
 
-training_name = f"llava_cheater-18"
+training_name = f"llava_cheater-21" # Fixed FrameBatch constructor with duration_seconds
 simone_branch = "local_debug_hang"
 
 request_training(
@@ -29,15 +32,15 @@ request_training(
 
 print(f"Training request '{training_name}' submitted.")
 
-# # Get the training request
+# # # Get the training request
 
-training_request = get_training_request(training_name=training_name)
+# training_request = get_training_request(training_name=training_name)
 
 
-print("Training name:", training_request.training_name)
-print("Training status:", training_request.status)
-print("Number of Training Run attempted ", training_request.scheduling_attempt)
-# stop_training(training_name=training_name)
+# print("Training name:", training_request.training_name)
+# print("Training status:", training_request.status)
+# print("Number of Training Run attempted ", training_request.scheduling_attempt)
+# # stop_training(training_name=training_name)
 # import time
 # # Removed the following while loop
 # # while 1:
