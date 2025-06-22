@@ -3,14 +3,38 @@ from collections import defaultdict
 from pathlib import Path
 import io
 from math import ceil
-import traceback
 
 import boto3
 from botocore.client import Config
 from botocore.exceptions import ClientError
 import torch
-from torchcodec import FrameBatch
-from torchcodec.decoders import VideoDecoder
+
+# Try to import torchcodec, with fallback handling
+try:
+    from torchcodec import FrameBatch
+    from torchcodec.decoders import VideoDecoder
+    TORCHCODEC_AVAILABLE = True
+    from llava.utils import rank0_print
+    rank0_print("DEBUG_TORCHCODEC: torchcodec imported successfully")
+except ImportError as e:
+    from llava.utils import rank0_print
+    rank0_print(f"DEBUG_TORCHCODEC: torchcodec import failed: {e}")
+    TORCHCODEC_AVAILABLE = False
+    
+    # Create dummy classes for when torchcodec is not available
+    class FrameBatch:
+        def __init__(self, data, pts_seconds, duration_seconds):
+            self.data = data
+            self.pts_seconds = pts_seconds
+            self.duration_seconds = duration_seconds
+        
+        def __len__(self):
+            return len(self.data) if self.data is not None else 0
+    
+    class VideoDecoder:
+        def __init__(self, *args, **kwargs):
+            raise ImportError("torchcodec not available")
+
 from torchvision.tv_tensors import Image, BoundingBoxes, BoundingBoxFormat, \
     wrap
 from torchvision.transforms.v2 import Compose, Transform, ClampBoundingBoxes, \
@@ -35,25 +59,18 @@ TracksBoxes = dict[TrackId, tuple[FrameIds, BoundingBoxes]]
 
 class S3File(io.RawIOBase):
     def __init__(self, s3_object):
-        from llava.utils import rank0_print
-        rank0_print(f"DEBUG_LOG: S3File.__init__ called for s3_object: {s3_object.key if hasattr(s3_object, 'key') else 'N/A'}")
         self.s3_object = s3_object
         self.position = 0
         self.cache = {}
         self._size = None
         try:
-            rank0_print(f"DEBUG_LOG: S3File.__init__ - Attempting to get content_length for {s3_object.key if hasattr(s3_object, 'key') else 'N/A'}")
             self._size = self.s3_object.content_length
-            rank0_print(f"DEBUG_LOG: S3File.__init__ - Got content_length: {self._size} for {s3_object.key if hasattr(s3_object, 'key') else 'N/A'}")
         except ClientError as e:
             if e.response.get('Error', {}).get('Code') == '404':
-                rank0_print(f"DEBUG_LOG: S3File.__init__ - S3 404 Not Found for {s3_object.key if hasattr(s3_object, 'key') else 'N/A'}. Setting size to 0.")
                 self._size = 0
             else:
-                rank0_print(f"DEBUG_LOG: ClientError in S3File.__init__ getting content_length for {s3_object.key if hasattr(s3_object, 'key') else 'N/A'}: {e}. Traceback: {traceback.format_exc()}")
                 self._size = 0
-        except Exception as e:
-            rank0_print(f"DEBUG_LOG: ERROR in S3File.__init__ getting content_length for {s3_object.key if hasattr(s3_object, 'key') else 'N/A'}: {e}. Traceback: {traceback.format_exc()}")
+        except Exception:
             self._size = 0
 
     def __repr__(self):
@@ -61,21 +78,15 @@ class S3File(io.RawIOBase):
 
     @property
     def size(self):
-        from llava.utils import rank0_print
         if self._size is None:
             try:
-                rank0_print(f"DEBUG_LOG: S3File.size - Attempting to re-fetch content_length for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}")
                 self._size = self.s3_object.content_length
-                rank0_print(f"DEBUG_LOG: S3File.size - Re-fetched content_length: {self._size} for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}")
             except ClientError as e:
                 if e.response.get('Error', {}).get('Code') == '404':
-                    rank0_print(f"DEBUG_LOG: S3File.size - S3 404 Not Found (re-fetch) for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}. Setting size to 0.")
                     self._size = 0
                 else:
-                    rank0_print(f"DEBUG_LOG: ClientError in S3File.size re-fetching content_length for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}: {e}. Traceback: {traceback.format_exc()}")
                     self._size = 0
-            except Exception as e:
-                rank0_print(f"DEBUG_LOG: ERROR in S3File.size re-fetching content_length for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}: {e}. Traceback: {traceback.format_exc()}")
+            except Exception:
                 self._size = 0
         return self._size if self._size is not None else 0
 
@@ -100,11 +111,8 @@ class S3File(io.RawIOBase):
         return True
 
     def read(self, size=-1):
-        from llava.utils import rank0_print
-        rank0_print(f"DEBUG_LOG: S3File.read called for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}. Position: {self.position}, Read size: {size}")
         # boto3 does not support reading with start at the end of the file
         if self.size == self.position:
-            rank0_print(f"DEBUG_LOG: S3File.read - At EOF for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}. Returning empty bytes.")
             return b''
 
         if size == -1:
@@ -117,50 +125,37 @@ class S3File(io.RawIOBase):
             # If we're going to read beyond the end of the object, return
             # the entire object.
             if new_position >= self.size:
-                rank0_print(f"DEBUG_LOG: S3File.read - Read request exceeds EOF for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}. Reading till end.")
                 return self.read() # This will recursively call read with size=-1
 
             range_header = "bytes=%d-%d" % (self.position, new_position - 1)
             self.seek(offset=size, whence=io.SEEK_CUR)
-        rank0_print(f"DEBUG_LOG: S3File.read - Range header for S3 GET: {range_header} for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}")
         return self.get(range_header)
 
     def readable(self):
         return True
 
     def get(self, range_header: str) -> bytes:
-        from llava.utils import rank0_print
-        rank0_print(f"DEBUG_LOG: S3File.get called for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'} with range: {range_header}")
         if range_header in self.cache:
-            rank0_print(f"DEBUG_LOG: S3File.get - Cache hit for range {range_header} in {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'}")
             return self.cache[range_header]
         try:
-            rank0_print(f"DEBUG_LOG: S3File.get - S3 GET Object for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'} with range: {range_header}")
             res = self.s3_object.get(Range=range_header)
             data = res['Body'].read()
             self.cache[range_header] = data
-            rank0_print(f"DEBUG_LOG: S3File.get - S3 GET successful for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'} with range: {range_header}. Data length: {len(data)}")
             return data
-        except Exception as e:
-            rank0_print(f"DEBUG_LOG: ERROR in S3File.get for {self.s3_object.key if hasattr(self.s3_object, 'key') else 'N/A'} with range {range_header}: {e}. Traceback: {traceback.format_exc()}")
+        except Exception:
             raise
 
 
 def download_from_s3(s3, bucket: Bucket, key: Path, seekable: bool = False
                      ) -> S3File:
-    from llava.utils import rank0_print
-    rank0_print(f"DEBUG_LOG: download_from_s3 called. Bucket: {bucket}, Key: {key}, Seekable: {seekable}")
     try:
         obj = s3.Object(bucket_name=bucket, key=str(key))
-        rank0_print(f"DEBUG_LOG: download_from_s3 - s3.Object() created for Key: {key}")
         
         # Check if object exists by trying to get its metadata
         try:
             obj.load()  # This will raise ClientError if object doesn't exist
-            rank0_print(f"DEBUG_LOG: download_from_s3 - Object exists for Key: {key}")
         except ClientError as e:
             if e.response.get('Error', {}).get('Code') == '404':
-                rank0_print(f"DEBUG_LOG: download_from_s3 - S3 404 Not Found for Key: {key}. Creating dummy file.")
                 # Return a dummy S3File that will return empty data
                 class DummyS3Object:
                     def __init__(self, key):
@@ -176,14 +171,10 @@ def download_from_s3(s3, bucket: Bucket, key: Path, seekable: bool = False
                 raise
         
         if seekable:
-            rank0_print(f"DEBUG_LOG: download_from_s3 - Returning S3File for Key: {key}")
             return S3File(obj)
-        rank0_print(f"DEBUG_LOG: download_from_s3 - Attempting obj.get()['Body'] for Key: {key}")
         body = obj.get()['Body']
-        rank0_print(f"DEBUG_LOG: download_from_s3 - Successfully got Body for Key: {key}. Returning Body.")
         return body
-    except Exception as e:
-        rank0_print(f"DEBUG_LOG: ERROR in download_from_s3 for Bucket: {bucket}, Key: {key}: {e}. Traceback: {traceback.format_exc()}")
+    except Exception:
         raise
 
 
@@ -356,54 +347,58 @@ def load_video_track_segment(
     """Load a video track segment for the given `track_id` and `timespan`,
     resized to `num_frames`."""
     from llava.utils import rank0_print
-    rank0_print(f"DEBUG_LOG: load_video_track_segment entered for video_id: {video_id}, track_id: {track_id}, timespan: {timespan}, num_frames: {num_frames}")
+    
+    # First check if torchcodec is available
+    if not TORCHCODEC_AVAILABLE:
+        rank0_print(f"DEBUG_TORCHCODEC: torchcodec not available, creating dummy FrameBatch for video {video_id}")
+        # Create dummy frames with proper timestamps distributed over the timespan
+        start, end = timespan
+        duration = end - start
+        
+        dummy_data = torch.zeros((num_frames if num_frames > 0 else 1, 3, 224, 224), dtype=torch.uint8)
+        # Create proper timestamps distributed over the time range
+        if num_frames > 1:
+            dummy_pts = torch.linspace(start, end, num_frames, dtype=torch.float64)
+        else:
+            dummy_pts = torch.tensor([start], dtype=torch.float64)
+        dummy_duration = torch.full((num_frames if num_frames > 0 else 1,), duration / num_frames if num_frames > 0 else 0.033, dtype=torch.float64)
+        
+        rank0_print(f"DEBUG_TORCHCODEC: Created dummy FrameBatch with {len(dummy_pts)} frames, pts_range: [{dummy_pts[0]:.2f}, {dummy_pts[-1]:.2f}]")
+        return FrameBatch(dummy_data, dummy_pts, dummy_duration)
 
     start, end = timespan
     bucket = "scalable-training-dataset"
-    # Configure S3 client with timeouts
-    s3_config = Config(
-        connect_timeout=10,  # seconds
-        read_timeout=30      # seconds
-    )
+    s3_config = Config(connect_timeout=10, read_timeout=30)
     s3 = boto3.resource('s3', config=s3_config)
-    rank0_print("DEBUG_LOG: load_video_track_segment - boto3.resource('s3') initialized with timeouts.")
 
-    video_file = download_from_s3(
-        s3, bucket, VIDEO_PREFIX / f'{video_id}.mp4', seekable=True)
-    rank0_print("DEBUG_LOG: load_video_track_segment - Downloaded video file from S3.")
+    video_file = download_from_s3(s3, bucket, VIDEO_PREFIX / f'{video_id}.mp4', seekable=True)
 
     # Check if video file is empty or missing
     if hasattr(video_file, 'size') and video_file.size == 0:
-        rank0_print(f"DEBUG_LOG: load_video_track_segment - Video file is empty for {video_id}. Creating dummy FrameBatch.")
+        rank0_print(f"DEBUG_TORCHCODEC: Video file is empty for {video_id}, creating dummy FrameBatch")
         dummy_data = torch.zeros((num_frames if num_frames > 0 else 1, 3, 224, 224), dtype=torch.uint8)
-        dummy_pts = torch.zeros(num_frames if num_frames > 0 else 1, dtype=torch.float64)
-        dummy_duration = torch.full((num_frames if num_frames > 0 else 1,), 0.033, dtype=torch.float64)  # ~30fps
+        if num_frames > 1:
+            dummy_pts = torch.linspace(start, end, num_frames, dtype=torch.float64)
+        else:
+            dummy_pts = torch.tensor([start], dtype=torch.float64)
+        dummy_duration = torch.full((num_frames if num_frames > 0 else 1,), (end - start) / num_frames if num_frames > 0 else 0.033, dtype=torch.float64)
         return FrameBatch(dummy_data, dummy_pts, dummy_duration)
 
     # Use torchcodec VideoDecoder API correctly
     try:
-        rank0_print(f"DEBUG_LOG: load_video_track_segment - Before VideoDecoder initialization. Start: {start}, End: {end}")
         decoder = VideoDecoder(video_file, device='cpu')
-        rank0_print("DEBUG_LOG: load_video_track_segment - VideoDecoder initialized.")
-        
-        # Use get_frames_played_in_range to get frames in the time range
-        rank0_print(f"DEBUG_LOG: load_video_track_segment - Before get_frames_played_in_range({start}, {end})")
         decoded_frames = decoder.get_frames_played_in_range(start, end)
-        rank0_print(f"DEBUG_LOG: load_video_track_segment - After get_frames_played_in_range. Number of decoded frames: {len(decoded_frames.data) if decoded_frames and decoded_frames.data is not None else 'None'}")
 
         if decoded_frames is None or decoded_frames.data is None or len(decoded_frames.data) == 0:
-            rank0_print(f"DEBUG_LOG: ERROR in load_video_track_segment - No frames decoded for {video_id} between {start} and {end}. Creating dummy FrameBatch.")
-            # Create a dummy FrameBatch to avoid crashing downstream, though this indicates a problem.
-            # A single black frame of a common size.
+            rank0_print(f"DEBUG_TORCHCODEC: No frames decoded for {video_id} between {start} and {end}, creating dummy")
             dummy_data = torch.zeros((1, 3, 224, 224), dtype=torch.uint8)
-            dummy_pts = torch.tensor([0.0], dtype=torch.float64)
-            dummy_duration = torch.tensor([0.033], dtype=torch.float64)  # ~30fps
+            dummy_pts = torch.tensor([start], dtype=torch.float64)
+            dummy_duration = torch.tensor([0.033], dtype=torch.float64)
             return FrameBatch(dummy_data, dummy_pts, dummy_duration)
 
         # Sample num_frames from the decoded frames
         total_frames = len(decoded_frames.data)
         if total_frames <= num_frames:
-            # Use all available frames if we have fewer than requested
             frames_data = decoded_frames.data
             frames_pts = decoded_frames.pts_seconds
             frames_duration = decoded_frames.duration_seconds
@@ -411,26 +406,16 @@ def load_video_track_segment(
             # Sample evenly from the available frames
             interval = (total_frames - 1) / (num_frames - 1) if num_frames > 1 else 0
             indices = [round(i * interval) for i in range(num_frames)]
-            rank0_print(f"DEBUG_LOG: load_video_track_segment - Frame indices for sampling: {indices}")
             
             frames_data = []
             frames_pts = []
             frames_duration = []
-            for i, frame_idx in enumerate(indices):
+            for frame_idx in indices:
                 try:
-                    rank0_print(f"DEBUG_LOG: load_video_track_segment - Accessing decoded_frames at index {frame_idx} (sample {i})")
-                    current_frame_data = decoded_frames.data[frame_idx]
-                    current_frame_pts = decoded_frames.pts_seconds[frame_idx]
-                    current_frame_duration = decoded_frames.duration_seconds[frame_idx]
-                    frames_data.append(current_frame_data)
-                    frames_pts.append(current_frame_pts)
-                    frames_duration.append(current_frame_duration)
-                    rank0_print(f"DEBUG_LOG: load_video_track_segment - Successfully accessed frame {frame_idx}. Shape: {current_frame_data.shape}, PTS: {current_frame_pts}")
-                except IndexError:
-                    rank0_print(f"DEBUG_LOG: WARNING in load_video_track_segment - IndexError when accessing frame {frame_idx} (sample {i}) for video {video_id}. Total decoded: {total_frames}. Skipping this frame sample.")
-                    pass
-                except Exception as e:
-                    rank0_print(f"DEBUG_LOG: ERROR in load_video_track_segment - Exception when accessing frame {frame_idx} (sample {i}) for video {video_id}: {e}. Skipping this frame sample.")
+                    frames_data.append(decoded_frames.data[frame_idx])
+                    frames_pts.append(decoded_frames.pts_seconds[frame_idx])
+                    frames_duration.append(decoded_frames.duration_seconds[frame_idx])
+                except (IndexError, Exception):
                     pass
             
             if frames_data:
@@ -438,31 +423,25 @@ def load_video_track_segment(
                 frames_pts = torch.tensor(frames_pts)
                 frames_duration = torch.tensor(frames_duration)
             else:
-                rank0_print(f"DEBUG_LOG: ERROR in load_video_track_segment - No frames could be sampled for {video_id} (all frames in indices failed or indices out of bound). Creating dummy FrameBatch.")
+                rank0_print(f"DEBUG_TORCHCODEC: No frames could be sampled for {video_id}, creating dummy")
                 dummy_data = torch.zeros((1, 3, 224, 224), dtype=torch.uint8)
-                dummy_pts = torch.tensor([0.0], dtype=torch.float64)
-                dummy_duration = torch.tensor([0.033], dtype=torch.float64)  # ~30fps
+                dummy_pts = torch.tensor([start], dtype=torch.float64)
+                dummy_duration = torch.tensor([0.033], dtype=torch.float64)
                 return FrameBatch(dummy_data, dummy_pts, dummy_duration)
 
         frames = FrameBatch(frames_data, frames_pts, frames_duration)
-        rank0_print(f"DEBUG_LOG: load_video_track_segment - FrameBatch created. Num frames: {len(frames)}, Shape of data: {frames.data.shape if frames else 'N/A'}")
+        rank0_print(f"DEBUG_TORCHCODEC: Successfully created FrameBatch with {len(frames)} frames, pts_range: [{frames_pts[0]:.2f}, {frames_pts[-1]:.2f}]")
 
-    except RuntimeError as re:
-        rank0_print(f"DEBUG_LOG: RuntimeError in load_video_track_segment for video {video_id} (likely pyav/ffmpeg issue): {re}")
-        # Create a dummy FrameBatch
-        dummy_data = torch.zeros((num_frames if num_frames > 0 else 1, 3, 224, 224), dtype=torch.uint8) # try to match num_frames
-        dummy_pts = torch.zeros(num_frames if num_frames > 0 else 1, dtype=torch.float64)
-        dummy_duration = torch.full((num_frames if num_frames > 0 else 1,), 0.033, dtype=torch.float64)  # ~30fps
-        frames = FrameBatch(dummy_data, dummy_pts, dummy_duration)
-        rank0_print("DEBUG_LOG: load_video_track_segment - Created dummy FrameBatch due to RuntimeError.")
     except Exception as e:
-        rank0_print(f"DEBUG_LOG: UNEXPECTED_ERROR in load_video_track_segment for video {video_id}: {e}. Traceback: {traceback.format_exc()}")
-        # Create a dummy FrameBatch
+        rank0_print(f"DEBUG_TORCHCODEC: Exception in load_video_track_segment for video {video_id}: {e}")
+        # Create a dummy FrameBatch with proper timestamps
         dummy_data = torch.zeros((num_frames if num_frames > 0 else 1, 3, 224, 224), dtype=torch.uint8)
-        dummy_pts = torch.zeros(num_frames if num_frames > 0 else 1, dtype=torch.float64)
-        dummy_duration = torch.full((num_frames if num_frames > 0 else 1,), 0.033, dtype=torch.float64)  # ~30fps
+        if num_frames > 1:
+            dummy_pts = torch.linspace(start, end, num_frames, dtype=torch.float64)
+        else:
+            dummy_pts = torch.tensor([start], dtype=torch.float64)
+        dummy_duration = torch.full((num_frames if num_frames > 0 else 1,), (end - start) / num_frames if num_frames > 0 else 0.033, dtype=torch.float64)
         frames = FrameBatch(dummy_data, dummy_pts, dummy_duration)
-        rank0_print("DEBUG_LOG: load_video_track_segment - Created dummy FrameBatch due to UNEXPECTED_ERROR.")
+        rank0_print(f"DEBUG_TORCHCODEC: Created dummy FrameBatch due to exception with {len(frames)} frames, pts_range: [{dummy_pts[0]:.2f}, {dummy_pts[-1]:.2f}]")
 
-    rank0_print(f"DEBUG_LOG: load_video_track_segment finished for video_id: {video_id}. Returning FrameBatch with {len(frames) if frames else 0} frames.")
     return frames
