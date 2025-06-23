@@ -125,11 +125,9 @@ class S3File(io.RawIOBase):
 def download_from_s3(s3, bucket: Bucket, key: Path, seekable: bool = False
                      ) -> S3File:
     try:
-        obj = s3.Object(bucket_name=bucket, key=str(key))
-        
         # Check if object exists by trying to get its metadata
         try:
-            obj.load()  # This will raise ClientError if object doesn't exist
+            s3.head_object(Bucket=bucket, Key=str(key))
         except ClientError as e:
             if e.response.get('Error', {}).get('Code') == '404':
                 # Return a dummy S3File that will return empty data
@@ -145,6 +143,29 @@ def download_from_s3(s3, bucket: Bucket, key: Path, seekable: bool = False
                 return S3File(dummy_obj)
             else:
                 raise
+        
+        # Create a wrapper object that mimics the boto3 resource interface
+        class S3ClientWrapper:
+            def __init__(self, client, bucket, key):
+                self.client = client
+                self.bucket = bucket
+                self.key = key
+                self._content_length = None
+            
+            @property
+            def content_length(self):
+                if self._content_length is None:
+                    try:
+                        response = self.client.head_object(Bucket=self.bucket, Key=self.key)
+                        self._content_length = response['ContentLength']
+                    except:
+                        self._content_length = 0
+                return self._content_length
+            
+            def get(self, **kwargs):
+                return self.client.get_object(Bucket=self.bucket, Key=self.key, **kwargs)
+        
+        obj = S3ClientWrapper(s3, bucket, str(key))
         
         if seekable:
             return S3File(obj)
@@ -330,7 +351,7 @@ def load_video_track_segment(
     
     # Initialize S3 with proper region
     try:
-        s3 = boto3.resource('s3', region_name='us-east-1')
+        s3 = boto3.client('s3', region_name='eu-west-1')
     except Exception as e:
         rank0_print(f"S3 initialization failed: {e}")
         # Re-raise the exception instead of creating dummy data
