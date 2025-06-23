@@ -358,7 +358,15 @@ def load_video_track_segment(
         raise
 
     try:
-        video_file = download_from_s3(s3, bucket, VIDEO_PREFIX / f'{video_id}.mp4', seekable=True)
+        video_file = download_from_s3(s3, bucket, VIDEO_PREFIX / video_id, seekable=True)
+        # Check if the downloaded file has reasonable size
+        if hasattr(video_file, 'size'):
+            file_size = video_file.size
+            if file_size < 1000:  # Less than 1KB is likely corrupted
+                rank0_print(f"Video file too small ({file_size} bytes): {video_id}")
+                raise ValueError(f"Video file {video_id} is too small ({file_size} bytes)")
+            elif file_size > 0:
+                rank0_print(f"Downloaded video {video_id}: {file_size} bytes")
     except Exception as e:
         rank0_print(f"S3 download failed {video_id}: {e}")
         # Re-raise the exception instead of creating dummy data
