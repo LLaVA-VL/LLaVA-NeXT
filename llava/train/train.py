@@ -1447,14 +1447,20 @@ class DataCollatorForSupervisedDataset(object):
 
 def make_supervised_data_module(tokenizer: transformers.PreTrainedTokenizer, data_args) -> Dict:
     """Make dataset and collator for supervised fine-tuning."""
+    rank0_print("DEBUG_LOG: make_supervised_data_module called")
     # train_dataset = LazySupervisedDataset(tokenizer=tokenizer, data_path=data_args.data_path, data_args=data_args)
     dataset = TrackSegmentDataset(tokenizer=tokenizer, data_path=data_args.data_path, data_args=data_args)
+    rank0_print(f"DEBUG_LOG: Created TrackSegmentDataset with {len(dataset)} samples")
     generator = torch.Generator().manual_seed(42)
     train_dataset, eval_dataset = random_split(dataset, [0.8, 0.2], generator=generator)
+    rank0_print(f"DEBUG_LOG: Split dataset - train: {len(train_dataset)}, eval: {len(eval_dataset)}")
     data_collator = DataCollatorForSupervisedDataset(tokenizer=tokenizer)
-    return dict(train_dataset=LLaVASubset(train_dataset),
+    rank0_print("DEBUG_LOG: Created DataCollatorForSupervisedDataset")
+    result = dict(train_dataset=LLaVASubset(train_dataset),
                 eval_dataset=LLaVASubset(eval_dataset),
                 data_collator=data_collator)
+    rank0_print(f"DEBUG_LOG: make_supervised_data_module returning: {result.keys()}")
+    return result
 
 
 def get_model(model_args, training_args, bnb_model_from_pretrained_args):

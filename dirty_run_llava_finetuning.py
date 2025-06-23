@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 date = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d-%H-%M-%S")
 
-training_name = f"llava_cheater-32" # Batch size 1 + single print in loading
+training_name = f"llava_cheater-33" # Debug prints to track DataLoader/Trainer flow
 simone_branch = "local_debug_hang"
 
 request_training(
