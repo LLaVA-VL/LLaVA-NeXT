@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 
 date = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d-%H-%M-%S")
 
-training_name = f"llava_cheater-27" # Focus debug on timestamp generation
+training_name = f"llava_cheater-28" # Focus debug on timestamp generation
 simone_branch = "local_debug_hang"
 
 request_training(

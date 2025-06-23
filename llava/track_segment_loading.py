@@ -332,20 +332,20 @@ def load_video_track_segment(
     try:
         s3 = boto3.resource('s3', region_name='us-east-1')
     except Exception as e:
-        rank0_print(f"DEBUG_CREDENTIALS: Failed to initialize S3 client: {e}")
+        rank0_print(f"S3 initialization failed: {e}")
         # Re-raise the exception instead of creating dummy data
         raise
 
     try:
         video_file = download_from_s3(s3, bucket, VIDEO_PREFIX / f'{video_id}.mp4', seekable=True)
     except Exception as e:
-        rank0_print(f"DEBUG_S3: Failed to download video {video_id}: {e}")
+        rank0_print(f"S3 download failed {video_id}: {e}")
         # Re-raise the exception instead of creating dummy data
         raise
 
     # Check if video file is empty or missing
     if hasattr(video_file, 'size') and video_file.size == 0:
-        rank0_print(f"DEBUG_TIMESTAMPS: Video file empty for {video_id}, raising exception to skip")
+        rank0_print(f"Video file empty: {video_id}")
         raise FileNotFoundError(f"Video file {video_id} is empty or missing")
 
     try:
@@ -353,7 +353,7 @@ def load_video_track_segment(
         decoded_frames = decoder.get_frames_played_in_range(start, end)
 
         if decoded_frames is None or decoded_frames.data is None or len(decoded_frames.data) == 0:
-            rank0_print(f"DEBUG_TIMESTAMPS: No frames decoded for {video_id} timespan {start}-{end}, raising exception to skip")
+            rank0_print(f"No frames decoded: {video_id} timespan {start}-{end}")
             raise ValueError(f"No frames decoded for {video_id} in timespan {start}-{end}")
 
         # Sample num_frames from the decoded frames
@@ -385,14 +385,14 @@ def load_video_track_segment(
                 frames_pts = torch.tensor(frames_pts)
                 frames_duration = torch.tensor(frames_duration)
             else:
-                rank0_print(f"DEBUG_TIMESTAMPS: No frames sampled for {video_id}, raising exception to skip")
+                rank0_print(f"No frames sampled: {video_id}")
                 raise ValueError(f"No frames could be sampled for {video_id}")
 
         frames = FrameBatch(frames_data, frames_pts, frames_duration)
         rank0_print(f"DEBUG_TIMESTAMPS: Final FrameBatch pts: {frames_pts[:5].tolist()}")
 
     except Exception as e:
-        rank0_print(f"DEBUG_TIMESTAMPS: Exception for {video_id}: {e}")
+        rank0_print(f"Video loading exception {video_id}: {e}")
         # Re-raise the exception instead of creating dummy data
         raise
 

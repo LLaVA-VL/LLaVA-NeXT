@@ -1035,24 +1035,31 @@ class TrackSegmentDataset(Dataset):
         return modality_lengths(self)
 
     def __getitem__(self, i):
-        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ called for index {i}")
-        data = self.list_data_dict[i]
-        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Original data: {data}")
-        start, end = timespan = data['timespan']
-        video_id_for_load = data['video'] # Store for logging
-        track_id_for_load = data['track_id'] # Store for logging
-        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - >>>>> Preparing to load video_id: {video_id_for_load}, track_id: {track_id_for_load}, timespan: {timespan} <<<<<")
-
-        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Before load_video_track_segment. Frames upbound: {self.data_args.frames_upbound}")
-        try:
-            frame_batch = load_video_track_segment(
-                data['video'], data['track_id'], timespan,
-                self.data_args.frames_upbound)
-            rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - After load_video_track_segment. Frame batch data shape: {frame_batch.data.shape if hasattr(frame_batch, 'data') and hasattr(frame_batch.data, 'shape') else 'N/A'}, PTS: {frame_batch.pts_seconds if hasattr(frame_batch, 'pts_seconds') else 'N/A'}")
-        except Exception as e:
-            rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Failed to load video {data['video']}: {e}. Trying next sample.")
-            # Skip this sample by trying the next one
-            return self.__getitem__((i + 1) % len(self.list_data_dict))
+        # Add retry limit to prevent infinite loops
+        max_retries = 100
+        original_i = i
+        
+        for retry in range(max_retries):
+            try:
+                data = self.list_data_dict[i]
+                start, end = timespan = data['timespan']
+                
+                frame_batch = load_video_track_segment(
+                    data['video'], data['track_id'], timespan,
+                    self.data_args.frames_upbound)
+                break  # Success, exit retry loop
+                
+            except Exception as e:
+                if retry == 0:  # Only print on first attempt
+                    rank0_print(f"Failed to load video {data['video']}: {e}. Trying next samples...")
+                i = (i + 1) % len(self.list_data_dict)
+                if i == original_i:  # We've gone through the entire dataset
+                    rank0_print(f"ERROR: All videos in dataset appear to be missing/corrupted. Cannot proceed with training.")
+                    raise RuntimeError("No valid videos found in dataset")
+        else:
+            # If we've exhausted all retries
+            rank0_print(f"ERROR: Failed to find valid video after {max_retries} attempts")
+            raise RuntimeError(f"Failed to find valid video after {max_retries} attempts")
 
         rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Before image_processor.preprocess")
         image = self.data_args.image_processor.preprocess(
