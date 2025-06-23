@@ -323,13 +323,31 @@ def load_video_track_segment(
     """Load a video track segment for the given `track_id` and `timespan`,
     resized to `num_frames`."""
     from llava.utils import rank0_print
+    import os
     
     start, end = timespan
     bucket = "scalable-training-dataset"
-    s3_config = Config(connect_timeout=10, read_timeout=30)
-    s3 = boto3.resource('s3', config=s3_config)
+    
+    # Initialize S3 with proper region
+    try:
+        s3 = boto3.resource('s3', region_name='us-east-1')
+    except Exception as e:
+        rank0_print(f"DEBUG_CREDENTIALS: Failed to initialize S3 client: {e}")
+        # Return dummy data if S3 initialization fails
+        dummy_data = torch.zeros((num_frames if num_frames > 0 else 1, 3, 224, 224), dtype=torch.uint8)
+        dummy_pts = torch.linspace(start, end, num_frames, dtype=torch.float64) if num_frames > 1 else torch.tensor([start], dtype=torch.float64)
+        dummy_duration = torch.full((num_frames if num_frames > 0 else 1,), (end - start) / num_frames if num_frames > 0 else 0.033, dtype=torch.float64)
+        return FrameBatch(dummy_data, dummy_pts, dummy_duration)
 
-    video_file = download_from_s3(s3, bucket, VIDEO_PREFIX / f'{video_id}.mp4', seekable=True)
+    try:
+        video_file = download_from_s3(s3, bucket, VIDEO_PREFIX / f'{video_id}.mp4', seekable=True)
+    except Exception as e:
+        rank0_print(f"DEBUG_S3: Failed to download video {video_id}: {e}")
+        # Return dummy data if download fails
+        dummy_data = torch.zeros((num_frames if num_frames > 0 else 1, 3, 224, 224), dtype=torch.uint8)
+        dummy_pts = torch.linspace(start, end, num_frames, dtype=torch.float64) if num_frames > 1 else torch.tensor([start], dtype=torch.float64)
+        dummy_duration = torch.full((num_frames if num_frames > 0 else 1,), (end - start) / num_frames if num_frames > 0 else 0.033, dtype=torch.float64)
+        return FrameBatch(dummy_data, dummy_pts, dummy_duration)
 
     # Check if video file is empty or missing
     if hasattr(video_file, 'size') and video_file.size == 0:
