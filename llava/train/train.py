@@ -1061,15 +1061,11 @@ class TrackSegmentDataset(Dataset):
             rank0_print(f"ERROR: Failed to find valid video after {max_retries} attempts")
             raise RuntimeError(f"Failed to find valid video after {max_retries} attempts")
 
-        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Before image_processor.preprocess")
         image = self.data_args.image_processor.preprocess(
             frame_batch.data, return_tensors="pt")["pixel_values"]
-        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - After image_processor.preprocess. Image shape: {image.shape if hasattr(image, 'shape') else 'N/A'}")
 
         source = copy.deepcopy(data["conversations"])
-        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Original source conversations: {source}")
         if self.data_args.add_time_instruction:
-            rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Adding time instruction.")
             duration = end - start
             pts_seconds = frame_batch.pts_seconds.tolist()
             num_frames = len(frame_batch)
@@ -1081,24 +1077,19 @@ class TrackSegmentDataset(Dataset):
             conv0 = conv0.replace(DEFAULT_IMAGE_TOKEN, "")
             source[0]["value"] = \
                 f'{DEFAULT_IMAGE_TOKEN}\n{time_instruction}\n{conv0}'
-            rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Modified source with time instruction: {source}")
 
-        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Before preprocess_multimodal. Has_image=True")
         sources = preprocess_multimodal([source], self.data_args)
-        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - After preprocess_multimodal. Sources: {sources}")
-
-        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Before preprocess (general). Has_image=True")
         data_dict = preprocess(sources, self.tokenizer, has_image=True)
-        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - After preprocess (general). Data_dict keys: {data_dict.keys() if data_dict else 'None'}")
 
         if isinstance(i, int):
             data_dict = dict(input_ids=data_dict["input_ids"][0],
                              labels=data_dict["labels"][0])
-            rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Applied isinstance(i, int) processing. Data_dict keys: {data_dict.keys()}")
         
         data_dict["image"] = [(image, frame_batch.data[0].size(), "video")]
         data_dict['id'] = data['id']
-        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Final data_dict prepared. ID: {data_dict['id']}. Returning.")
+        
+        # Single print to signal element is ready for collator
+        rank0_print(f"ELEMENT_READY: Transmitting element {data_dict['id']} to collator")
         return data_dict
 
 
