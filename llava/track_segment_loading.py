@@ -333,42 +333,28 @@ def load_video_track_segment(
         s3 = boto3.resource('s3', region_name='us-east-1')
     except Exception as e:
         rank0_print(f"DEBUG_CREDENTIALS: Failed to initialize S3 client: {e}")
-        # Return dummy data if S3 initialization fails
-        dummy_data = torch.zeros((num_frames if num_frames > 0 else 1, 3, 224, 224), dtype=torch.uint8)
-        dummy_pts = torch.linspace(start, end, num_frames, dtype=torch.float64) if num_frames > 1 else torch.tensor([start], dtype=torch.float64)
-        dummy_duration = torch.full((num_frames if num_frames > 0 else 1,), (end - start) / num_frames if num_frames > 0 else 0.033, dtype=torch.float64)
-        return FrameBatch(dummy_data, dummy_pts, dummy_duration)
+        # Re-raise the exception instead of creating dummy data
+        raise
 
     try:
         video_file = download_from_s3(s3, bucket, VIDEO_PREFIX / f'{video_id}.mp4', seekable=True)
     except Exception as e:
         rank0_print(f"DEBUG_S3: Failed to download video {video_id}: {e}")
-        # Return dummy data if download fails
-        dummy_data = torch.zeros((num_frames if num_frames > 0 else 1, 3, 224, 224), dtype=torch.uint8)
-        dummy_pts = torch.linspace(start, end, num_frames, dtype=torch.float64) if num_frames > 1 else torch.tensor([start], dtype=torch.float64)
-        dummy_duration = torch.full((num_frames if num_frames > 0 else 1,), (end - start) / num_frames if num_frames > 0 else 0.033, dtype=torch.float64)
-        return FrameBatch(dummy_data, dummy_pts, dummy_duration)
+        # Re-raise the exception instead of creating dummy data
+        raise
 
     # Check if video file is empty or missing
     if hasattr(video_file, 'size') and video_file.size == 0:
-        rank0_print(f"DEBUG_TIMESTAMPS: Video file empty for {video_id}, creating dummy with timespan {start}-{end}")
-        dummy_data = torch.zeros((num_frames if num_frames > 0 else 1, 3, 224, 224), dtype=torch.uint8)
-        dummy_pts = torch.linspace(start, end, num_frames, dtype=torch.float64) if num_frames > 1 else torch.tensor([start], dtype=torch.float64)
-        dummy_duration = torch.full((num_frames if num_frames > 0 else 1,), (end - start) / num_frames if num_frames > 0 else 0.033, dtype=torch.float64)
-        rank0_print(f"DEBUG_TIMESTAMPS: Dummy pts: {dummy_pts[:5].tolist()}")
-        return FrameBatch(dummy_data, dummy_pts, dummy_duration)
+        rank0_print(f"DEBUG_TIMESTAMPS: Video file empty for {video_id}, raising exception to skip")
+        raise FileNotFoundError(f"Video file {video_id} is empty or missing")
 
     try:
         decoder = VideoDecoder(video_file, device='cpu')
         decoded_frames = decoder.get_frames_played_in_range(start, end)
 
         if decoded_frames is None or decoded_frames.data is None or len(decoded_frames.data) == 0:
-            rank0_print(f"DEBUG_TIMESTAMPS: No frames decoded for {video_id} timespan {start}-{end}, creating dummy")
-            dummy_data = torch.zeros((1, 3, 224, 224), dtype=torch.uint8)
-            dummy_pts = torch.tensor([start], dtype=torch.float64)
-            dummy_duration = torch.tensor([0.033], dtype=torch.float64)
-            rank0_print(f"DEBUG_TIMESTAMPS: No frames dummy pts: {dummy_pts.tolist()}")
-            return FrameBatch(dummy_data, dummy_pts, dummy_duration)
+            rank0_print(f"DEBUG_TIMESTAMPS: No frames decoded for {video_id} timespan {start}-{end}, raising exception to skip")
+            raise ValueError(f"No frames decoded for {video_id} in timespan {start}-{end}")
 
         # Sample num_frames from the decoded frames
         total_frames = len(decoded_frames.data)
@@ -399,21 +385,15 @@ def load_video_track_segment(
                 frames_pts = torch.tensor(frames_pts)
                 frames_duration = torch.tensor(frames_duration)
             else:
-                rank0_print(f"DEBUG_TIMESTAMPS: No frames sampled for {video_id}, creating dummy")
-                dummy_data = torch.zeros((1, 3, 224, 224), dtype=torch.uint8)
-                dummy_pts = torch.tensor([start], dtype=torch.float64)
-                dummy_duration = torch.tensor([0.033], dtype=torch.float64)
-                return FrameBatch(dummy_data, dummy_pts, dummy_duration)
+                rank0_print(f"DEBUG_TIMESTAMPS: No frames sampled for {video_id}, raising exception to skip")
+                raise ValueError(f"No frames could be sampled for {video_id}")
 
         frames = FrameBatch(frames_data, frames_pts, frames_duration)
         rank0_print(f"DEBUG_TIMESTAMPS: Final FrameBatch pts: {frames_pts[:5].tolist()}")
 
     except Exception as e:
         rank0_print(f"DEBUG_TIMESTAMPS: Exception for {video_id}: {e}")
-        dummy_data = torch.zeros((num_frames if num_frames > 0 else 1, 3, 224, 224), dtype=torch.uint8)
-        dummy_pts = torch.linspace(start, end, num_frames, dtype=torch.float64) if num_frames > 1 else torch.tensor([start], dtype=torch.float64)
-        dummy_duration = torch.full((num_frames if num_frames > 0 else 1,), (end - start) / num_frames if num_frames > 0 else 0.033, dtype=torch.float64)
-        frames = FrameBatch(dummy_data, dummy_pts, dummy_duration)
-        rank0_print(f"DEBUG_TIMESTAMPS: Exception dummy pts: {dummy_pts[:5].tolist()}")
+        # Re-raise the exception instead of creating dummy data
+        raise
 
     return frames

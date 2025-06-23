@@ -1044,10 +1044,15 @@ class TrackSegmentDataset(Dataset):
         rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - >>>>> Preparing to load video_id: {video_id_for_load}, track_id: {track_id_for_load}, timespan: {timespan} <<<<<")
 
         rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Before load_video_track_segment. Frames upbound: {self.data_args.frames_upbound}")
-        frame_batch = load_video_track_segment(
-            data['video'], data['track_id'], timespan,
-            self.data_args.frames_upbound)
-        rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - After load_video_track_segment. Frame batch data shape: {frame_batch.data.shape if hasattr(frame_batch, 'data') and hasattr(frame_batch.data, 'shape') else 'N/A'}, PTS: {frame_batch.pts_seconds if hasattr(frame_batch, 'pts_seconds') else 'N/A'}")
+        try:
+            frame_batch = load_video_track_segment(
+                data['video'], data['track_id'], timespan,
+                self.data_args.frames_upbound)
+            rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - After load_video_track_segment. Frame batch data shape: {frame_batch.data.shape if hasattr(frame_batch, 'data') and hasattr(frame_batch.data, 'shape') else 'N/A'}, PTS: {frame_batch.pts_seconds if hasattr(frame_batch, 'pts_seconds') else 'N/A'}")
+        except Exception as e:
+            rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Failed to load video {data['video']}: {e}. Trying next sample.")
+            # Skip this sample by trying the next one
+            return self.__getitem__((i + 1) % len(self.list_data_dict))
 
         rank0_print(f"DEBUG_LOG: TrackSegmentDataset.__getitem__ - Before image_processor.preprocess")
         image = self.data_args.image_processor.preprocess(

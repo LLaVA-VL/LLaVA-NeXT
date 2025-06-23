@@ -9,15 +9,7 @@ from datetime import datetime, timezone
 
 date = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d-%H-%M-%S")
 
-training_name_to_stop = "llava_cheater-20"
-print(f"Attempting to stop training: {training_name_to_stop}")
-try:
-    stop_training(training_name=training_name_to_stop)
-    print(f"Stop request for training '{training_name_to_stop}' submitted.")
-except Exception as e:
-    print(f"Training {training_name_to_stop} already stopped or error: {e}")
-
-training_name = f"llava_cheater-21" # Fixed FrameBatch constructor with duration_seconds
+training_name = f"llava_cheater-27" # Focus debug on timestamp generation
 simone_branch = "local_debug_hang"
 
 request_training(
