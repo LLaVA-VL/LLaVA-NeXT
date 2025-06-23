@@ -343,10 +343,6 @@ def load_video_track_segment(
         # Re-raise the exception instead of creating dummy data
         raise
 
-    # Check if video file is empty or missing
-    if hasattr(video_file, 'size') and video_file.size == 0:
-        rank0_print(f"Video file empty: {video_id}")
-        raise FileNotFoundError(f"Video file {video_id} is empty or missing")
 
     try:
         decoder = VideoDecoder(video_file, device='cpu')
