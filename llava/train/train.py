@@ -1049,13 +1049,6 @@ class TrackSegmentDataset(Dataset):
                     self.data_args.frames_upbound)
                 break  # Success, exit retry loop
                 
-            except TimeoutError as e:
-                # Handle timeout errors specifically to prevent GPU deadlocks
-                rank0_print(f"Video loading timeout {data['video']} (attempt {retry+1}): {e}. Skipping to next sample...")
-                i = (i + 1) % len(self.list_data_dict)
-                if i == original_i:  # We've gone through the entire dataset
-                    rank0_print(f"ERROR: All videos in dataset appear to be timing out. Cannot proceed with training.")
-                    raise RuntimeError("No valid videos found in dataset - all timeouts")
             except Exception as e:
                 if retry == 0 or retry % 10 == 0:  # Print on first attempt and every 10th retry
                     rank0_print(f"Failed to load video {data['video']} (attempt {retry+1}): {e}. Trying next samples...")

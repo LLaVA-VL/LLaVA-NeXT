@@ -4,8 +4,7 @@ from pathlib import Path
 import io
 import time
 from math import ceil
-import signal
-import functools
+
 
 import boto3
 from botocore.client import Config
@@ -340,26 +339,7 @@ transforms = Compose([
 ])
 
 
-def timeout_handler(signum, frame):
-    raise TimeoutError("Operation timed out")
 
-def with_timeout(timeout_seconds):
-    """Decorator to add timeout to any function"""
-    def decorator(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            # Set up the timeout
-            old_handler = signal.signal(signal.SIGALRM, timeout_handler)
-            signal.alarm(timeout_seconds)
-            try:
-                result = func(*args, **kwargs)
-            finally:
-                # Clean up
-                signal.alarm(0)
-                signal.signal(signal.SIGALRM, old_handler)
-            return result
-        return wrapper
-    return decorator
 
 def load_video_track_segment(
     video_id: str, track_id: int, timespan: tuple[float, float],
@@ -405,13 +385,8 @@ def load_video_track_segment(
     if s3 is None:
         raise RuntimeError("Failed to initialize S3 client after retries")
 
-    # Add timeout to S3 download
-    @with_timeout(30)  # 30 second timeout for S3 download
-    def download_video_with_timeout():
-        return download_from_s3(s3, bucket, VIDEO_PREFIX / video_id, seekable=True)
-
     try:
-        video_file = download_video_with_timeout()
+        video_file = download_from_s3(s3, bucket, VIDEO_PREFIX / video_id, seekable=True)
         # Check if the downloaded file has reasonable size
         if hasattr(video_file, 'size'):
             file_size = video_file.size
@@ -420,17 +395,12 @@ def load_video_track_segment(
                 raise ValueError(f"Video file {video_id} is too small ({file_size} bytes)")
             elif file_size > 0 and hash(video_id) % 50 == 0:  # Log ~2% of downloads
                 rank0_print(f"Downloaded video {video_id}: {file_size} bytes")
-    except TimeoutError:
-        rank0_print(f"S3 download timeout for {video_id}")
-        raise TimeoutError(f"S3 download timeout for {video_id}")
     except Exception as e:
         rank0_print(f"S3 download failed {video_id}: {e}")
         # Re-raise the exception instead of creating dummy data
         raise
 
-    # Add timeout to video decoding
-    @with_timeout(60)  # 60 second timeout for video decoding
-    def decode_video_with_timeout():
+    try:
         decoder = VideoDecoder(video_file, device='cpu')
         
         # Handle timespan validation by catching the error and clipping
@@ -492,11 +462,6 @@ def load_video_track_segment(
             rank0_print(f"No frames decoded: {video_id} timespan {start}-{end}")
             raise ValueError(f"No frames decoded for {video_id} in timespan {start}-{end}")
 
-        return decoded_frames
-
-    try:
-        decoded_frames = decode_video_with_timeout()
-        
         # Sample num_frames from the decoded frames
         total_frames = len(decoded_frames.data)
         # Only log occasionally to reduce spam
@@ -533,9 +498,6 @@ def load_video_track_segment(
 
         frames = FrameBatch(frames_data, frames_pts, frames_duration)
 
-    except TimeoutError:
-        rank0_print(f"Video decoding timeout for {video_id}")
-        raise TimeoutError(f"Video decoding timeout for {video_id}")
     except Exception as e:
         rank0_print(f"Video loading exception {video_id}: {e}")
         # Re-raise the exception instead of creating dummy data
