@@ -1050,8 +1050,8 @@ class TrackSegmentDataset(Dataset):
                 break  # Success, exit retry loop
                 
             except Exception as e:
-                if retry == 0:  # Only print on first attempt
-                    rank0_print(f"Failed to load video {data['video']}: {e}. Trying next samples...")
+                if retry == 0 or retry % 10 == 0:  # Print on first attempt and every 10th retry
+                    rank0_print(f"Failed to load video {data['video']} (attempt {retry+1}): {e}. Trying next samples...")
                 i = (i + 1) % len(self.list_data_dict)
                 if i == original_i:  # We've gone through the entire dataset
                     rank0_print(f"ERROR: All videos in dataset appear to be missing/corrupted. Cannot proceed with training.")
@@ -1626,6 +1626,12 @@ def train(attn_implementation=None):
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     rank0_print(f"DEBUG_LOG: Args parsed. torch_compile: {training_args.torch_compile}, torch_compile_backend: {training_args.torch_compile_backend}, torch_compile_mode: {training_args.torch_compile_mode}")
 
+    # TORCH_COMPILE FIX: Disable torch_compile to prevent hanging with distributed training
+    if training_args.torch_compile:
+        rank0_print("WARNING: torch_compile is enabled but causes hanging with distributed training. Disabling torch_compile.")
+        training_args.torch_compile = False
+        rank0_print(f"DEBUG_LOG: torch_compile disabled. New value: {training_args.torch_compile}")
+
     # This print statement is the one that successfully executed in the previous run
     rank0_print(f"DEBUG_LOG: Before get_model. Bits for quantization: {training_args.bits if hasattr(training_args, 'bits') and training_args.bits in [4,8] else 'Not 4/8 bit'}. Vision Tower: {model_args.vision_tower}")
 
@@ -1988,13 +1994,34 @@ def train(attn_implementation=None):
         callbacks=[S3UploadCallback(), DebugCallback()] if os.environ.get("RUN_ENV") == "prod" else [DebugCallback()],
         **data_module)
     rank0_print("DEBUG_LOG: After LLaVATrainer()") # DEBUG
+    
+    # Test the data loader to see if it works
+    rank0_print("DEBUG_LOG: Testing train dataloader...")
+    train_dataloader = trainer.get_train_dataloader()
+    rank0_print(f"DEBUG_LOG: Train dataloader created successfully. Length: {len(train_dataloader)}")
+    
+    # Try to get one batch to see if that works
+    rank0_print("DEBUG_LOG: Attempting to fetch first batch from dataloader...")
+    try:
+        first_batch = next(iter(train_dataloader))
+        rank0_print(f"DEBUG_LOG: Successfully fetched first batch. Keys: {list(first_batch.keys())}")
+        if 'input_ids' in first_batch:
+            rank0_print(f"DEBUG_LOG: input_ids shape: {first_batch['input_ids'].shape}")
+    except Exception as e:
+        rank0_print(f"DEBUG_LOG: Failed to fetch first batch: {e}")
+    
+    rank0_print("DEBUG_LOG: Finished testing dataloader. About to call trainer.train()")
 
     if list(Path(training_args.output_dir).glob("checkpoint-*")):
         rank0_print("DEBUG_LOG: Checkpoint found. Before trainer.train(resume_from_checkpoint=True)") # DEBUG
+        rank0_print("DEBUG_LOG: Trainer state before train() call - world_size: {}, local_rank: {}".format(training_args.world_size, training_args.local_rank))
+        rank0_print("DEBUG_LOG: About to call trainer.train(resume_from_checkpoint=True) - this is where we expect the hang")
         trainer.train(resume_from_checkpoint=True)
         rank0_print("DEBUG_LOG: After trainer.train(resume_from_checkpoint=True)") # DEBUG
     else:
         rank0_print("DEBUG_LOG: No checkpoint. Before trainer.train()") # DEBUG
+        rank0_print("DEBUG_LOG: Trainer state before train() call - world_size: {}, local_rank: {}".format(training_args.world_size, training_args.local_rank))
+        rank0_print("DEBUG_LOG: About to call trainer.train() - this is where we expect the hang")
         trainer.train()
         rank0_print("DEBUG_LOG: After trainer.train()") # DEBUG
 
