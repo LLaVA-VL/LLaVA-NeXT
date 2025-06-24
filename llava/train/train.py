@@ -1416,14 +1416,8 @@ class DataCollatorForSupervisedDataset(object):
 
             batch["image_sizes"] = [im[1] for im_list in images for im in im_list]
             batch["modalities"] = [im[2] for im_list in images for im in im_list]
-            raw_images_for_batch = [im[0] for im_list in images for im in im_list] # Renamed to avoid confusion
-
-            # if all(x is not None and x.shape == images[0].shape for x in images):
-                # Image: (N, P, C, H, W)
-                # Video: (N, F, C, H, W)
-            #     batch["images"] = torch.stack(images)
-            # else:
-            batch["images"] = images
+            # Extract the actual tensors from the nested structure
+            batch["images"] = [im[0] for im_list in images for im in im_list]
 
         if "prompt" in instances[0]:
             batch["prompts"] = [instance["prompt"] for instance in instances]
