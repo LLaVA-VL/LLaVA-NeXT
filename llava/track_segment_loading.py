@@ -2,6 +2,7 @@ from typing import Literal, Any, cast
 from collections import defaultdict
 from pathlib import Path
 import io
+import time
 from math import ceil
 
 import boto3
@@ -349,13 +350,37 @@ def load_video_track_segment(
     start, end = timespan
     bucket = "scalable-training-dataset"
     
-    # Initialize S3 with proper region
-    try:
-        s3 = boto3.client('s3', region_name='eu-west-1')
-    except Exception as e:
-        rank0_print(f"S3 initialization failed: {e}")
-        # Re-raise the exception instead of creating dummy data
-        raise
+    # Initialize S3 with proper region and retry on credentials issues
+    max_s3_retries = 3
+    s3 = None
+    for retry in range(max_s3_retries):
+        try:
+            s3 = boto3.client('s3', region_name='eu-west-1')
+            # Test credentials by making a simple call
+            s3.head_object(Bucket=bucket, Key="test")  # This will fail but test credentials
+            break
+        except ClientError as e:
+            if e.response.get('Error', {}).get('Code') == '404':
+                # 404 is expected for test key, credentials are working
+                break
+            elif 'credentials' in str(e).lower() and retry < max_s3_retries - 1:
+                rank0_print(f"S3 credentials issue (attempt {retry+1}), retrying...")
+                time.sleep(1)
+                continue
+            else:
+                rank0_print(f"S3 initialization failed: {e}")
+                raise
+        except Exception as e:
+            if 'credentials' in str(e).lower() and retry < max_s3_retries - 1:
+                rank0_print(f"S3 initialization failed (attempt {retry+1}): {e}, retrying...")
+                time.sleep(1)
+                continue
+            else:
+                rank0_print(f"S3 initialization failed: {e}")
+                raise
+    
+    if s3 is None:
+        raise RuntimeError("Failed to initialize S3 client after retries")
 
     try:
         video_file = download_from_s3(s3, bucket, VIDEO_PREFIX / video_id, seekable=True)
@@ -365,7 +390,7 @@ def load_video_track_segment(
             if file_size < 1000:  # Less than 1KB is likely corrupted
                 rank0_print(f"Video file too small ({file_size} bytes): {video_id}")
                 raise ValueError(f"Video file {video_id} is too small ({file_size} bytes)")
-            elif file_size > 0:
+            elif file_size > 0 and hash(video_id) % 50 == 0:  # Log ~2% of downloads
                 rank0_print(f"Downloaded video {video_id}: {file_size} bytes")
     except Exception as e:
         rank0_print(f"S3 download failed {video_id}: {e}")
@@ -375,7 +400,61 @@ def load_video_track_segment(
 
     try:
         decoder = VideoDecoder(video_file, device='cpu')
-        decoded_frames = decoder.get_frames_played_in_range(start, end)
+        
+        # Handle timespan validation by catching the error and clipping
+        original_start, original_end = start, end
+        decoded_frames = None
+        
+        # Try original timespan first
+        try:
+            decoded_frames = decoder.get_frames_played_in_range(start, end)
+        except Exception as timespan_error:
+            error_str = str(timespan_error)
+            
+            # Only handle timespan validation errors, not other errors
+            if "Invalid" in error_str and ("start seconds" in error_str or "stop seconds" in error_str):
+                rank0_print(f"Timespan validation failed for {video_id} [{start}, {end}]: {error_str}")
+                
+                # Try to extract valid range from error message and clip
+                clipped_start, clipped_end = None, None
+                
+                # Handle different error formats
+                if "Invalid start seconds" in error_str and "must be greater than or equal to" in error_str:
+                    # Format: "Invalid start seconds: 0.23589285714285715. It must be greater than or equal to 1.41 and less than or equal to 14.610011."
+                    try:
+                        if " and less than or equal to " in error_str:
+                            parts = error_str.split("greater than or equal to ")[1].split(" and less than or equal to ")
+                            min_start = float(parts[0])
+                            max_end = float(parts[1].rstrip("."))
+                            clipped_start = max(min_start + 0.001, min(start, max_end - 0.1))
+                            clipped_end = min(max_end - 0.001, max(clipped_start + 0.1, end))
+                    except:
+                        pass
+                elif "Invalid stop seconds" in error_str and "must be less than or equal to" in error_str:
+                    # Format: "Invalid stop seconds: 16.0. It must be less than or equal to 14.610011."
+                    try:
+                        parts = error_str.split("must be less than or equal to ")[1]
+                        max_end = float(parts.rstrip("."))
+                        clipped_start = max(0.001, start)
+                        clipped_end = min(max_end - 0.001, max(clipped_start + 0.1, end))
+                    except:
+                        pass
+                
+                if clipped_start is not None and clipped_end is not None:
+                    try:
+                        rank0_print(f"Clipping timespan for {video_id}: [{start:.3f}, {end:.3f}] -> [{clipped_start:.3f}, {clipped_end:.3f}]")
+                        decoded_frames = decoder.get_frames_played_in_range(clipped_start, clipped_end)
+                    except Exception as clip_error:
+                        rank0_print(f"Failed to clip timespan for {video_id}: {clip_error}")
+                        # Don't re-raise timespan_error, let it fall through to raise the original error
+                        pass
+                
+                # If clipping failed or couldn't parse error, re-raise original
+                if decoded_frames is None:
+                    raise timespan_error
+            else:
+                # Not a timespan validation error, re-raise
+                raise timespan_error
 
         if decoded_frames is None or decoded_frames.data is None or len(decoded_frames.data) == 0:
             rank0_print(f"No frames decoded: {video_id} timespan {start}-{end}")
@@ -383,7 +462,9 @@ def load_video_track_segment(
 
         # Sample num_frames from the decoded frames
         total_frames = len(decoded_frames.data)
-        rank0_print(f"DEBUG_TIMESTAMPS: Decoded {total_frames} frames for {video_id}, original pts range: [{decoded_frames.pts_seconds[0]:.2f}, {decoded_frames.pts_seconds[-1]:.2f}]")
+        # Only log occasionally to reduce spam
+        if hash(video_id) % 100 == 0:  # Log ~1% of videos
+            rank0_print(f"Decoded {total_frames} frames for {video_id}, pts range: [{decoded_frames.pts_seconds[0]:.2f}, {decoded_frames.pts_seconds[-1]:.2f}]")
         
         if total_frames <= num_frames:
             frames_data = decoded_frames.data
@@ -414,7 +495,6 @@ def load_video_track_segment(
                 raise ValueError(f"No frames could be sampled for {video_id}")
 
         frames = FrameBatch(frames_data, frames_pts, frames_duration)
-        rank0_print(f"DEBUG_TIMESTAMPS: Final FrameBatch pts: {frames_pts[:5].tolist()}")
 
     except Exception as e:
         rank0_print(f"Video loading exception {video_id}: {e}")

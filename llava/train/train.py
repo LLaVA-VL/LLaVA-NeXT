@@ -1387,50 +1387,36 @@ class DataCollatorForSupervisedDataset(object):
     tokenizer: transformers.PreTrainedTokenizer
 
     def pad_sequence(self, input_ids, batch_first, padding_value):
-        rank0_print(f"DEBUG_LOG: DataCollator.pad_sequence called. Padding side: {self.tokenizer.padding_side}")
         if self.tokenizer.padding_side == "left":
             input_ids = [torch.flip(_input_ids, [0]) for _input_ids in input_ids]
         input_ids = torch.nn.utils.rnn.pad_sequence(input_ids, batch_first=batch_first, padding_value=padding_value)
         if self.tokenizer.padding_side == "left":
             input_ids = torch.flip(input_ids, [1])
-        rank0_print(f"DEBUG_LOG: DataCollator.pad_sequence finished. Input_ids shape after padding: {input_ids.shape if hasattr(input_ids, 'shape') else 'N/A'}")
         return input_ids
 
     def __call__(self, instances: Sequence[Dict]) -> Dict[str, torch.Tensor]:
-        rank0_print(f"DEBUG_LOG: DataCollator.__call__ called. Number of instances: {len(instances)}")
+        rank0_print(f"DEBUG_LOG: DataCollator processing batch of {len(instances)} samples")
         input_ids, labels = tuple([instance[key] for instance in instances] for key in ("input_ids", "labels"))
-        rank0_print(f"DEBUG_LOG: DataCollator.__call__ - Extracted input_ids and labels. Num input_ids: {len(input_ids)}, Num labels: {len(labels)}")
         # input_ids, labels, ids = tuple([instance[key] for instance in instances] for key in ("input_ids", "labels", "id"))
         input_ids = [_input_ids[: self.tokenizer.model_max_length] for _input_ids in input_ids]
         labels = [_labels[: self.tokenizer.model_max_length] for _labels in labels]
-        rank0_print(f"DEBUG_LOG: DataCollator.__call__ - Truncated input_ids and labels to model_max_length: {self.tokenizer.model_max_length}")
 
         if self.tokenizer.pad_token_id is None:
-            rank0_print(f"DEBUG_LOG: DataCollator.__call__ - Pad token ID is None. Setting to 0.")
             # self.tokenizer.pad_token_id = self.tokenizer.eos_token_id  # FIXME: this could only be triggered for llama3 model.
             self.tokenizer.pad_token_id = 0 # This gets the best result. Don't know why.
         
-        rank0_print(f"DEBUG_LOG: DataCollator.__call__ - Before padding input_ids.")
         input_ids = self.pad_sequence(input_ids, batch_first=True, padding_value=self.tokenizer.pad_token_id)
-        rank0_print(f"DEBUG_LOG: DataCollator.__call__ - After padding input_ids. Shape: {input_ids.shape if hasattr(input_ids, 'shape') else 'N/A'}")
-
-        rank0_print(f"DEBUG_LOG: DataCollator.__call__ - Before padding labels.")
         labels = self.pad_sequence(labels, batch_first=True, padding_value=IGNORE_INDEX)
-        rank0_print(f"DEBUG_LOG: DataCollator.__call__ - After padding labels. Shape: {labels.shape if hasattr(labels, 'shape') else 'N/A'}")
 
         batch = dict(input_ids=input_ids, labels=labels.long() if labels.dtype == torch.int32 else labels, attention_mask=input_ids.ne(self.tokenizer.pad_token_id))
-        rank0_print(f"DEBUG_LOG: DataCollator.__call__ - Created initial batch dict. Keys: {batch.keys()}")
         # batch = dict(input_ids=input_ids, labels=labels, attention_mask=input_ids.ne(self.tokenizer.pad_token_id), ids=ids)
 
         if "image" in instances[0]:
-            rank0_print(f"DEBUG_LOG: DataCollator.__call__ - Processing 'image' data.")
             images = [instance["image"] for instance in instances]
-            rank0_print(f"DEBUG_LOG: DataCollator.__call__ - Extracted 'images'. Number of image lists: {len(images)}")
 
             batch["image_sizes"] = [im[1] for im_list in images for im in im_list]
             batch["modalities"] = [im[2] for im_list in images for im in im_list]
             raw_images_for_batch = [im[0] for im_list in images for im in im_list] # Renamed to avoid confusion
-            rank0_print(f"DEBUG_LOG: DataCollator.__call__ - Extracted image_sizes, modalities. Number of raw images for batch: {len(raw_images_for_batch)}")
 
             # if all(x is not None and x.shape == images[0].shape for x in images):
                 # Image: (N, P, C, H, W)
@@ -1442,6 +1428,7 @@ class DataCollatorForSupervisedDataset(object):
         if "prompt" in instances[0]:
             batch["prompts"] = [instance["prompt"] for instance in instances]
 
+        rank0_print(f"DEBUG_LOG: DataCollator finished processing batch. Final batch keys: {list(batch.keys())}")
         return batch
 
 
@@ -2000,15 +1987,8 @@ def train(attn_implementation=None):
     train_dataloader = trainer.get_train_dataloader()
     rank0_print(f"DEBUG_LOG: Train dataloader created successfully. Length: {len(train_dataloader)}")
     
-    # Try to get one batch to see if that works
-    rank0_print("DEBUG_LOG: Attempting to fetch first batch from dataloader...")
-    try:
-        first_batch = next(iter(train_dataloader))
-        rank0_print(f"DEBUG_LOG: Successfully fetched first batch. Keys: {list(first_batch.keys())}")
-        if 'input_ids' in first_batch:
-            rank0_print(f"DEBUG_LOG: input_ids shape: {first_batch['input_ids'].shape}")
-    except Exception as e:
-        rank0_print(f"DEBUG_LOG: Failed to fetch first batch: {e}")
+    # Add progress indicator for first batch loading
+    rank0_print(f"Loading first batch (effective batch size: {training_args.per_device_train_batch_size * training_args.world_size}). This may take several minutes...")
     
     rank0_print("DEBUG_LOG: Finished testing dataloader. About to call trainer.train()")
 
