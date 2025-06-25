@@ -358,7 +358,7 @@ def load_video_track_segment(
     s3 = None
     for retry in range(max_s3_retries):
         try:
-            s3 = boto3.client('s3', region_name='eu-west-1')
+            s3 = boto3.client('s3', region_name='us-east-1')
             # Test credentials by making a simple call
             s3.head_object(Bucket=bucket, Key="test")  # This will fail but test credentials
             break
