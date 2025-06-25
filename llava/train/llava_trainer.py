@@ -260,8 +260,13 @@ class LLaVATrainer(Trainer):
         # Force distributed barrier to ensure all ranks are ready
         if torch.distributed.is_initialized():
             rank0_print("DEBUG_LOG: Calling distributed barrier before training step")
-            torch.distributed.barrier()
-            rank0_print("DEBUG_LOG: Distributed barrier completed")
+            # Use timeout to prevent GIL hangs
+            try:
+                torch.distributed.barrier(timeout=timedelta(seconds=300))
+                rank0_print("DEBUG_LOG: Distributed barrier completed")
+            except Exception as e:
+                rank0_print(f"DEBUG_LOG: Barrier failed: {e}")
+                # Continue anyway to avoid total hang
 
         model.train()
         rank0_print("DEBUG_LOG: LLaVATrainer.training_step - model.train() called.")
