@@ -21,7 +21,7 @@ from torchvision.transforms.v2.functional import pad, crop, resize, \
     convert_bounding_box_format
 
 
-Bucket = Literal["scalable-training-dataset"]
+Bucket = Literal["scalable-training-dataset-us-east-1"]
 VIDEO_PREFIX = Path("Simone_28_full/videos/")
 PICKLE_PREFIX = Path("gemini_fine_tuning/32k/people_masks/")
 
@@ -351,7 +351,7 @@ def load_video_track_segment(
     import os
     
     start, end = timespan
-    bucket = "scalable-training-dataset"
+    bucket = "scalable-training-dataset-us-east-1"
     
     # Initialize S3 with proper region and retry on credentials issues
     max_s3_retries = 3

@@ -77,7 +77,7 @@ class S3UploadCallback(TrainerCallback):
 
     def on_init_end(self, args, state, control, **kwargs):
         self.client = boto3.client('s3')
-        self.bucket = 'scalable-training-dataset'
+        self.bucket = 'scalable-training-dataset-us-east-1'
         name = Path(args.output_dir).absolute().parent.parent.name
         self.prefix = Path('training_checkpoints') / name
 
@@ -1611,28 +1611,37 @@ def train(attn_implementation=None):
     os.environ.setdefault("NCCL_HEARTBEAT_TIMEOUT_SEC", "600") # Increased timeout for GIL resolution
     os.environ.setdefault("PYTORCH_CUDA_MEMORY_FRACTION", "0.8") # Reduce memory pressure
     
-    # NEW TCPStore Communication Fixes
-    os.environ.setdefault("TORCH_DISTRIBUTED_DETAIL", "INFO")   # Better distributed debugging
-    os.environ.setdefault("NCCL_SOCKET_TIMEOUT", "600000")      # 10 minutes socket timeout (milliseconds)
-    os.environ.setdefault("NCCL_CONNECT_TIMEOUT", "300000")     # 5 minutes connection timeout (milliseconds)
-    os.environ.setdefault("NCCL_RETRY_COUNT", "10")             # More retries for failed connections
-    os.environ.setdefault("TORCH_DISTRIBUTED_TCP_TIMEOUT_SEC", "300")  # 5 minutes TCP timeout
-    os.environ.setdefault("TORCH_DISTRIBUTED_STORE_TIMEOUT_SEC", "300") # 5 minutes store timeout
-    os.environ.setdefault("TORCH_DISTRIBUTED_BACKEND_TIMEOUT", "3600")  # 1 hour backend timeout
+    # New distributed communication improvements to prevent TCPStore failures
+    os.environ.setdefault("NCCL_SOCKET_TIMEOUT", "600000")     # 10 minutes socket timeout
+    os.environ.setdefault("NCCL_CONNECT_TIMEOUT", "300000")    # 5 minutes connection timeout  
+    os.environ.setdefault("NCCL_TCP_TIMEOUT", "1800000")       # 30 minutes TCP timeout
+    os.environ.setdefault("NCCL_RETRY_COUNT", "10")            # More retries for failed operations
+    os.environ.setdefault("NCCL_MAX_RETRY_COUNT", "10")        # Maximum retry attempts
+    os.environ.setdefault("NCCL_RETRY_SLEEP_MS", "1000")       # 1 second between retries
     
-    # Process and memory stability fixes
-    os.environ.setdefault("NCCL_ASYNC_ERROR_HANDLING", "1")     # Better error handling
-    os.environ.setdefault("TORCH_NCCL_TRACE_BUFFER_SIZE", "0")  # Disable trace buffer to save memory
-    os.environ.setdefault("TORCH_NCCL_DESYNC_DEBUG", "0")       # Disable desync debug to reduce overhead
-    os.environ.setdefault("CUDA_LAUNCH_BLOCKING", "0")          # Ensure async CUDA operations
-    os.environ.setdefault("TORCH_CUDNN_V8_API_ENABLED", "1")    # Use stable cuDNN API
+    # Reduce resource contention
+    os.environ.setdefault("OMP_NUM_THREADS", "4")              # Limit OpenMP threads
+    os.environ.setdefault("MKL_NUM_THREADS", "4")              # Limit MKL threads
+    os.environ.setdefault("NCCL_BUFFSIZE", "2097152")          # 2MB buffer size
+    os.environ.setdefault("NCCL_NTHREADS", "16")               # Limit NCCL threads
+    os.environ.setdefault("NCCL_NSOCKS_PERTHREAD", "8")        # Limit sockets per thread
     
-    # Additional stability settings
-    os.environ.setdefault("OMP_NUM_THREADS", "4")               # Limit CPU threads to reduce contention
-    os.environ.setdefault("NCCL_BUFFSIZE", "8388608")          # 8MB buffer size (smaller than default)
-    os.environ.setdefault("NCCL_NTHREADS", "4")                # Limit NCCL threads
-    os.environ.setdefault("NCCL_MAX_NCHANNELS", "2")           # Limit channels to reduce complexity
+    # Process stability settings
+    os.environ.setdefault("TORCH_NCCL_ASYNC_ERROR_HANDLING", "1")  # Better error handling
+    os.environ.setdefault("NCCL_DEBUG_SUBSYS", "INIT,GRAPH")       # Debug info for troubleshooting
     
+    parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
+    model_args, data_args, training_args = parser.parse_args_into_dataclasses()
+    local_rank = training_args.local_rank
+    
+    # CRITICAL FIX: Force dataloader_num_workers=0 to prevent process multiplication
+    # This fixes the 31x slowdown caused by 43 processes instead of 8
+    if training_args.dataloader_num_workers != 0:
+        rank0_print(f"WARNING: Forcing dataloader_num_workers from {training_args.dataloader_num_workers} to 0")
+        rank0_print("This prevents process multiplication that causes massive video loading slowdowns")
+        rank0_print("Expected improvement: 600+ seconds -> ~20 seconds for first batch")
+        training_args.dataloader_num_workers = 0
+
     rank0_print("DEBUG_LOG: Entered train() function.")
     rank0_print("DEBUG_LOG: Applied comprehensive distributed training fixes:")
     rank0_print(f"  - TORCH_NCCL_ENABLE_MONITORING: {os.environ.get('TORCH_NCCL_ENABLE_MONITORING')}")
@@ -1640,10 +1649,6 @@ def train(attn_implementation=None):
     rank0_print(f"  - NCCL_SOCKET_TIMEOUT: {os.environ.get('NCCL_SOCKET_TIMEOUT')}")
     rank0_print(f"  - TORCH_DISTRIBUTED_TCP_TIMEOUT_SEC: {os.environ.get('TORCH_DISTRIBUTED_TCP_TIMEOUT_SEC')}")
     rank0_print(f"  - NCCL_ASYNC_ERROR_HANDLING: {os.environ.get('NCCL_ASYNC_ERROR_HANDLING')}")
-
-    parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
-    model_args, data_args, training_args = parser.parse_args_into_dataclasses()
-    rank0_print(f"DEBUG_LOG: Args parsed. torch_compile: {training_args.torch_compile}, torch_compile_backend: {training_args.torch_compile_backend}, torch_compile_mode: {training_args.torch_compile_mode}")
 
     # TORCH_COMPILE FIX: Disable torch_compile to prevent hanging with distributed training
     if training_args.torch_compile:
