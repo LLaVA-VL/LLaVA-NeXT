@@ -577,9 +577,18 @@ class SigLipVisionTower(nn.Module):
         if type(images) is list:
             image_features = []
             for image in images:
-                image_forward_out = self.vision_tower(image.to(device=self.device, dtype=self.dtype).unsqueeze(0), output_hidden_states=True)
+                # Handle video tensors (4D) vs image tensors (3D)
+                image_input = image.to(device=self.device, dtype=self.dtype)
+                if image_input.ndim == 3:  # Image: [C, H, W] -> add batch dim
+                    image_input = image_input.unsqueeze(0)  # [1, C, H, W]
+                elif image_input.ndim == 4:  # Video: [T, C, H, W] -> already batched
+                    pass  # Use as-is for video frames
+                else:
+                    raise ValueError(f"Expected 3D or 4D tensor, got {image_input.ndim}D: {image_input.shape}")
+                    
+                image_forward_out = self.vision_tower(image_input, output_hidden_states=True)
                 image_feature = image_forward_out.hidden_states[-1].to(image.dtype)
-                assert image_features.shape[-2] == 729
+                assert image_feature.shape[-2] == 729
                 image_features.append(image_feature)
         else:
             image_forward_outs = self.vision_tower(images.to(device=self.device, dtype=self.dtype), output_hidden_states=True)
