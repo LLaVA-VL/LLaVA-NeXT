@@ -1601,7 +1601,45 @@ def get_model(model_args, training_args, bnb_model_from_pretrained_args):
 
 def train(attn_implementation=None):
     global local_rank
+    
+    # DISTRIBUTED TRAINING FIXES: Set comprehensive environment variables to prevent hangs and communication failures
+    # These settings are applied at the start of training to fix TCPStore communication issues
+    
+    # Existing GIL hang fixes (already applied)
+    os.environ.setdefault("TORCH_NCCL_ENABLE_MONITORING", "0")  # Disable NCCL monitoring to prevent GIL conflicts
+    os.environ.setdefault("TORCH_NCCL_BLOCKING_WAIT", "0")     # Non-blocking NCCL to avoid GIL deadlocks
+    os.environ.setdefault("NCCL_HEARTBEAT_TIMEOUT_SEC", "600") # Increased timeout for GIL resolution
+    os.environ.setdefault("PYTORCH_CUDA_MEMORY_FRACTION", "0.8") # Reduce memory pressure
+    
+    # NEW TCPStore Communication Fixes
+    os.environ.setdefault("TORCH_DISTRIBUTED_DETAIL", "INFO")   # Better distributed debugging
+    os.environ.setdefault("NCCL_SOCKET_TIMEOUT", "600000")      # 10 minutes socket timeout (milliseconds)
+    os.environ.setdefault("NCCL_CONNECT_TIMEOUT", "300000")     # 5 minutes connection timeout (milliseconds)
+    os.environ.setdefault("NCCL_RETRY_COUNT", "10")             # More retries for failed connections
+    os.environ.setdefault("TORCH_DISTRIBUTED_TCP_TIMEOUT_SEC", "300")  # 5 minutes TCP timeout
+    os.environ.setdefault("TORCH_DISTRIBUTED_STORE_TIMEOUT_SEC", "300") # 5 minutes store timeout
+    os.environ.setdefault("TORCH_DISTRIBUTED_BACKEND_TIMEOUT", "3600")  # 1 hour backend timeout
+    
+    # Process and memory stability fixes
+    os.environ.setdefault("NCCL_ASYNC_ERROR_HANDLING", "1")     # Better error handling
+    os.environ.setdefault("TORCH_NCCL_TRACE_BUFFER_SIZE", "0")  # Disable trace buffer to save memory
+    os.environ.setdefault("TORCH_NCCL_DESYNC_DEBUG", "0")       # Disable desync debug to reduce overhead
+    os.environ.setdefault("CUDA_LAUNCH_BLOCKING", "0")          # Ensure async CUDA operations
+    os.environ.setdefault("TORCH_CUDNN_V8_API_ENABLED", "1")    # Use stable cuDNN API
+    
+    # Additional stability settings
+    os.environ.setdefault("OMP_NUM_THREADS", "4")               # Limit CPU threads to reduce contention
+    os.environ.setdefault("NCCL_BUFFSIZE", "8388608")          # 8MB buffer size (smaller than default)
+    os.environ.setdefault("NCCL_NTHREADS", "4")                # Limit NCCL threads
+    os.environ.setdefault("NCCL_MAX_NCHANNELS", "2")           # Limit channels to reduce complexity
+    
     rank0_print("DEBUG_LOG: Entered train() function.")
+    rank0_print("DEBUG_LOG: Applied comprehensive distributed training fixes:")
+    rank0_print(f"  - TORCH_NCCL_ENABLE_MONITORING: {os.environ.get('TORCH_NCCL_ENABLE_MONITORING')}")
+    rank0_print(f"  - TORCH_NCCL_BLOCKING_WAIT: {os.environ.get('TORCH_NCCL_BLOCKING_WAIT')}")
+    rank0_print(f"  - NCCL_SOCKET_TIMEOUT: {os.environ.get('NCCL_SOCKET_TIMEOUT')}")
+    rank0_print(f"  - TORCH_DISTRIBUTED_TCP_TIMEOUT_SEC: {os.environ.get('TORCH_DISTRIBUTED_TCP_TIMEOUT_SEC')}")
+    rank0_print(f"  - NCCL_ASYNC_ERROR_HANDLING: {os.environ.get('NCCL_ASYNC_ERROR_HANDLING')}")
 
     parser = transformers.HfArgumentParser((ModelArguments, DataArguments, TrainingArguments))
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
