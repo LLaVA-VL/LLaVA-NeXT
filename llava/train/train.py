@@ -1641,6 +1641,12 @@ def train(attn_implementation=None):
         rank0_print("This prevents process multiplication that causes massive video loading slowdowns")
         rank0_print("Expected improvement: 600+ seconds -> ~20 seconds for first batch")
         training_args.dataloader_num_workers = 0
+    
+    # CRITICAL FIX: Disable persistent_workers when num_workers=0
+    # This fixes the "persistent_workers option needs num_workers > 0" error
+    if training_args.dataloader_num_workers == 0 and training_args.dataloader_persistent_workers:
+        rank0_print("WARNING: Disabling persistent_workers because num_workers=0")
+        training_args.dataloader_persistent_workers = False
 
     rank0_print("DEBUG_LOG: Entered train() function.")
     rank0_print("DEBUG_LOG: Applied comprehensive distributed training fixes:")
