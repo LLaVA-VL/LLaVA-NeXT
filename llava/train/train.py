@@ -77,7 +77,7 @@ class S3UploadCallback(TrainerCallback):
 
     def on_init_end(self, args, state, control, **kwargs):
         self.client = boto3.client('s3')
-        self.bucket = 'scalable-training-dataset'
+        self.bucket = 'scalable-training-dataset-us-east-1'
         name = Path(args.output_dir).absolute().parent.parent.name
         self.prefix = Path('training_checkpoints') / name
 
