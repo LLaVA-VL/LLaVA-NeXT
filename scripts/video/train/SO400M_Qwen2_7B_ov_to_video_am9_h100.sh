@@ -81,10 +81,15 @@ echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 export PDSH_SSH_ARGS_APPEND="-o StrictHostKeyChecking=no"
 mkdir -p ~/.ssh
 
-# Add NCCL hang detection
+# Add NCCL hang detection and aggressive debugging
 export NCCL_HEARTBEAT_TIMEOUT_SEC=300
 export TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC=300
 export TORCH_NCCL_ENABLE_MONITORING=1
+export TORCH_NCCL_BLOCKING_WAIT=1
+export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
+export NCCL_DESYNC_DEBUG=1
+export NCCL_TIMEOUT=600
+export CUDA_LAUNCH_BLOCKING=1
 
 # ULTIMATE H100 training with maximum optimizations
 ACCELERATE_CPU_AFFINITY=1 torchrun \
@@ -107,7 +112,7 @@ ACCELERATE_CPU_AFFINITY=1 torchrun \
     --mm_vision_select_layer -2 \
     --mm_use_im_start_end False \
     --mm_use_im_patch_token False \
-    --group_by_modality_length True \
+    --group_by_modality_length False \
     --image_aspect_ratio anyres_max_9 \
     --image_grid_pinpoints "'(1x1),...,(6x6)'" \
     --mm_patch_merge_type spatial_unpad \
@@ -117,7 +122,7 @@ ACCELERATE_CPU_AFFINITY=1 torchrun \
     --num_train_epochs 5 \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \
-    --gradient_accumulation_steps 1 \
+    --gradient_accumulation_steps 8 \
     --evaluation_strategy "steps" \
     --eval_steps 500 \
     --save_strategy "steps" \
@@ -130,8 +135,8 @@ ACCELERATE_CPU_AFFINITY=1 torchrun \
     --logging_steps 1 \
     --tf32 True \
     --model_max_length 32768 \
-    --gradient_checkpointing True \
-    --dataloader_num_workers 16 \
+    --gradient_checkpointing False \
+    --dataloader_num_workers 4 \
     --lazy_preprocess True \
     --torch_compile False \
     --dataloader_drop_last True \

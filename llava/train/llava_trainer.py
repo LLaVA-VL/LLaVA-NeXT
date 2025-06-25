@@ -252,6 +252,17 @@ class LLaVATrainer(Trainer):
         """
         rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step entered. Input keys: {list(inputs.keys())}")
 
+        # Force CUDA synchronization before training step to catch any hangs early
+        if torch.cuda.is_available():
+            torch.cuda.synchronize()
+            rank0_print("DEBUG_LOG: CUDA synchronized before training step")
+
+        # Force distributed barrier to ensure all ranks are ready
+        if torch.distributed.is_initialized():
+            rank0_print("DEBUG_LOG: Calling distributed barrier before training step")
+            torch.distributed.barrier()
+            rank0_print("DEBUG_LOG: Distributed barrier completed")
+
         model.train()
         rank0_print("DEBUG_LOG: LLaVATrainer.training_step - model.train() called.")
 
