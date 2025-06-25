@@ -322,8 +322,15 @@ class LLaVATrainer(Trainer):
         grad_acc_kwargs["sync_with_dataloader"] = False
         gradient_accumulation_plugin = GradientAccumulationPlugin(**grad_acc_kwargs)
 
-        accelerator_kwargs = InitProcessGroupKwargs(timeout=timedelta(weeks=52))
-        rank0_print("Setting NCCL timeout to INF to avoid running errors.")
+        # Fix NCCL hang issues with proper timeout and environment variables
+        os.environ["NCCL_DEBUG"] = "INFO"
+        os.environ["NCCL_TIMEOUT"] = "1800"  # 30 minutes instead of infinite
+        os.environ["NCCL_BLOCKING_WAIT"] = "1"
+        os.environ["NCCL_ASYNC_ERROR_HANDLING"] = "1"
+        os.environ["CUDA_LAUNCH_BLOCKING"] = "0"
+        
+        accelerator_kwargs = InitProcessGroupKwargs(timeout=timedelta(minutes=30))
+        rank0_print("Setting NCCL timeout to 30 minutes to avoid hangs while still allowing for initialization.")
 
         # create accelerator object
         self.accelerator = Accelerator(

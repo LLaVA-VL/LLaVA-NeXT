@@ -81,6 +81,11 @@ echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 export PDSH_SSH_ARGS_APPEND="-o StrictHostKeyChecking=no"
 mkdir -p ~/.ssh
 
+# Add NCCL hang detection
+export NCCL_HEARTBEAT_TIMEOUT_SEC=300
+export TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC=300
+export TORCH_NCCL_ENABLE_MONITORING=1
+
 # ULTIMATE H100 training with maximum optimizations
 ACCELERATE_CPU_AFFINITY=1 torchrun \
     --nnodes="${GPU_INSTANCES_NUMBER}" \
@@ -128,9 +133,7 @@ ACCELERATE_CPU_AFFINITY=1 torchrun \
     --gradient_checkpointing True \
     --dataloader_num_workers 16 \
     --lazy_preprocess True \
-    --torch_compile True \
-    --torch_compile_backend "inductor" \
-    --torch_compile_mode "reduce-overhead" \
+    --torch_compile False \
     --dataloader_drop_last True \
     --dataloader_pin_memory True \
     --dataloader_persistent_workers True \
@@ -145,7 +148,7 @@ ACCELERATE_CPU_AFFINITY=1 torchrun \
     --report_to tensorboard \
     --attn_implementation "flash_attention_2" \
     --max_grad_norm 1.0 \
-    --ddp_timeout 18000 \
+    --ddp_timeout 3600 \
     --save_safetensors True \
     --ddp_find_unused_parameters False \
     --ddp_bucket_cap_mb 25

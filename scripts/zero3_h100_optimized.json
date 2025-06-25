@@ -6,11 +6,7 @@
         "enabled": "auto"
     },
     "fp8": {
-        "enabled": true,
-        "margin": 0,
-        "interval": 1,
-        "amax_history_len": 1024,
-        "amax_compute_algo": "max"
+        "enabled": false
     },
     "zero_optimization": {
         "stage": 3,
@@ -25,8 +21,8 @@
         "overlap_comm": true,
         "contiguous_gradients": true,
         "sub_group_size": 1e8,
-        "reduce_bucket_size": 5e8,
-        "stage3_prefetch_bucket_size": 5e8,
+        "reduce_bucket_size": 5e7,
+        "stage3_prefetch_bucket_size": 5e7,
         "stage3_param_persistence_threshold": 1e6,
         "stage3_max_live_parameters": 3e9,
         "stage3_max_reuse_distance": 3e9,
