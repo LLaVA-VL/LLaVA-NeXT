@@ -1634,13 +1634,10 @@ def train(attn_implementation=None):
     model_args, data_args, training_args = parser.parse_args_into_dataclasses()
     local_rank = training_args.local_rank
     
-    # CRITICAL FIX: Force dataloader_num_workers=0 to prevent process multiplication
-    # This fixes the 31x slowdown caused by 43 processes instead of 8
-    if training_args.dataloader_num_workers != 0:
-        rank0_print(f"WARNING: Forcing dataloader_num_workers from {training_args.dataloader_num_workers} to 0")
-        rank0_print("This prevents process multiplication that causes massive video loading slowdowns")
-        rank0_print("Expected improvement: 600+ seconds -> ~20 seconds for first batch")
-        training_args.dataloader_num_workers = 0
+    # Enable more loading threads (2x more than before)
+    if training_args.dataloader_num_workers == 0:
+        training_args.dataloader_num_workers = 8  # 2x more than typical 4
+        rank0_print(f"INFO: Setting dataloader_num_workers to {training_args.dataloader_num_workers} for better performance")
     
     # CRITICAL FIX: Disable persistent_workers when num_workers=0
     # This fixes the "persistent_workers option needs num_workers > 0" error
@@ -1656,11 +1653,11 @@ def train(attn_implementation=None):
     rank0_print(f"  - TORCH_DISTRIBUTED_TCP_TIMEOUT_SEC: {os.environ.get('TORCH_DISTRIBUTED_TCP_TIMEOUT_SEC')}")
     rank0_print(f"  - NCCL_ASYNC_ERROR_HANDLING: {os.environ.get('NCCL_ASYNC_ERROR_HANDLING')}")
 
-    # TORCH_COMPILE FIX: Disable torch_compile to prevent hanging with distributed training
+    # Re-enable torch_compile for better performance now that training is stable
     if training_args.torch_compile:
-        rank0_print("WARNING: torch_compile is enabled but causes hanging with distributed training. Disabling torch_compile.")
-        training_args.torch_compile = False
-        rank0_print(f"DEBUG_LOG: torch_compile disabled. New value: {training_args.torch_compile}")
+        rank0_print(f"INFO: torch_compile enabled with backend: {getattr(training_args, 'torch_compile_backend', 'default')}")
+    else:
+        rank0_print("INFO: torch_compile is disabled")
 
     # This print statement is the one that successfully executed in the previous run
     rank0_print(f"DEBUG_LOG: Before get_model. Bits for quantization: {training_args.bits if hasattr(training_args, 'bits') and training_args.bits in [4,8] else 'Not 4/8 bit'}. Vision Tower: {model_args.vision_tower}")

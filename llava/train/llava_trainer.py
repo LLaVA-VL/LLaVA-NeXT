@@ -256,6 +256,77 @@ class LLaVATrainer(Trainer):
         except ImportError:
             self.use_apex = False
 
+    def print_video_description_sample(self, model, inputs, step_num):
+        """Print a video description sample every 10 batches on rank 0."""
+        if step_num % 10 != 0 or not hasattr(self.args, 'local_rank') or self.args.local_rank != 0:
+            return
+        
+        try:
+            from llava.utils import rank0_print
+            rank0_print(f"\n{'='*80}")
+            rank0_print(f"VIDEO DESCRIPTION SAMPLE - STEP {step_num}")
+            rank0_print(f"{'='*80}")
+            
+            # Get the first sample from the batch
+            if "input_ids" in inputs and inputs["input_ids"].shape[0] > 0:
+                input_ids = inputs["input_ids"][0]  # First sample
+                
+                # Get tokenizer from model
+                if hasattr(model, 'get_tokenizer'):
+                    tokenizer = model.get_tokenizer()
+                elif hasattr(model, 'config') and hasattr(model.config, 'tokenizer'):
+                    tokenizer = model.config.tokenizer
+                else:
+                    # Try to get tokenizer from the model's module
+                    tokenizer = getattr(model, 'tokenizer', None)
+                    if tokenizer is None and hasattr(model, 'module'):
+                        tokenizer = getattr(model.module, 'tokenizer', None)
+                
+                if tokenizer is not None:
+                    # Decode the input text
+                    input_text = tokenizer.decode(input_ids, skip_special_tokens=False)
+                    
+                    # Find the conversation parts
+                    lines = input_text.split('\n')
+                    user_prompt = ""
+                    assistant_response = ""
+                    
+                    capturing_user = False
+                    capturing_assistant = False
+                    
+                    for line in lines:
+                        if "<|im_start|>user" in line:
+                            capturing_user = True
+                            capturing_assistant = False
+                        elif "<|im_start|>assistant" in line:
+                            capturing_user = False
+                            capturing_assistant = True
+                        elif "<|im_end|>" in line:
+                            capturing_user = False
+                            capturing_assistant = False
+                        elif capturing_user and line.strip():
+                            user_prompt += line.strip() + " "
+                        elif capturing_assistant and line.strip():
+                            assistant_response += line.strip() + " "
+                    
+                    rank0_print(f"USER PROMPT: {user_prompt.strip()[:500]}...")
+                    rank0_print(f"TARGET RESPONSE: {assistant_response.strip()[:500]}...")
+                    
+                    # Get video info if available
+                    if "images" in inputs and inputs["images"]:
+                        if isinstance(inputs["images"], list) and len(inputs["images"]) > 0:
+                            video_shape = inputs["images"][0].shape
+                            rank0_print(f"VIDEO TENSOR SHAPE: {video_shape}")  # e.g., [40, 3, 384, 384] = 40 frames
+                        elif hasattr(inputs["images"], 'shape'):
+                            rank0_print(f"VIDEO TENSOR SHAPE: {inputs['images'].shape}")
+                else:
+                    rank0_print("Could not access tokenizer to decode text")
+                    
+            rank0_print(f"{'='*80}\n")
+            
+        except Exception as e:
+            rank0_print(f"Error printing video description sample: {e}")
+
     def training_step(self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]) -> torch.Tensor:
         """
         Perform a training step on a batch of inputs.
@@ -271,6 +342,11 @@ class LLaVATrainer(Trainer):
             :obj:`torch.Tensor`: The tensor with training loss on this batch.
         """
         rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step entered. Input keys: {list(inputs.keys())}")
+
+        # Print video description sample every 10 batches
+        if hasattr(self, 'state') and hasattr(self.state, 'global_step'):
+            step_num = self.state.global_step
+            self.print_video_description_sample(model, inputs, step_num)
 
         # Force CUDA synchronization before training step to catch any hangs early
         if torch.cuda.is_available():
