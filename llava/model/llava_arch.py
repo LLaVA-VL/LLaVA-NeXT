@@ -394,23 +394,31 @@ class LlavaMetaForCausalLM(ABC):
                 rank0_print(f"DEBUG_LOG: ERROR - batch_idx {batch_idx} has image tokens but image_features is empty or None. This should not happen.")
                 # Fallback or raise error
                 # For now, just embed text and skip image tokens to avoid crashing, but this is an error state.
-                text_features_all = self.get_model().embed_tokens(cur_input_ids)
-                cur_new_input_embeds_segments.append(text_features_all)
+                # Create a mask to exclude IMAGE_TOKEN_INDEX values before embedding
+                text_mask = cur_input_ids != IMAGE_TOKEN_INDEX
+                text_only_ids = cur_input_ids[text_mask]
+                if len(text_only_ids) > 0:
+                    text_features_all = self.get_model().embed_tokens(text_only_ids)
+                    cur_new_input_embeds_segments.append(text_features_all)
                 if labels is not None:
-                    cur_new_labels_segments.append(labels[batch_idx])
+                    cur_new_labels_segments.append(labels[batch_idx][text_mask])
             elif len(image_token_indices) == 0:
                 text_features_all = self.get_model().embed_tokens(cur_input_ids)
                 cur_new_input_embeds_segments.append(text_features_all)
                 if labels is not None:
                     cur_new_labels_segments.append(labels[batch_idx])
             else:
-                text_features_all = self.get_model().embed_tokens(cur_input_ids)
+                # Process text segments around image tokens properly
                 for k, image_token_idx in enumerate(image_token_indices):
+                    # Process text segment before this image token
                     if image_token_idx > text_segment_start_idx:
-                        cur_new_input_embeds_segments.append(text_features_all[text_segment_start_idx:image_token_idx])
+                        text_segment = cur_input_ids[text_segment_start_idx:image_token_idx]
+                        text_embeddings = self.get_model().embed_tokens(text_segment)
+                        cur_new_input_embeds_segments.append(text_embeddings)
                         if labels is not None:
                             cur_new_labels_segments.append(labels[batch_idx][text_segment_start_idx:image_token_idx])
                     
+                    # Insert image features for this image token
                     if cur_image_idx < len(image_features):
                         image_feature_current = image_features[cur_image_idx]
                         cur_new_input_embeds_segments.append(image_feature_current)
@@ -424,8 +432,11 @@ class LlavaMetaForCausalLM(ABC):
                     text_segment_start_idx = image_token_idx + 1
                     cur_image_idx += 1
 
+                # Process remaining text segment after all image tokens
                 if text_segment_start_idx < len(cur_input_ids):
-                    cur_new_input_embeds_segments.append(text_features_all[text_segment_start_idx:])
+                    remaining_text_segment = cur_input_ids[text_segment_start_idx:]
+                    text_embeddings = self.get_model().embed_tokens(remaining_text_segment)
+                    cur_new_input_embeds_segments.append(text_embeddings)
                     if labels is not None:
                         cur_new_labels_segments.append(labels[batch_idx][text_segment_start_idx:])
             
