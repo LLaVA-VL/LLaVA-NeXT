@@ -117,21 +117,29 @@ class LlavaQwenForCausalLM(Qwen2ForCausalLM, LlavaMetaForCausalLM):
             return logits, labels
         else:
             rank0_print(f"DEBUG_LOG: LlavaQwenForCausalLM.forward - Standard path taken. Before super().forward. inputs_embeds shape: {inputs_embeds.shape if inputs_embeds is not None else 'None'}")
-            # Pass cache_position to super().forward if it's part of its signature
-            # Qwen2ForCausalLM.forward does accept cache_position
-            output = super().forward(
-                input_ids=input_ids,
-                attention_mask=attention_mask,
-                position_ids=position_ids,
-                past_key_values=past_key_values,
-                inputs_embeds=inputs_embeds,
-                labels=labels,
-                use_cache=use_cache,
-                output_attentions=output_attentions,
-                output_hidden_states=output_hidden_states,
-                return_dict=return_dict,
-                cache_position=cache_position 
-            )
+            # Check if cache_position is supported by the underlying model
+            import inspect
+            forward_signature = inspect.signature(Qwen2ForCausalLM.forward)
+            supports_cache_position = 'cache_position' in forward_signature.parameters
+            
+            forward_kwargs = {
+                'input_ids': input_ids,
+                'attention_mask': attention_mask,
+                'position_ids': position_ids,
+                'past_key_values': past_key_values,
+                'inputs_embeds': inputs_embeds,
+                'labels': labels,
+                'use_cache': use_cache,
+                'output_attentions': output_attentions,
+                'output_hidden_states': output_hidden_states,
+                'return_dict': return_dict,
+            }
+            
+            # Only add cache_position if the model supports it
+            if supports_cache_position and cache_position is not None:
+                forward_kwargs['cache_position'] = cache_position
+                
+            output = super().forward(**forward_kwargs)
             rank0_print(f"DEBUG_LOG: LlavaQwenForCausalLM.forward - Standard path. After super().forward.")
             return output
 
