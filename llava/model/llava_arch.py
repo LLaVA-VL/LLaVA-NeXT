@@ -423,7 +423,7 @@ class LlavaMetaForCausalLM(ABC):
                         image_feature_current = image_features[cur_image_idx]
                         # Flatten image features to 2D to match text embeddings dimensions
                         if image_feature_current.ndim == 3:  # [frames, patches, features] -> [frames*patches, features]
-                            image_feature_current = image_feature_current.view(-1, image_feature_current.shape[-1])
+                            image_feature_current = image_feature_current.reshape(-1, image_feature_current.shape[-1])
                         cur_new_input_embeds_segments.append(image_feature_current)
                         if labels is not None:
                             num_image_feature_tokens = image_feature_current.shape[0]
