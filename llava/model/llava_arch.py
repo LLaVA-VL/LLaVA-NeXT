@@ -202,15 +202,10 @@ class LlavaMetaForCausalLM(ABC):
         elif torch.is_tensor(videos_or_images):
             rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - videos_or_images is tensor. Shape: {videos_or_images.shape}, Dtype: {videos_or_images.dtype}, Device: {videos_or_images.device}")
         
-        videos_or_images_for_tower = videos_or_images # Keep original for other uses if any
-        if torch.is_tensor(videos_or_images_for_tower) and videos_or_images_for_tower.dtype == torch.bfloat16:
-            rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - >>>>> Casting videos_or_images_for_tower from bfloat16 to float32 before vision tower call. Shape: {videos_or_images_for_tower.shape} <<<<<")
-            videos_or_images_for_tower = videos_or_images_for_tower.to(torch.float32)
-            rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - After casting to float32. Dtype: {videos_or_images_for_tower.dtype}")
-        elif isinstance(videos_or_images_for_tower, list) and videos_or_images_for_tower and torch.is_tensor(videos_or_images_for_tower[0]) and videos_or_images_for_tower[0].dtype == torch.bfloat16:
-            rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - >>>>> Casting list of videos_or_images_for_tower from bfloat16 to float32 before vision tower call. <<<<<")
-            videos_or_images_for_tower = [tensor.to(torch.float32) for tensor in videos_or_images_for_tower]
-            rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - After casting list to float32. First tensor Dtype: {videos_or_images_for_tower[0].dtype if videos_or_images_for_tower else 'N/A'}")
+        # CRITICAL FIX: Remove dtype casting that causes dtype mismatch
+        # The vision tower can handle bfloat16 inputs directly
+        videos_or_images_for_tower = videos_or_images
+        rank0_print(f"DEBUG_LOG: LlavaMetaForCausalLM.encode_multimodals - Using original dtype (no casting) for vision tower input.")
 
         videos_or_images_features = None
         try:
