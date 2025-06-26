@@ -236,6 +236,26 @@ class LengthGroupedSampler(Sampler):
 
 class LLaVATrainer(Trainer):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Initialize gradient scaling attributes for compatibility
+        self.do_grad_scaling = False
+        self.use_apex = False
+        self.scaler = None
+        
+        # Check if we should use gradient scaling
+        if hasattr(self.args, 'fp16') and self.args.fp16:
+            self.do_grad_scaling = True
+            from torch.cuda.amp import GradScaler
+            self.scaler = GradScaler()
+        
+        # Check if we should use Apex
+        try:
+            import apex
+            self.use_apex = getattr(self.args, 'use_apex', False)
+        except ImportError:
+            self.use_apex = False
+
     def training_step(self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]) -> torch.Tensor:
         """
         Perform a training step on a batch of inputs.
