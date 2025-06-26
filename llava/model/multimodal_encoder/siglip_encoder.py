@@ -590,6 +590,11 @@ class SigLipVisionTower(nn.Module):
                 image_feature = image_forward_out.hidden_states[-1].to(image.dtype)
                 assert image_feature.shape[-2] == 729
                 image_features.append(image_feature)
+            
+            # CRITICAL FIX: Concatenate list of features into single tensor
+            # This prevents AttributeError: 'list' object has no attribute 'shape'
+            # in encode_multimodals method
+            image_features = torch.cat(image_features, dim=0)
         else:
             image_forward_outs = self.vision_tower(images.to(device=self.device, dtype=self.dtype), output_hidden_states=True)
             image_features = image_forward_outs.hidden_states[-1].to(images.dtype)
