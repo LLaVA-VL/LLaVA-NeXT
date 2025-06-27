@@ -271,8 +271,11 @@ class LLaVATrainer(Trainer):
             if "input_ids" in inputs and inputs["input_ids"].shape[0] > 0:
                 input_ids = inputs["input_ids"][0]  # First sample
                 
-                # Get tokenizer from model
-                if hasattr(model, 'get_tokenizer'):
+                # Get tokenizer from trainer (preferred) or model
+                tokenizer = None
+                if hasattr(self, 'tokenizer') and self.tokenizer is not None:
+                    tokenizer = self.tokenizer
+                elif hasattr(model, 'get_tokenizer'):
                     tokenizer = model.get_tokenizer()
                 elif hasattr(model, 'config') and hasattr(model.config, 'tokenizer'):
                     tokenizer = model.config.tokenizer
