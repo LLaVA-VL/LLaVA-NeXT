@@ -286,48 +286,58 @@ class LLaVATrainer(Trainer):
                         tokenizer = getattr(model.module, 'tokenizer', None)
                 
                 if tokenizer is not None:
-                    # Decode the input text
-                    input_text = tokenizer.decode(input_ids, skip_special_tokens=False)
-                    
-                    # Find the conversation parts - handle None case
-                    if input_text is None:
-                        input_text = ""
-                    lines = input_text.split('\n') if input_text else []
-                    user_prompt = ""
-                    assistant_response = ""
-                    
-                    capturing_user = False
-                    capturing_assistant = False
-                    
-                    for line in lines:
-                        # Ensure line is a string and handle None values
-                        if line is None:
-                            line_str = ""
-                        else:
-                            line_str = str(line)
+                    try:
+                        # Decode the input text with error handling
+                        input_text = tokenizer.decode(input_ids, skip_special_tokens=False)
                         
-                        if "<|im_start|>user" in line_str:
-                            capturing_user = True
-                            capturing_assistant = False
-                        elif "<|im_start|>assistant" in line_str:
-                            capturing_user = False
-                            capturing_assistant = True
-                        elif "<|im_end|>" in line_str:
-                            capturing_user = False
-                            capturing_assistant = False
-                        elif capturing_user and line_str.strip():
-                            user_prompt += line_str.strip() + " "
-                        elif capturing_assistant and line_str.strip():
-                            assistant_response += line_str.strip() + " "
-                    
-                    # Safely truncate and display
-                    user_preview = user_prompt.strip()[:500] if user_prompt.strip() else "(empty)"
-                    target_preview = assistant_response.strip()[:500] if assistant_response.strip() else "(empty)"
-                    rank0_print(f"USER PROMPT: {user_preview}...")
-                    rank0_print(f"TARGET RESPONSE: {target_preview}...")
-                    
-                    # Debug: Show the full decoded text to understand the issue
-                    rank0_print(f"FULL DECODED TEXT (first 200 chars): {input_text[:200] if input_text else '(None)'}...")
+                        # Ensure input_text is a string
+                        if input_text is None:
+                            input_text = ""
+                        input_text = str(input_text)
+                        
+                        # Split into lines with robust handling
+                        lines = input_text.split('\n') if input_text else []
+                        
+                        # Filter out None values and ensure all are strings
+                        safe_lines = []
+                        for line in lines:
+                            if line is not None:
+                                safe_lines.append(str(line))
+                            else:
+                                safe_lines.append("")
+                        
+                        user_prompt = ""
+                        assistant_response = ""
+                        capturing_user = False
+                        capturing_assistant = False
+                        
+                        for line_str in safe_lines:
+                            if "<|im_start|>user" in line_str:
+                                capturing_user = True
+                                capturing_assistant = False
+                            elif "<|im_start|>assistant" in line_str:
+                                capturing_user = False
+                                capturing_assistant = True
+                            elif "<|im_end|>" in line_str:
+                                capturing_user = False
+                                capturing_assistant = False
+                            elif capturing_user and line_str.strip():
+                                user_prompt += line_str.strip() + " "
+                            elif capturing_assistant and line_str.strip():
+                                assistant_response += line_str.strip() + " "
+                        
+                        # Safely truncate and display
+                        user_preview = user_prompt.strip()[:500] if user_prompt.strip() else "(empty)"
+                        target_preview = assistant_response.strip()[:500] if assistant_response.strip() else "(empty)"
+                        rank0_print(f"USER PROMPT: {user_preview}...")
+                        rank0_print(f"TARGET RESPONSE: {target_preview}...")
+                        
+                        # Debug: Show the full decoded text to understand the issue
+                        rank0_print(f"FULL DECODED TEXT (first 200 chars): {input_text[:200] if input_text else '(None)'}...")
+                        
+                    except Exception as decode_error:
+                        rank0_print(f"Error during text decoding: {decode_error}")
+                        rank0_print("Skipping text display, showing video info only")
                     
                     # Get video info if available
                     if "images" in inputs and inputs["images"]:
@@ -343,6 +353,10 @@ class LLaVATrainer(Trainer):
             
         except Exception as e:
             rank0_print(f"Error printing video description sample: {e}")
+            # Additional debug info for string processing errors
+            if "sequence item" in str(e) and "expected str instance" in str(e):
+                rank0_print("DEBUG: This is likely a string processing error with None values")
+                rank0_print("DEBUG: The training will continue normally - this is just a logging issue")
 
     def training_step(self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]) -> torch.Tensor:
         """
