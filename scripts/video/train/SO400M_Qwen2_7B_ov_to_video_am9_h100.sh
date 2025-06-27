@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ULTIMATE H100 Performance Training Script
+# ULTIMATE H100/H200 Performance Training Script with CUDA Error Handling
 # Set up the data folder
 IMAGE_FOLDER="/home/veesion/gemini_engineering_subset/tracks_segments/"
 VIDEO_FOLDER="/home/veesion/gemini_engineering_subset/tracks_segments/"
@@ -33,7 +33,34 @@ export NUMA_BALANCING_DISABLE=1
 export PYTORCH_CUDA_MEMORY_FRACTION=0.95
 ulimit -n 65536
 
-################ ULTIMATE H100 OPTIMIZATIONS ################
+################ CUDA ERROR PREVENTION FOR H200 ################
+# Critical: Reset CUDA context and prevent initialization errors
+sudo nvidia-smi -pm 1 || true
+sudo nvidia-smi -c DEFAULT || true
+
+# Force CUDA device ordering and visibility
+export CUDA_DEVICE_ORDER=PCI_BUS_ID
+export CUDA_VISIBLE_DEVICES_ORDER=PCI_BUS_ID
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+
+# CUDA memory management - conservative for H200
+export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:256,garbage_collection_threshold:0.8,expandable_segments:False
+export CUDA_LAUNCH_BLOCKING=0
+export CUDA_CACHE_DISABLE=0
+export CUDA_DEVICE_MAX_CONNECTIONS=1
+
+# H200-specific CUDA fixes
+export CUBLAS_WORKSPACE_CONFIG=:16:8
+export TORCH_CUDNN_V8_API_ENABLED=1
+export TORCH_CUDNN_ALLOW_TF32=1
+export TORCH_ALLOW_TF32_CUBLAS_OVERRIDE=1
+
+# Disable problematic CUDA features for H200
+export TORCH_USE_CUDA_DSA=0
+export CUDA_MODULE_LOADING=LAZY
+export CUDA_AUTO_BOOST=0
+
+################ ULTIMATE H100/H200 OPTIMIZATIONS ################
 export NCCL_ASYNC_ERROR_HANDLING=1
 export NCCL_DEBUG=INFO
 # Auto-detect network interface
@@ -49,17 +76,16 @@ export NCCL_NET_SHARED_BUFFERS=0
 export NCCL_PROTO=Simple
 export NCCL_ALGO=Ring,Tree
 
-# CUDA optimizations for H100
-export CUDA_DEVICE_MAX_CONNECTIONS=1
-export CUBLAS_WORKSPACE_CONFIG=:16:8
-export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512,garbage_collection_threshold:0.6,expandable_segments:True
-export CUDA_LAUNCH_BLOCKING=0
-export CUDA_CACHE_DISABLE=0
-
-# Compiler optimizations
-export TORCH_CUDNN_V8_API_ENABLED=1
-export TORCH_CUDNN_ALLOW_TF32=1
-export TORCH_ALLOW_TF32_CUBLAS_OVERRIDE=1
+# Add NCCL hang detection and GIL fixes
+export NCCL_HEARTBEAT_TIMEOUT_SEC=600
+export TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC=600
+export TORCH_NCCL_ENABLE_MONITORING=0
+export TORCH_NCCL_BLOCKING_WAIT=0
+export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
+export NCCL_DESYNC_DEBUG=1
+export NCCL_TIMEOUT=1200
+export PYTHONUNBUFFERED=1
+export PYTORCH_CUDA_MEMORY_FRACTION=0.8
 
 ################ Model Configuration ################
 LLM_VERSION="Qwen/Qwen2-7B-Instruct"
@@ -72,7 +98,7 @@ echo "BASE_RUN_NAME: ${BASE_RUN_NAME}"
 
 # Stage 2
 PROMPT_VERSION="qwen_1_5"
-MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-ov_to_video_am9_h100"
+MID_RUN_NAME="llavanext-${VISION_MODEL_VERSION_CLEAN}-${LLM_VERSION_CLEAN}-ov_to_video_am9_h100_fixed"
 PREV_STAGE_CHECKPOINT="lmms-lab/llava-onevision-qwen2-0.5b-ov"
 echo "PREV_STAGE_CHECKPOINT: ${PREV_STAGE_CHECKPOINT}"
 echo "MID_RUN_NAME: ${MID_RUN_NAME}"
@@ -81,19 +107,24 @@ echo "MID_RUN_NAME: ${MID_RUN_NAME}"
 export PDSH_SSH_ARGS_APPEND="-o StrictHostKeyChecking=no"
 mkdir -p ~/.ssh
 
-# Add NCCL hang detection and GIL fixes
-export NCCL_HEARTBEAT_TIMEOUT_SEC=600
-export TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC=600
-export TORCH_NCCL_ENABLE_MONITORING=0
-export TORCH_NCCL_BLOCKING_WAIT=0
-export TORCH_NCCL_ASYNC_ERROR_HANDLING=1
-export NCCL_DESYNC_DEBUG=1
-export NCCL_TIMEOUT=1200
-export CUDA_LAUNCH_BLOCKING=0
-export PYTHONUNBUFFERED=1
-export PYTORCH_CUDA_MEMORY_FRACTION=0.8
+################ CUDA ERROR RECOVERY FUNCTION ################
+recover_cuda_context() {
+    echo "🔧 Attempting CUDA context recovery..."
+    sudo nvidia-smi --gpu-reset || true
+    sleep 2
+    nvidia-smi
+    python3 -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}'); print(f'CUDA devices: {torch.cuda.device_count()}')" || true
+}
 
-# ULTIMATE H100 training with maximum optimizations
+# Test CUDA before training
+echo "🔍 Testing CUDA initialization..."
+if ! python3 -c "import torch; torch.cuda.init(); print('CUDA initialized successfully')"; then
+    echo "❌ CUDA initialization failed, attempting recovery..."
+    recover_cuda_context
+fi
+
+# ULTIMATE H100/H200 training with maximum optimizations and error handling
+echo "🚀 Starting training with CUDA error handling..."
 ACCELERATE_CPU_AFFINITY=1 torchrun \
     --nnodes="${GPU_INSTANCES_NUMBER}" \
     --node_rank="${NODE_RANK}" \
@@ -140,7 +171,7 @@ ACCELERATE_CPU_AFFINITY=1 torchrun \
     --gradient_checkpointing True \
     --dataloader_num_workers 16 \
     --lazy_preprocess True \
-    --torch_compile True \
+    --torch_compile False \
     --dataloader_drop_last True \
     --dataloader_pin_memory True \
     --dataloader_persistent_workers True \
@@ -160,4 +191,13 @@ ACCELERATE_CPU_AFFINITY=1 torchrun \
     --ddp_find_unused_parameters False \
     --ddp_bucket_cap_mb 25
 
-exit 0; 
+# Check training result
+TRAINING_EXIT_CODE=$?
+if [ $TRAINING_EXIT_CODE -ne 0 ]; then
+    echo "❌ Training failed with exit code $TRAINING_EXIT_CODE"
+    echo "🔧 Attempting CUDA recovery and retry..."
+    recover_cuda_context
+    echo "💡 Consider restarting training with torch_compile=False if CUDA errors persist"
+fi
+
+exit $TRAINING_EXIT_CODE 
