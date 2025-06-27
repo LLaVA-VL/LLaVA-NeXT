@@ -325,90 +325,103 @@ class LLaVATrainer(Trainer):
 
     def training_step(self, model: nn.Module, inputs: Dict[str, Union[torch.Tensor, Any]]) -> torch.Tensor:
         """
-        Perform a training step on a batch of inputs.
-        Subclass and override to inject custom behavior.
-        Args:
-            model (:obj:`nn.Module`):
-                The model to train.
-            inputs (:obj:`Dict[str, Union[torch.Tensor, Any]]`):
-                The inputs and targets of the model.
-                The dictionary will be unpacked before being fed to the model. Most models expect the targets under the
-                argument :obj:`labels`.
-        Return:
-            :obj:`torch.Tensor`: The tensor with training loss on this batch.
+        Perform a training step on a batch of inputs with detailed timing information.
         """
-        rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step entered. Input keys: {list(inputs.keys())}")
+        import time
+        step_start_time = time.time()
+        
+        rank0_print(f"🚀 TRAINING STEP STARTED - Input keys: {list(inputs.keys())}")
 
         # Print video description sample every 10 batches
+        sample_time = 0
         if hasattr(self, 'state') and hasattr(self.state, 'global_step'):
             step_num = self.state.global_step
-            self.print_video_description_sample(model, inputs, step_num)
+            if step_num % 10 == 0:
+                sample_start = time.time()
+                self.print_video_description_sample(model, inputs, step_num)
+                sample_time = time.time() - sample_start
+                rank0_print(f"⏱️  VIDEO DESCRIPTION SAMPLING: {sample_time:.3f}s")
 
-        # Remove performance-killing synchronization and barriers
-        # These are not needed and cause major slowdowns on H100s
-
+        # Setup phase
+        setup_start = time.time()
         model.train()
-        rank0_print("DEBUG_LOG: LLaVATrainer.training_step - model.train() called.")
+        setup_time = time.time() - setup_start
+        rank0_print(f"⏱️  MODEL SETUP: {setup_time:.3f}s")
 
-        rank0_print("DEBUG_LOG: LLaVATrainer.training_step - before _prepare_inputs.")
+        # Input preparation phase
+        prep_start = time.time()
         inputs = self._prepare_inputs(inputs)
-        rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - after _prepare_inputs. Input keys: {list(inputs.keys())}")
-        if "images" in inputs and isinstance(inputs["images"], list) and len(inputs["images"]) > 0 and hasattr(inputs["images"][0], 'device'):
-             rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - images[0] device after _prepare_inputs: {inputs['images'][0].device}")
-        elif "images" in inputs and hasattr(inputs["images"], 'device'): # if images is a tensor already
-             rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - images tensor device after _prepare_inputs: {inputs['images'].device}")
+        prep_time = time.time() - prep_start
+        rank0_print(f"⏱️  INPUT PREPARATION: {prep_time:.3f}s")
+        
+        # Log tensor info
+        if "images" in inputs and isinstance(inputs["images"], list) and len(inputs["images"]) > 0:
+            rank0_print(f"📊 BATCH INFO: {len(inputs['images'])} videos, first video shape: {inputs['images'][0].shape}")
+        elif "input_ids" in inputs:
+            rank0_print(f"📊 BATCH INFO: input_ids shape: {inputs['input_ids'].shape}")
 
-        if "input_ids" in inputs and hasattr(inputs["input_ids"], 'device'):
-            rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - input_ids device after _prepare_inputs: {inputs['input_ids'].device}")
-
+        # Forward pass phase
+        forward_start = time.time()
         with self.compute_loss_context_manager():
-            rank0_print("DEBUG_LOG: LLaVATrainer.training_step - before compute_loss.")
             loss = self.compute_loss(model, inputs)
-            rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - after compute_loss. Loss: {loss.item() if loss is not None and hasattr(loss, 'item') else 'N/A'}")
+        forward_time = time.time() - forward_start
+        rank0_print(f"⏱️  FORWARD PASS: {forward_time:.3f}s")
+        rank0_print(f"📈 LOSS: {loss.item() if loss is not None and hasattr(loss, 'item') else 'N/A'}")
 
+        # Multi-GPU averaging
+        avg_start = time.time()
         if self.args.n_gpu > 1:
             loss = loss.mean()  # mean() to average on multi-gpu parallel training
-            rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - Loss averaged for multi-GPU: {loss.item() if loss is not None and hasattr(loss, 'item') else 'N/A'}")
+        avg_time = time.time() - avg_start
+        if avg_time > 0.001:  # Only log if significant
+            rank0_print(f"⏱️  MULTI-GPU AVERAGING: {avg_time:.3f}s")
 
-        rank0_print(f"DEBUG_LOG: LLaVATrainer.training_step - before backward pass. Loss: {loss.item() if loss is not None and hasattr(loss, 'item') else 'N/A'}")
+        # Backward pass phase
+        backward_start = time.time()
         if self.do_grad_scaling:
             self.scaler.scale(loss).backward()
-        elif self.use_apex: # For NVIDIA Apex
-            with self.accelerator.scaled_loss(loss) as scaled_loss: # type: ignore
+        elif self.use_apex:
+            with self.accelerator.scaled_loss(loss) as scaled_loss:
                 scaled_loss.backward()
-        else: # General case with Hugging Face Accelerate
+        else:
             self.accelerator.backward(loss)
-        rank0_print("DEBUG_LOG: LLaVATrainer.training_step - after backward pass.")
+        backward_time = time.time() - backward_start
+        rank0_print(f"⏱️  BACKWARD PASS: {backward_time:.3f}s")
+
+        # Total timing
+        total_time = time.time() - step_start_time
+        rank0_print(f"⏱️  TOTAL STEP TIME: {total_time:.3f}s")
+        rank0_print(f"🔄 BREAKDOWN: Setup={setup_time:.3f}s, Prep={prep_time:.3f}s, Forward={forward_time:.3f}s, Backward={backward_time:.3f}s, Sample={sample_time:.3f}s")
+        rank0_print(f"🎯 STEP COMPLETED ✅\n")
 
         return loss.detach() / self.args.gradient_accumulation_steps
 
     def compute_loss(self, model, inputs, return_outputs=False):
         """
-        How the loss is computed by Trainer. By default, all models return the loss in the first element of the tuple
-        from model().
+        How the loss is computed by Trainer with detailed timing.
         """
-        rank0_print(f"DEBUG_LOG: LLaVATrainer.compute_loss entered. Input keys: {list(inputs.keys())}")
+        import time
         
-        # Log shapes and types of input tensors
-        for key, value in inputs.items():
-            if isinstance(value, torch.Tensor):
-                rank0_print(f"DEBUG_LOG: LLaVATrainer.compute_loss - Input '{key}': shape={value.shape}, dtype={value.dtype}, device={value.device}")
-            elif isinstance(value, list) and len(value) > 0 and isinstance(value[0], torch.Tensor):
-                 rank0_print(f"DEBUG_LOG: LLaVATrainer.compute_loss - Input '{key}' (list of tensors, first elem): shape={value[0].shape}, dtype={value[0].dtype}, device={value[0].device}")
-            else:
-                rank0_print(f"DEBUG_LOG: LLaVATrainer.compute_loss - Input '{key}': type={type(value)}")
-
-        rank0_print("DEBUG_LOG: LLaVATrainer.compute_loss - Before model(**inputs) (forward pass)")
+        # Log tensor shapes concisely
+        batch_size = inputs.get("input_ids", torch.tensor([0])).shape[0] if "input_ids" in inputs else 0
+        rank0_print(f"🔍 COMPUTE_LOSS: Batch size={batch_size}")
+        
+        # Model forward pass timing
+        forward_start = time.time()
         outputs = model(**inputs)
-        rank0_print("DEBUG_LOG: LLaVATrainer.compute_loss - After model(**inputs) (forward pass).")
+        forward_time = time.time() - forward_start
+        rank0_print(f"⏱️    MODEL FORWARD: {forward_time:.3f}s")
         
         # Save past state if it exists
-        # TODO: this needs to be fixed and made cleaner later.
         if self.args.past_index >= 0:
             self._past = outputs[self.args.past_index]
 
+        # Loss extraction timing
+        loss_start = time.time()
         loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
-        rank0_print(f"DEBUG_LOG: LLaVATrainer.compute_loss - Loss extracted: {loss.item() if loss is not None and hasattr(loss, 'item') else 'N/A'}")
+        loss_time = time.time() - loss_start
+        if loss_time > 0.001:  # Only log if significant
+            rank0_print(f"⏱️    LOSS EXTRACTION: {loss_time:.3f}s")
 
         return (loss, outputs) if return_outputs else loss
 

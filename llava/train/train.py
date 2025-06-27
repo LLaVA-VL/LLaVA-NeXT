@@ -2027,8 +2027,24 @@ def train(attn_implementation=None):
     train_dataloader = trainer.get_train_dataloader()
     rank0_print(f"DEBUG_LOG: Train dataloader created successfully. Length: {len(train_dataloader)}")
     
-    # Add progress indicator for first batch loading
-    rank0_print(f"Loading first batch (effective batch size: {training_args.per_device_train_batch_size * training_args.world_size}). This may take several minutes...")
+    # Add progress indicator for first batch loading with timing
+    import time
+    first_batch_start = time.time()
+    rank0_print(f"⏳ LOADING FIRST BATCH (effective batch size: {training_args.per_device_train_batch_size * training_args.world_size * training_args.gradient_accumulation_steps})")
+    rank0_print(f"   Per device: {training_args.per_device_train_batch_size}, World size: {training_args.world_size}, Grad accum: {training_args.gradient_accumulation_steps}")
+    rank0_print(f"   Workers: {training_args.dataloader_num_workers}, Torch compile: {training_args.torch_compile}")
+    
+    # Test loading one batch to measure data loading time
+    try:
+        first_batch = next(iter(train_dataloader))
+        first_batch_time = time.time() - first_batch_start
+        rank0_print(f"⏱️  FIRST BATCH LOADED: {first_batch_time:.2f}s")
+        rank0_print(f"📊 FIRST BATCH SHAPE: input_ids={first_batch.get('input_ids', torch.tensor([])).shape}, images={len(first_batch.get('images', []))}")
+    except Exception as e:
+        first_batch_time = time.time() - first_batch_start
+        rank0_print(f"❌ FIRST BATCH FAILED: {first_batch_time:.2f}s - {e}")
+    
+    rank0_print(f"🎯 EXPECTED PERFORMANCE: With batch_size={training_args.per_device_train_batch_size*training_args.world_size}, should be {4/1:.0f}x faster than before!")
     
     rank0_print("DEBUG_LOG: Finished testing dataloader. About to call trainer.train()")
 
