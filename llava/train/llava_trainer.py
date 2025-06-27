@@ -289,7 +289,9 @@ class LLaVATrainer(Trainer):
                     # Decode the input text
                     input_text = tokenizer.decode(input_ids, skip_special_tokens=False)
                     
-                    # Find the conversation parts
+                    # Find the conversation parts - handle None case
+                    if input_text is None:
+                        input_text = ""
                     lines = input_text.split('\n') if input_text else []
                     user_prompt = ""
                     assistant_response = ""
@@ -298,9 +300,12 @@ class LLaVATrainer(Trainer):
                     capturing_assistant = False
                     
                     for line in lines:
+                        # Ensure line is a string and handle None values
                         if line is None:
-                            continue
-                        line_str = str(line)  # Ensure it's a string
+                            line_str = ""
+                        else:
+                            line_str = str(line)
+                        
                         if "<|im_start|>user" in line_str:
                             capturing_user = True
                             capturing_assistant = False
