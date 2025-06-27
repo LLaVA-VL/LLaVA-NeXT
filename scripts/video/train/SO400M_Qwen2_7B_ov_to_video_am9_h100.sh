@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# ULTIMATE H100/H200 Performance Training Script with CUDA Error Handling
+# ULTIMATE H100 Performance Training Script with CUDA Error Handling
 # Set up the data folder
 IMAGE_FOLDER="/home/veesion/gemini_engineering_subset/tracks_segments/"
 VIDEO_FOLDER="/home/veesion/gemini_engineering_subset/tracks_segments/"
@@ -33,7 +33,7 @@ export NUMA_BALANCING_DISABLE=1
 export PYTORCH_CUDA_MEMORY_FRACTION=0.95
 ulimit -n 65536
 
-################ CUDA ERROR PREVENTION FOR H200 ################
+################ CUDA ERROR PREVENTION FOR H100 ################
 # Critical: Reset CUDA context and prevent initialization errors
 sudo nvidia-smi -pm 1 || true
 sudo nvidia-smi -c DEFAULT || true
@@ -43,24 +43,24 @@ export CUDA_DEVICE_ORDER=PCI_BUS_ID
 export CUDA_VISIBLE_DEVICES_ORDER=PCI_BUS_ID
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 
-# CUDA memory management - conservative for H200
+# CUDA memory management - conservative for H100
 export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:256,garbage_collection_threshold:0.8,expandable_segments:False
 export CUDA_LAUNCH_BLOCKING=0
 export CUDA_CACHE_DISABLE=0
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
-# H200-specific CUDA fixes
+# H100-specific CUDA fixes
 export CUBLAS_WORKSPACE_CONFIG=:16:8
 export TORCH_CUDNN_V8_API_ENABLED=1
 export TORCH_CUDNN_ALLOW_TF32=1
 export TORCH_ALLOW_TF32_CUBLAS_OVERRIDE=1
 
-# Disable problematic CUDA features for H200
+# Disable problematic CUDA features for H100
 export TORCH_USE_CUDA_DSA=0
 export CUDA_MODULE_LOADING=LAZY
 export CUDA_AUTO_BOOST=0
 
-################ ULTIMATE H100/H200 OPTIMIZATIONS ################
+################ ULTIMATE H100 OPTIMIZATIONS ################
 export NCCL_ASYNC_ERROR_HANDLING=1
 export NCCL_DEBUG=INFO
 # Auto-detect network interface
@@ -123,7 +123,7 @@ if ! python3 -c "import torch; torch.cuda.init(); print('CUDA initialized succes
     recover_cuda_context
 fi
 
-# ULTIMATE H100/H200 training with maximum optimizations and error handling
+# ULTIMATE H100 training with maximum optimizations and error handling
 echo "🚀 Starting training with CUDA error handling..."
 ACCELERATE_CPU_AFFINITY=1 torchrun \
     --nnodes="${GPU_INSTANCES_NUMBER}" \
