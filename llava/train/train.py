@@ -164,6 +164,9 @@ class TrainingArguments(transformers.TrainingArguments):
     gradient_checkpointing: bool = field(default=True)
     verbose_logging: bool = field(default=False)
     attn_implementation: str = field(default="flash_attention_2", metadata={"help": "Use transformers attention implementation."})
+    trainer_mode: str = field(default="regular", metadata={"help": "Mode of training (`regular`, `zo`)."})
+    zo_eps: float = field(default=1e-3, metadata={"help": "MeZO hyperparameter epsilon."})
+    zo_num_directions: int = field(default=1, metadata={"help": "Number of directions for MeZO."})
 
 
 # @dataclass
@@ -605,7 +608,7 @@ def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_im
                 content = conv["value"]
 
             role =  roles.get(role, role)
-            
+
             conv = [{"role" : role, "content" : content}]
             encode_id = tokenizer.apply_chat_template(conv)
             input_id += encode_id
@@ -613,9 +616,9 @@ def preprocess_qwen(sources, tokenizer: transformers.PreTrainedTokenizer, has_im
                 target += [IGNORE_INDEX] * len(encode_id)
             else:
                 target += encode_id
-        
 
-                    
+
+
         assert len(input_id) == len(target), f"{len(input_id)} != {len(target)}"
         for idx, encode_id in enumerate(input_id):
             if encode_id in unmask_tokens_idx:
@@ -690,7 +693,7 @@ def preprocess_llama3(
                 content = conv["value"]
 
             role =  roles.get(role, role)
-            
+
             conv = [{"role" : role, "content" : content}]
             # First is bos token we don't need here
             encode_id = tokenizer.apply_chat_template(conv)[1:]
@@ -699,9 +702,9 @@ def preprocess_llama3(
                 target += [IGNORE_INDEX] * len(encode_id)
             else:
                 target += encode_id
-        
 
-                    
+
+
         assert len(input_id) == len(target), f"{len(input_id)} != {len(target)}"
         for idx, encode_id in enumerate(input_id):
             if encode_id in unmask_tokens_idx:
@@ -1142,7 +1145,7 @@ class LazySupervisedDataset(Dataset):
             if type(image_file) is list:
                 image = [self.process_image(f) for f in image_file]
                 # Handling multi images
-                # overwrite to process with simple pad 
+                # overwrite to process with simple pad
                 if len(image_file) > 1:
                     image = [self.process_image(f, "pad") for f in image_file]
                     image = [[im[0], im[1], "image"] for im in image]
@@ -1170,7 +1173,7 @@ class LazySupervisedDataset(Dataset):
                         num_frames_to_sample = 10
 
                     avg_fps = 2
-                    
+
                     total_frames = len(frame_files)
                     sampled_indices = np.linspace(0, total_frames - 1, num_frames_to_sample, dtype=int)
 
@@ -1606,7 +1609,7 @@ def train(attn_implementation=None):
         model.config.faster_token_stride = model_args.faster_token_stride
         model.config.add_time_instruction = data_args.add_time_instruction
         model.config.force_sample = data_args.force_sample
-        model.config.mm_spatial_pool_stride = model_args.mm_spatial_pool_stride 
+        model.config.mm_spatial_pool_stride = model_args.mm_spatial_pool_stride
 
         ### Deciding train which part of the model
         if model_args.mm_tunable_parts is None:  # traditional way of deciding which part to train
