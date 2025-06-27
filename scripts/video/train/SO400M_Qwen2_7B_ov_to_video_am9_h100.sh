@@ -122,9 +122,9 @@ ACCELERATE_CPU_AFFINITY=1 torchrun \
     --run_name $MID_RUN_NAME \
     --output_dir ./work_dirs/$MID_RUN_NAME \
     --num_train_epochs 5 \
-    --per_device_train_batch_size 1 \
-    --per_device_eval_batch_size 1 \
-    --gradient_accumulation_steps 8 \
+    --per_device_train_batch_size 4 \
+    --per_device_eval_batch_size 4 \
+    --gradient_accumulation_steps 2 \
     --evaluation_strategy "steps" \
     --eval_steps 500 \
     --save_strategy "steps" \
@@ -137,10 +137,10 @@ ACCELERATE_CPU_AFFINITY=1 torchrun \
     --logging_steps 1 \
     --tf32 True \
     --model_max_length 32768 \
-    --gradient_checkpointing False \
-    --dataloader_num_workers 4 \
+    --gradient_checkpointing True \
+    --dataloader_num_workers 16 \
     --lazy_preprocess True \
-    --torch_compile False \
+    --torch_compile True \
     --dataloader_drop_last True \
     --dataloader_pin_memory True \
     --dataloader_persistent_workers True \

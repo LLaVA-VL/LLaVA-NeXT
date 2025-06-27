@@ -287,57 +287,22 @@ class LLaVATrainer(Trainer):
                 
                 if tokenizer is not None:
                     try:
-                        # Decode the input text with error handling
-                        input_text = tokenizer.decode(input_ids, skip_special_tokens=False)
+                        # Simple approach: just decode and show raw tokens instead of parsing conversation
+                        input_text = tokenizer.decode(input_ids, skip_special_tokens=True)
+                        if input_text:
+                            rank0_print(f"DECODED TEXT (first 300 chars): {str(input_text)[:300]}...")
+                        else:
+                            rank0_print("DECODED TEXT: (empty)")
                         
-                        # Ensure input_text is a string
-                        if input_text is None:
-                            input_text = ""
-                        input_text = str(input_text)
-                        
-                        # Split into lines with robust handling
-                        lines = input_text.split('\n') if input_text else []
-                        
-                        # Filter out None values and ensure all are strings
-                        safe_lines = []
-                        for line in lines:
-                            if line is not None:
-                                safe_lines.append(str(line))
-                            else:
-                                safe_lines.append("")
-                        
-                        user_prompt = ""
-                        assistant_response = ""
-                        capturing_user = False
-                        capturing_assistant = False
-                        
-                        for line_str in safe_lines:
-                            if "<|im_start|>user" in line_str:
-                                capturing_user = True
-                                capturing_assistant = False
-                            elif "<|im_start|>assistant" in line_str:
-                                capturing_user = False
-                                capturing_assistant = True
-                            elif "<|im_end|>" in line_str:
-                                capturing_user = False
-                                capturing_assistant = False
-                            elif capturing_user and line_str.strip():
-                                user_prompt += line_str.strip() + " "
-                            elif capturing_assistant and line_str.strip():
-                                assistant_response += line_str.strip() + " "
-                        
-                        # Safely truncate and display
-                        user_preview = user_prompt.strip()[:500] if user_prompt.strip() else "(empty)"
-                        target_preview = assistant_response.strip()[:500] if assistant_response.strip() else "(empty)"
-                        rank0_print(f"USER PROMPT: {user_preview}...")
-                        rank0_print(f"TARGET RESPONSE: {target_preview}...")
-                        
-                        # Debug: Show the full decoded text to understand the issue
-                        rank0_print(f"FULL DECODED TEXT (first 200 chars): {input_text[:200] if input_text else '(None)'}...")
+                        # Show some raw token IDs for debugging
+                        token_sample = input_ids[:50] if len(input_ids) > 50 else input_ids
+                        rank0_print(f"TOKEN IDS (first 50): {token_sample.tolist()}")
                         
                     except Exception as decode_error:
                         rank0_print(f"Error during text decoding: {decode_error}")
-                        rank0_print("Skipping text display, showing video info only")
+                        # Just show raw token IDs if decoding fails
+                        token_sample = input_ids[:20] if len(input_ids) > 20 else input_ids
+                        rank0_print(f"RAW TOKEN IDS (first 20): {token_sample.tolist()}")
                     
                     # Get video info if available
                     if "images" in inputs and inputs["images"]:
@@ -379,20 +344,8 @@ class LLaVATrainer(Trainer):
             step_num = self.state.global_step
             self.print_video_description_sample(model, inputs, step_num)
 
-        # Force CUDA synchronization before training step to catch any hangs early
-        if torch.cuda.is_available():
-            torch.cuda.synchronize()
-            rank0_print("DEBUG_LOG: CUDA synchronized before training step")
-
-        # Force distributed barrier to ensure all ranks are ready
-        if torch.distributed.is_initialized():
-            rank0_print("DEBUG_LOG: Calling distributed barrier before training step")
-            try:
-                torch.distributed.barrier()
-                rank0_print("DEBUG_LOG: Distributed barrier completed")
-            except Exception as e:
-                rank0_print(f"DEBUG_LOG: Barrier failed: {e}")
-                # Continue anyway to avoid total hang
+        # Remove performance-killing synchronization and barriers
+        # These are not needed and cause major slowdowns on H100s
 
         model.train()
         rank0_print("DEBUG_LOG: LLaVATrainer.training_step - model.train() called.")
