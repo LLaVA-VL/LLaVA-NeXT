@@ -290,7 +290,7 @@ class LLaVATrainer(Trainer):
                     input_text = tokenizer.decode(input_ids, skip_special_tokens=False)
                     
                     # Find the conversation parts
-                    lines = input_text.split('\n')
+                    lines = input_text.split('\n') if input_text else []
                     user_prompt = ""
                     assistant_response = ""
                     
@@ -298,22 +298,31 @@ class LLaVATrainer(Trainer):
                     capturing_assistant = False
                     
                     for line in lines:
-                        if "<|im_start|>user" in line:
+                        if line is None:
+                            continue
+                        line_str = str(line)  # Ensure it's a string
+                        if "<|im_start|>user" in line_str:
                             capturing_user = True
                             capturing_assistant = False
-                        elif "<|im_start|>assistant" in line:
+                        elif "<|im_start|>assistant" in line_str:
                             capturing_user = False
                             capturing_assistant = True
-                        elif "<|im_end|>" in line:
+                        elif "<|im_end|>" in line_str:
                             capturing_user = False
                             capturing_assistant = False
-                        elif capturing_user and line.strip():
-                            user_prompt += line.strip() + " "
-                        elif capturing_assistant and line.strip():
-                            assistant_response += line.strip() + " "
+                        elif capturing_user and line_str.strip():
+                            user_prompt += line_str.strip() + " "
+                        elif capturing_assistant and line_str.strip():
+                            assistant_response += line_str.strip() + " "
                     
-                    rank0_print(f"USER PROMPT: {user_prompt.strip()[:500]}...")
-                    rank0_print(f"TARGET RESPONSE: {assistant_response.strip()[:500]}...")
+                    # Safely truncate and display
+                    user_preview = user_prompt.strip()[:500] if user_prompt.strip() else "(empty)"
+                    target_preview = assistant_response.strip()[:500] if assistant_response.strip() else "(empty)"
+                    rank0_print(f"USER PROMPT: {user_preview}...")
+                    rank0_print(f"TARGET RESPONSE: {target_preview}...")
+                    
+                    # Debug: Show the full decoded text to understand the issue
+                    rank0_print(f"FULL DECODED TEXT (first 200 chars): {input_text[:200] if input_text else '(None)'}...")
                     
                     # Get video info if available
                     if "images" in inputs and inputs["images"]:
