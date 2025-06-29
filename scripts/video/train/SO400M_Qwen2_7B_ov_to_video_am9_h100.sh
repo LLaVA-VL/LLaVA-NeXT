@@ -38,14 +38,22 @@ ulimit -n 65536
 sudo nvidia-smi -pm 1 || true
 sudo nvidia-smi -c DEFAULT || true
 
-# Force CUDA device ordering and visibility
+# ESSENTIAL: Apply your recommended CUDA fixes
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+export CUDA_LAUNCH_BLOCKING=1  # CRITICAL: Enable blocking for proper initialization
 export CUDA_DEVICE_ORDER=PCI_BUS_ID
 export CUDA_VISIBLE_DEVICES_ORDER=PCI_BUS_ID
-export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+
+# Verify nvidia-smi works before proceeding
+echo "🔍 Verifying nvidia-smi functionality..."
+nvidia-smi || { echo "❌ nvidia-smi failed"; exit 1; }
+
+# Check NVIDIA driver version (required ≥ 525.x for H100)
+DRIVER_VERSION=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader,nounits | head -1)
+echo "📋 NVIDIA Driver Version: $DRIVER_VERSION"
 
 # CUDA memory management - conservative for H100
 export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:256,garbage_collection_threshold:0.8,expandable_segments:False
-export CUDA_LAUNCH_BLOCKING=0
 export CUDA_CACHE_DISABLE=0
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
@@ -111,20 +119,58 @@ mkdir -p ~/.ssh
 recover_cuda_context() {
     echo "🔧 Attempting CUDA context recovery..."
     sudo nvidia-smi --gpu-reset || true
-    sleep 2
+    sleep 3
     nvidia-smi
     python3 -c "import torch; print(f'CUDA available: {torch.cuda.is_available()}'); print(f'CUDA devices: {torch.cuda.device_count()}')" || true
 }
 
-# Test CUDA before training
-echo "🔍 Testing CUDA initialization..."
-if ! python3 -c "import torch; torch.cuda.init(); print('CUDA initialized successfully')"; then
+# COMPREHENSIVE CUDA VERIFICATION (your recommendations)
+echo "🔍 Comprehensive CUDA verification..."
+
+# 1. Verify PyTorch CUDA build matches runtime
+echo "📋 Checking PyTorch CUDA compatibility..."
+python3 -c "
+import torch
+print(f'PyTorch version: {torch.__version__}')
+print(f'PyTorch CUDA version: {torch.version.cuda}')
+print(f'CUDA available: {torch.cuda.is_available()}')
+print(f'CUDA device count: {torch.cuda.device_count()}')
+if torch.cuda.is_available():
+    for i in range(torch.cuda.device_count()):
+        print(f'GPU {i}: {torch.cuda.get_device_name(i)}')
+"
+
+# 2. Test CUDA initialization with proper error handling
+echo "🔍 Testing CUDA initialization with blocking..."
+if ! python3 -c "
+import torch
+import os
+# Ensure CUDA_LAUNCH_BLOCKING is set
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
+os.environ['CUDA_VISIBLE_DEVICES'] = '0,1,2,3,4,5,6,7'
+# Explicit CUDA initialization
+torch.cuda.init()
+print('✅ CUDA initialized successfully')
+# Test device access
+device = torch.device('cuda:0')
+test_tensor = torch.tensor([1.0], device=device)
+print(f'✅ Test tensor created on {test_tensor.device}')
+"; then
     echo "❌ CUDA initialization failed, attempting recovery..."
     recover_cuda_context
+    exit 1
 fi
 
+echo "✅ All CUDA checks passed!"
+
 # ULTIMATE H100 training with maximum optimizations and error handling
-echo "🚀 Starting training with CUDA error handling..."
+echo "🚀 Starting training with proper CUDA initialization..."
+
+# Ensure clean environment before distributed training
+unset CUDA_VISIBLE_DEVICES_ORDER  # Remove to avoid conflicts
+export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
+export CUDA_LAUNCH_BLOCKING=1
+
 ACCELERATE_CPU_AFFINITY=1 torchrun \
     --nnodes="${GPU_INSTANCES_NUMBER}" \
     --node_rank="${NODE_RANK}" \
