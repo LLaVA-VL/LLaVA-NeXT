@@ -354,32 +354,41 @@ def load_video_track_segment(
     bucket = "scalable-training-dataset-us-east-1"
     
     # Initialize S3 with proper region and retry on credentials issues
-    max_s3_retries = 3
+    max_s3_retries = 5
     s3 = None
     for retry in range(max_s3_retries):
         try:
+            # CRITICAL: Explicitly set region and use IAM role credentials
+            import os
+            os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
+            os.environ['AWS_REGION'] = 'us-east-1'
+            
             s3 = boto3.client('s3', region_name='us-east-1')
-            # Test credentials by making a simple call
-            s3.head_object(Bucket=bucket, Key="test")  # This will fail but test credentials
-            break
-        except ClientError as e:
-            if e.response.get('Error', {}).get('Code') == '404':
-                # 404 is expected for test key, credentials are working
+            
+            # Test credentials with a real S3 operation
+            try:
+                s3.list_objects_v2(Bucket=bucket, MaxKeys=1)
+                rank0_print(f"✅ S3 credentials working, connected to {bucket}")
                 break
-            elif 'credentials' in str(e).lower() and retry < max_s3_retries - 1:
-                rank0_print(f"S3 credentials issue (attempt {retry+1}), retrying...")
-                time.sleep(1)
-                continue
-            else:
-                rank0_print(f"S3 initialization failed: {e}")
-                raise
+            except ClientError as cred_e:
+                if cred_e.response.get('Error', {}).get('Code') in ['NoSuchBucket', 'AccessDenied']:
+                    if retry < max_s3_retries - 1:
+                        rank0_print(f"S3 access issue (attempt {retry+1}): {cred_e}, retrying...")
+                        time.sleep(2 ** retry)  # Exponential backoff
+                        continue
+                    else:
+                        rank0_print(f"❌ S3 access failed after {max_s3_retries} attempts: {cred_e}")
+                        raise
+                else:
+                    raise cred_e
+                    
         except Exception as e:
-            if 'credentials' in str(e).lower() and retry < max_s3_retries - 1:
+            if any(word in str(e).lower() for word in ['credentials', 'token', 'access', 'signature']) and retry < max_s3_retries - 1:
                 rank0_print(f"S3 initialization failed (attempt {retry+1}): {e}, retrying...")
-                time.sleep(1)
+                time.sleep(2 ** retry)  # Exponential backoff
                 continue
             else:
-                rank0_print(f"S3 initialization failed: {e}")
+                rank0_print(f"❌ S3 initialization failed: {e}")
                 raise
     
     if s3 is None:

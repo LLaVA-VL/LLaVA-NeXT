@@ -13,6 +13,32 @@ DATA_YAML="data/gemini_finetuning_subset_cheating_description.json"
 python3 -m pip install flash-attn --no-build-isolation
 alias python=python3
 
+############### AWS CREDENTIALS SETUP #################
+# CRITICAL: Configure AWS credentials for S3 access
+echo "🔧 Setting up AWS credentials..."
+
+# Use IAM role credentials if available (preferred for EC2)
+if curl -s --max-time 5 http://169.254.169.254/latest/meta-data/iam/security-credentials/ | grep -q ".*"; then
+    echo "✅ IAM role credentials detected"
+    export AWS_DEFAULT_REGION=us-east-1
+    export AWS_REGION=us-east-1
+else
+    echo "⚠️  No IAM role found, checking for credentials..."
+    # Fallback to environment variables or default credentials
+    export AWS_DEFAULT_REGION=us-east-1
+    export AWS_REGION=us-east-1
+fi
+
+# Test AWS access
+echo "🔍 Testing AWS S3 access..."
+if aws s3 ls s3://scalable-training-dataset-us-east-1/ --region us-east-1 > /dev/null 2>&1; then
+    echo "✅ AWS S3 access confirmed"
+else
+    echo "❌ AWS S3 access failed - training may fail on data loading"
+    echo "Available credentials:"
+    aws sts get-caller-identity 2>&1 || echo "No AWS credentials found"
+fi
+
 ############### Show Envs ####################
 nvidia-smi
 
@@ -166,10 +192,35 @@ echo "✅ All CUDA checks passed!"
 # ULTIMATE H100 training with maximum optimizations and error handling
 echo "🚀 Starting training with proper CUDA initialization..."
 
+# CRITICAL: Sequential GPU initialization to prevent context conflicts
+echo "🔧 Sequential GPU initialization to prevent H100 context conflicts..."
+for gpu in 0 1 2 3 4 5 6 7; do
+    echo "Initializing GPU $gpu..."
+    CUDA_VISIBLE_DEVICES=$gpu python3 -c "
+import torch
+import time
+torch.cuda.set_device(0)
+torch.cuda.init()
+# Create small tensor to establish context
+test = torch.zeros(1, device='cuda')
+del test
+torch.cuda.empty_cache()
+print(f'GPU $gpu initialized successfully')
+" || { echo "❌ GPU $gpu initialization failed"; recover_cuda_context; exit 1; }
+    sleep 0.5
+done
+
 # Ensure clean environment before distributed training
 unset CUDA_VISIBLE_DEVICES_ORDER  # Remove to avoid conflicts
 export CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7
 export CUDA_LAUNCH_BLOCKING=1
+
+# CRITICAL: Add process isolation for distributed training
+export TORCH_DISTRIBUTED_DEBUG=DETAIL
+export TORCH_CPP_LOG_LEVEL=INFO
+export GLOO_SOCKET_IFNAME=$(ip route | grep default | awk '{print $5}' | head -1)
+
+echo "🎯 Starting distributed training with enhanced H100 stability..."
 
 ACCELERATE_CPU_AFFINITY=1 torchrun \
     --nnodes="${GPU_INSTANCES_NUMBER}" \
