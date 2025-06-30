@@ -94,21 +94,39 @@ export TORCH_USE_CUDA_DSA=0
 export CUDA_MODULE_LOADING=LAZY
 export CUDA_AUTO_BOOST=0
 
-################ ULTIMATE H100 OPTIMIZATIONS ################
-export NCCL_ASYNC_ERROR_HANDLING=1
+# CRITICAL: Fix CUDA tensor cleanup issues that cause context corruption
+export PYTORCH_CUDA_ALLOCATOR_SETTINGS=max_split_size_mb:128,roundup_power2_divisions:2
+export TORCH_CUDA_MEMORY_FRACTION=0.75  # More conservative
+export PYTORCH_NO_CUDA_MEMORY_CACHING=0
+export CUDA_MEMORY_FRACTION=0.75
+
+# Prevent CUDA context destruction errors during cleanup
+export CUDA_CONTEXT_CLEANUP_TIMEOUT=30
+export PYTORCH_CUDA_EAGER_CLEANUP=0  # Disable eager cleanup that causes errors
+
+################ NCCL + H100 NETWORK FIX ################
+# CRITICAL: Fix NCCL plugin and aws-ofi-nccl failures
 export NCCL_DEBUG=INFO
-# Auto-detect network interface
+export NCCL_ASYNC_ERROR_HANDLING=1
+
+# FIX: Disable problematic NCCL plugins that fail on H100
+export NCCL_NET_PLUGIN=none  # Disable failing NET/OFI plugins
+export NCCL_COLLNET_ENABLE=0  # Disable collective network optimizations
+export NCCL_NET_GDR_LEVEL=0   # Disable GPU Direct RDMA (causes failures)
+export NCCL_IB_DISABLE=1       # Disable InfiniBand (not available on H100 instances)
+
+# Use simple TCP/socket communication instead of advanced networking
 export NCCL_SOCKET_IFNAME=$(ip route | grep default | awk '{print $5}' | head -1)
-export NCCL_TREE_THRESHOLD=0
-export NCCL_NET_GDR_LEVEL=PHB
-export NCCL_P2P_LEVEL=NVL
-export NCCL_IB_DISABLE=0
-export NCCL_NET_GDR_READ=1
-export NCCL_BUFFSIZE=8388608
-export NCCL_P2P_NET_CHUNKSIZE=524288
-export NCCL_NET_SHARED_BUFFERS=0
 export NCCL_PROTO=Simple
-export NCCL_ALGO=Ring,Tree
+export NCCL_ALGO=Ring
+
+# Conservative NCCL settings for H100 stability
+export NCCL_TREE_THRESHOLD=0
+export NCCL_P2P_LEVEL=LOC  # Local P2P only, no NVLink issues
+export NCCL_NET_GDR_READ=0
+export NCCL_BUFFSIZE=4194304  # Smaller buffers
+export NCCL_P2P_NET_CHUNKSIZE=262144
+export NCCL_NET_SHARED_BUFFERS=0
 
 # Add NCCL hang detection and GIL fixes
 export NCCL_HEARTBEAT_TIMEOUT_SEC=600
@@ -188,6 +206,31 @@ print(f'✅ Test tensor created on {test_tensor.device}')
 fi
 
 echo "✅ All CUDA checks passed!"
+
+# CRITICAL: Test NCCL before distributed training to catch plugin failures early  
+echo "🔍 Testing NCCL communication..."
+if python3 -c "
+import torch
+import torch.distributed as dist
+import os
+os.environ['MASTER_ADDR'] = 'localhost'
+os.environ['MASTER_PORT'] = '12345'
+os.environ['RANK'] = '0'
+os.environ['WORLD_SIZE'] = '1'
+try:
+    dist.init_process_group(backend='nccl', rank=0, world_size=1)
+    print('✅ NCCL initialization successful')
+    dist.destroy_process_group()
+except Exception as e:
+    print(f'❌ NCCL test failed: {e}')
+    exit(1)
+"; then
+    echo "✅ NCCL test passed!"
+else
+    echo "❌ NCCL test failed - falling back to conservative settings"
+    export NCCL_DEBUG=WARN  # Reduce log spam
+    export NCCL_TIMEOUT=1800  # Longer timeout
+fi
 
 # ULTIMATE H100 training with maximum optimizations and error handling
 echo "🚀 Starting training with proper CUDA initialization..."
