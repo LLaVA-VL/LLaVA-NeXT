@@ -100,9 +100,18 @@ export TORCH_CUDA_MEMORY_FRACTION=0.75  # More conservative
 export PYTORCH_NO_CUDA_MEMORY_CACHING=0
 export CUDA_MEMORY_FRACTION=0.75
 
-# Prevent CUDA context destruction errors during cleanup
+# CRITICAL: Prevent CUDA context destruction errors during cleanup
 export CUDA_CONTEXT_CLEANUP_TIMEOUT=30
 export PYTORCH_CUDA_EAGER_CLEANUP=0  # Disable eager cleanup that causes errors
+export PYTORCH_CUDA_CACHE_SIZE_RATIO=0.5  # Reduce cache pressure
+export CUDA_DEVICE_MAX_CONNECTIONS=1  # Single connection per device
+export CUDA_DISABLE_PTXJIT_CACHE=1  # Disable PTX cache that can cause context issues
+
+# ULTIMATE: Force single-threaded CUDA context management
+export CUDA_DEVICE_ORDER=PCI_BUS_ID
+export CUDA_MPS_ACTIVE_THREAD_PERCENTAGE=25  # Limit MPS thread usage
+export CUDA_FORCE_PTX_JIT=0  # Disable JIT compilation
+export OMP_NUM_THREADS=1  # Single-threaded OpenMP to prevent race conditions
 
 ################ NCCL + H100 NETWORK FIX ################
 # CRITICAL: Fix NCCL plugin and aws-ofi-nccl failures
