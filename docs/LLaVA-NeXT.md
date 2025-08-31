@@ -47,6 +47,8 @@ cont = model.generate(
     do_sample=False,
     temperature=0,
     max_new_tokens=256,
+    # Modalities should be the same size as the batch size
+    modalities=["image"]*input_ids.shape[0]
 )
 text_outputs = tokenizer.batch_decode(cont, skip_special_tokens=True)
 print(text_outputs)
