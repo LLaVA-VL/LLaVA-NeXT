@@ -4,12 +4,12 @@ set -x
 
 export PYTHONUNBUFFERED=1
 
-MODEL_PATH=/fsx-project/xywang96/models/llama32v-11b  # replace it with your local file path
+MODEL_PATH=meta-llama/Llama-3.2-11B-Vision-Instruct  # replace it with your local file path
 
 python3 -m verl.trainer.main \
     config=examples/config.yaml \
-    data.train_files=russwang/LLaVA-Critic-GRPO-shortprompt@train \
-    data.val_files=russwang/LLaVA-Critic-GRPO-shortprompt@train \
+    data.train_files=lmms-lab/LLaVA-Critic-GRPO-dataset@train \
+    data.val_files=lmms-lab/LLaVA-Critic-GRPO-dataset@train \
     data.shuffle=True \
     data.format_prompt=./examples/format_prompt/math_format.jinja \
     data.rollout_batch_size=256 \
