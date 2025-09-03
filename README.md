@@ -26,7 +26,7 @@
   - [LLaVA-Critic-R1-7B-Plus-Qwen](https://huggingface.co/lmms-lab/LLaVA-Critic-R1-7B-Plus-Qwen): LLaVA-Critic-R1+ trained based on ThinkLite-VL-7B.
   - [LLaVA-Critic-R1-7B-Plus-Mimo](https://huggingface.co/lmms-lab/LLaVA-Critic-R1-7B-Plus-Mimo): LLaVA-Critic-R1+ trained based on MiMo-VL-7B-RL-2508.
   - [LLaVA-Critic-R1-7B-Plus-LLaMA32v](https://huggingface.co/lmms-lab/LLaVA-Critic-R1-7B-LLaMA32v): LLaVA-Critic-R1+ trained based on Llama-3.2-11B-Vision-Instruct.
-  - [Paper](http://arxiv.org/abs/2410.02713): Detailed information about LLaVA-Critic-R1.
+  - [Paper](https://arxiv.org/abs/2509.00676): Detailed information about LLaVA-Critic-R1.
 
 
 - **[2024/10/04] 🔥 LLaVA-Video** (formerly LLaVA-NeXT-Video) has undergone a major upgrade! We are excited to release **LLaVA-Video-178K**, a high-quality synthetic dataset for video instruction tuning. This dataset includes:
