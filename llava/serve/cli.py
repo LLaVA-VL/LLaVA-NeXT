@@ -86,7 +86,16 @@ def main(args):
         streamer = TextStreamer(tokenizer, skip_prompt=True, skip_special_tokens=True)
 
         with torch.inference_mode():
-            output_ids = model.generate(input_ids, images=image_tensor, do_sample=True, temperature=0.2, max_new_tokens=1024, streamer=streamer, use_cache=True, stopping_criteria=[stopping_criteria])
+            output_ids = model.generate(
+                input_ids,
+                images=image_tensor,
+                do_sample=args.temperature > 0,
+                temperature=args.temperature,
+                max_new_tokens=args.max_new_tokens,
+                streamer=streamer,
+                use_cache=True,
+                stopping_criteria=[stopping_criteria],
+            )
 
         outputs = tokenizer.decode(output_ids[0, input_ids.shape[1] :]).strip()
         conv.messages[-1][-1] = outputs
