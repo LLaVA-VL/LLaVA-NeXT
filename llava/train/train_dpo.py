@@ -1636,6 +1636,12 @@ def train(attn_implementation=None):
             model.config.tune_mm_vision_resampler = training_args.tune_mm_vision_resampler = model_args.tune_mm_vision_resampler
             if model_args.tune_mm_mlp_adapter or model_args.tune_mm_vision_resampler:
                 model.requires_grad_(False)
+                # Restore LoRA trainability after global freeze
+                if training_args.lora_enable:
+                    for name, param in model.named_parameters():
+                        if "lora_" in name:
+                            param.requires_grad_(True)
+                    rank0_print("Restored LoRA parameters to trainable after global freeze (legacy branch).")
             if model_args.tune_mm_mlp_adapter:
                 for p in model.get_model().mm_projector.parameters():
                     p.requires_grad = True
@@ -1680,14 +1686,54 @@ def train(attn_implementation=None):
                     if "vision_tower" in name:
                         param.requires_grad_(True)
             if "mm_language_model" in tunable_parts:
+                if training_args.lora_enable:
+                    # LoRA mode: only unfreeze LoRA parameters, keep LLM backbone frozen
+                    rank0_print("LoRA enabled: unfreezing only LoRA parameters for LLM.")
+                else:
+                    # Full finetune mode: unfreeze entire LLM backbone
+                    for name, param in model.named_parameters():
+                        if "vision_tower" not in name and "mm_projector" not in name and "vision_resampler" not in name:
+                            param.requires_grad_(True)
+
+            # Ensure LoRA parameters are always trainable when lora_enable is True,
+            # regardless of which mm_tunable_parts are specified.
+            # model.requires_grad_(False) above freezes everything including LoRA weights
+            # injected by PEFT, so we must explicitly restore them here.
+            if training_args.lora_enable:
+                lora_param_count = 0
                 for name, param in model.named_parameters():
-                    if "vision_tower" not in name and "mm_projector" not in name and "vision_resampler" not in name:
+                    if "lora_" in name:
                         param.requires_grad_(True)
+                        lora_param_count += 1
+                rank0_print(f"Restored {lora_param_count} LoRA parameter tensors to trainable.")
+                if "mm_language_model" not in tunable_parts:
+                    rank0_print(
+                        "WARNING: lora_enable is True but 'mm_language_model' is not in mm_tunable_parts. "
+                        "LoRA parameters will still be trained. If you do not intend to train the language "
+                        "model at all, consider setting --lora_enable False to avoid unnecessary overhead."
+                    )
 
         total_params = sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.parameters())
         trainable_params = sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.parameters() if p.requires_grad)
         rank0_print(f"Total parameters: ~{total_params/1e6:.2f} MB)")
         rank0_print(f"Trainable parameters: ~{trainable_params/1e6:.2f} MB)")
+        # Print per-group trainable parameter breakdown for verification
+        trainable_groups = {"lora": 0, "mm_projector": 0, "vision_resampler": 0, "vision_tower": 0, "llm_base": 0}
+        for name, p in model.named_parameters():
+            if not p.requires_grad:
+                continue
+            n = p.ds_numel if hasattr(p, "ds_numel") else p.numel()
+            if "lora_" in name:
+                trainable_groups["lora"] += n
+            elif "mm_projector" in name:
+                trainable_groups["mm_projector"] += n
+            elif "vision_resampler" in name:
+                trainable_groups["vision_resampler"] += n
+            elif "vision_tower" in name:
+                trainable_groups["vision_tower"] += n
+            else:
+                trainable_groups["llm_base"] += n
+        rank0_print("Trainable parameter groups: " + ", ".join(f"{k}={v:,}" for k, v in trainable_groups.items()))
         if training_args.bits in [4, 8]:
             model.get_model().mm_projector.to(dtype=compute_dtype, device=training_args.device)
 
