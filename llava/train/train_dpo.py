@@ -1680,9 +1680,16 @@ def train(attn_implementation=None):
                     if "vision_tower" in name:
                         param.requires_grad_(True)
             if "mm_language_model" in tunable_parts:
-                for name, param in model.named_parameters():
-                    if "vision_tower" not in name and "mm_projector" not in name and "vision_resampler" not in name:
-                        param.requires_grad_(True)
+                if training_args.lora_enable:
+                    rank0_print("LoRA enabled: Unfreezing ONLY LoRA parameters in LLM.")
+                    for name, param in model.named_parameters():
+                        if "lora_" in name:
+                            param.requires_grad_(True)
+                else:
+                    rank0_print("LoRA disabled: Unfreezing FULL LLM backbone.")
+                    for name, param in model.named_parameters():
+                        if "vision_tower" not in name and "mm_projector" not in name and "vision_resampler" not in name and "mm_depth_projector" not in name:
+                            param.requires_grad_(True)
 
         total_params = sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.parameters())
         trainable_params = sum(p.ds_numel if hasattr(p, "ds_numel") else p.numel() for p in model.parameters() if p.requires_grad)
