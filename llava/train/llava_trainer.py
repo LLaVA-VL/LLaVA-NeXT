@@ -48,6 +48,22 @@ def get_mm_adapter_state_maybe_zero_3(named_params, keys_to_match):
     return to_return
 
 
+def should_only_save_mm_adapter(args) -> bool:
+    # LoRA runs need full PEFT checkpoint handling, even when adapters are also trainable.
+    if getattr(args, "lora_enable", False):
+        return False
+
+    if getattr(args, "tune_mm_mlp_adapter", False):
+        return True
+
+    mm_tunable_parts = getattr(args, "mm_tunable_parts", None)
+    if not mm_tunable_parts:
+        return False
+
+    tunable_parts = [part.strip() for part in mm_tunable_parts.split(",") if part.strip()]
+    return len(tunable_parts) == 1 and tunable_parts[0] in {"mm_mlp_adapter", "mm_vision_resampler"}
+
+
 def split_to_even_chunks(indices, lengths, num_chunks):
     """
     Split a list of indices into `chunks` chunks of roughly equal lengths.
@@ -646,9 +662,7 @@ class LLaVATrainer(Trainer):
         return self.optimizer
 
     def _save_checkpoint(self, model, trial, metrics=None):
-        if getattr(self.args, "tune_mm_mlp_adapter", False) or (
-            hasattr(self.args, "mm_tunable_parts") and (len(self.args.mm_tunable_parts.split(",")) == 1 and ("mm_mlp_adapter" in self.args.mm_tunable_parts or "mm_vision_resampler" in self.args.mm_tunable_parts))
-        ):
+        if should_only_save_mm_adapter(self.args):
             from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 
             checkpoint_folder = f"{PREFIX_CHECKPOINT_DIR}-{self.state.global_step}"
@@ -670,7 +684,7 @@ class LLaVATrainer(Trainer):
             super(LLaVATrainer, self)._save_checkpoint(model, trial, metrics)
 
     def _save(self, output_dir: Optional[str] = None, state_dict=None):
-        if getattr(self.args, "tune_mm_mlp_adapter", False):
+        if should_only_save_mm_adapter(self.args):
             pass
         else:
             super(LLaVATrainer, self)._save(output_dir, state_dict)
@@ -1247,9 +1261,7 @@ class LLaVADPOTrainer(DPOTrainer):
             return super()._get_train_sampler()
 
     def _save_checkpoint(self, model, trial, metrics=None):
-        if getattr(self.args, "tune_mm_mlp_adapter", False) or (
-            hasattr(self.args, "mm_tunable_parts") and (len(self.args.mm_tunable_parts.split(",")) == 1 and ("mm_mlp_adapter" in self.args.mm_tunable_parts or "mm_vision_resampler" in self.args.mm_tunable_parts))
-        ):
+        if should_only_save_mm_adapter(self.args):
             from transformers.trainer_utils import PREFIX_CHECKPOINT_DIR
 
             checkpoint_folder = f"{PREFIX_CHECKPOINT_DIR}-{self.state.global_step}"
@@ -1287,7 +1299,7 @@ class LLaVADPOTrainer(DPOTrainer):
                 super(LLaVADPOTrainer, self)._save_checkpoint(model, trial, metrics)
 
     def _save(self, output_dir: Optional[str] = None, state_dict=None):
-        if getattr(self.args, "tune_mm_mlp_adapter", False):
+        if should_only_save_mm_adapter(self.args):
             pass
         else:
             super(LLaVADPOTrainer, self)._save(output_dir, state_dict)
