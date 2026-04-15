@@ -49,12 +49,12 @@ weights = [
 
 
 def download_json(url: str, dest: Path):
-    res = requests.get(url, allow_redirects=True)
-    if res.status_code == 200 and res.content:
-        with dest.open("wb") as f:
-            f.write(res.content)
-    else:
-        print(f"Failed to download {url}. Status code: {res.status_code}")
+    res = requests.get(url, allow_redirects=True, timeout=30)
+    res.raise_for_status()
+    if not res.content:
+        raise ValueError(f"Downloaded empty JSON payload from {url}")
+    with dest.open("wb") as f:
+        f.write(res.content)
 
 def download_weights(baseurl: str, basedest: str, files: list[str]):
     basedest = Path(basedest)
@@ -114,7 +114,17 @@ class Predictor(BasePredictor):
         with torch.inference_mode():
             thread = Thread(
                 target=self.model.generate,
-                kwargs=dict(inputs=input_ids, images=image_tensor, do_sample=True, temperature=temperature, top_p=top_p, max_new_tokens=max_tokens, streamer=streamer, use_cache=True, stopping_criteria=[stopping_criteria]),
+                kwargs=dict(
+                    inputs=input_ids,
+                    images=image_tensor,
+                    do_sample=temperature > 0,
+                    temperature=temperature,
+                    top_p=top_p,
+                    max_new_tokens=max_tokens,
+                    streamer=streamer,
+                    use_cache=True,
+                    stopping_criteria=[stopping_criteria],
+                ),
             )
             thread.start()
             # workaround: second-to-last token is always " "
@@ -139,7 +149,8 @@ class Predictor(BasePredictor):
 
 def load_image(image_file):
     if image_file.startswith("http") or image_file.startswith("https"):
-        response = requests.get(image_file)
+        response = requests.get(image_file, timeout=30)
+        response.raise_for_status()
         image = Image.open(BytesIO(response.content)).convert("RGB")
     else:
         image = Image.open(image_file).convert("RGB")
