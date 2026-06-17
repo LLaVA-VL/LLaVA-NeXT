@@ -18,6 +18,7 @@
 [![llava_next-image_checkpoints](https://img.shields.io/badge/llava_next-image_checkpoints-blue)](https://huggingface.co/lmms-lab)
 
 ## Release Notes
+- **This is a fork from LLaVA-NeXT**
 
 > **📢 Announcement:** The training pipeline in this repository is now considered **legacy**. For the latest training pipeline with support for **LLaVA-OneVision** and **LLaVA-OneVision-2**, please refer to [**lmms-engine**](https://github.com/EvolvingLMMs-Lab/lmms-engine).
 
