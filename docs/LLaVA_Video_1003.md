@@ -32,7 +32,7 @@ import warnings
 from decord import VideoReader, cpu
 import numpy as np
 warnings.filterwarnings("ignore")
-def load_video(self, video_path, max_frames_num,fps=1,force_sample=False):
+def load_video(video_path, max_frames_num,fps=1,force_sample=False):
     if max_frames_num == 0:
         return np.zeros((1, 336, 336, 3))
     vr = VideoReader(video_path, ctx=cpu(0),num_threads=1)
@@ -57,7 +57,7 @@ device_map = "auto"
 tokenizer, model, image_processor, max_length = load_pretrained_model(pretrained, None, model_name, torch_dtype="bfloat16", device_map=device_map)  # Add any other thing you want to pass in llava_model_args
 model.eval()
 video_path = "XXXX"
-max_frames_num = "64"
+max_frames_num = 64
 video,frame_time,video_time = load_video(video_path, max_frames_num, 1, force_sample=True)
 video = image_processor.preprocess(video, return_tensors="pt")["pixel_values"].cuda().bfloat16()
 video = [video]
