@@ -1,8 +1,10 @@
 import json
 from math import ceil
+from pathlib import Path
 
 
 def split_json_file(input_file, n_splits):
+    input_file = Path(input_file)
     # Read the JSON file
     with open(input_file, "r") as file:
         data = json.load(file)
@@ -18,7 +20,8 @@ def split_json_file(input_file, n_splits):
         split_data = data[start_index:end_index]
 
         # Write the split data to a new JSON file
-        with open(f"{input_file.split('.')[0]}_split_{i}.json", "w") as split_file:
+        split_path = input_file.with_name(f"{input_file.stem}_split_{i}.json")
+        with split_path.open("w") as split_file:
             json.dump(split_data, split_file, indent=4)
 
 
